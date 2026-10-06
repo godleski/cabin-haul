@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cabin Haul</title>
+<meta property="og:title" content="Cabin Haul">
+<meta property="og:description" content="Add what we should bring to the cabin. +1 what you want. Live for everyone.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+  :root {
+    --bg: #f2f4ee; --surface: #ffffff; --fg: #1b2a22; --muted: #5f6f66; --line: #d6dcd4;
+    --pine: #2d6a4f; --pine-ink: #ffffff; --pine-soft: #e3efe8; --ember: #d2691e; --ember-soft: #fbe9db;
+    --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    --body: "Instrument Sans", "Helvetica Neue", Arial, system-ui, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121a15; --surface: #1b2620; --fg: #e9efe9; --muted: #9fb0a6; --line: #2f3d35;
+      --pine: #6fbf95; --pine-ink: #0f1d16; --pine-soft: #1f3a2d; --ember: #f0994f; --ember-soft: #3d2a1b;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.45;
+    padding-inline: 16px; padding-block: calc(20px + env(safe-area-inset-top, 0px)) calc(104px + env(safe-area-inset-bottom, 0px));
+  }
+  .wrap { max-width: 560px; margin-inline: auto; min-width: 0; }
+  h1, h2 { font-family: var(--display); text-wrap: balance; margin: 0; }
+  h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
+  .eyebrow { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pine); font-weight: 600; }
+  .lede { color: var(--muted); margin: 8px 0 0; max-width: 60ch; }
+  .notice { margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: var(--ember-soft); color: var(--fg); font-size: 0.9rem; }
+  .notice code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }
+
+  label { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+  input[type="text"], select {
+    width: 100%; font: 400 1rem var(--body); color: var(--fg); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0;
+  }
+  select { appearance: auto; }
+  :is(input, select, button):focus-visible { outline: 3px solid var(--ember); outline-offset: 2px; }
+
+  .name-row { display: grid; gap: 6px; margin-top: 20px; }
+
+  .adder { margin-top: 20px; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; display: grid; gap: 10px; }
+  .adder h2 { font-size: 1rem; font-weight: 700; }
+  .adder .row { display: grid; grid-template-columns: minmax(0, 1fr) 128px; gap: 8px; }
+  .adder .row2 { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .addbtn { border: 0; background: var(--ember); color: #fff; font: 700 0.95rem var(--body); padding: 10px 18px; border-radius: 10px; cursor: pointer; white-space: nowrap; }
+  .addbtn:active { transform: scale(0.98); }
+
+  .filters { display: flex; gap: 6px; margin-top: 24px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .filters::-webkit-scrollbar { display: none; }
+  .filters button {
+    flex: none; border: 1px solid var(--line); background: var(--surface); color: var(--muted);
+    font: 600 0.85rem var(--body); padding: 7px 12px; border-radius: 999px; cursor: pointer;
+  }
+  .filters button[aria-pressed="true"] { background: var(--pine); border-color: var(--pine); color: var(--pine-ink); }
+  .filters button .k { opacity: 0.7; font-weight: 500; margin-left: 4px; font-variant-numeric: tabular-nums; }
+
+  .group { margin-top: 22px; }
+  .group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 2px solid var(--pine); padding-bottom: 6px; }
+  .group-head h2 { font-size: 1.2rem; font-weight: 700; }
+  .group-head .k { font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .list { display: grid; gap: 8px; margin-top: 10px; }
+  .item {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 10px 10px 14px;
+  }
+  .item .title { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+  .item .title .note { font-weight: 400; color: var(--muted); }
+  .item .meta { grid-column: 1; font-size: 0.8rem; color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+  .item .meta .by { color: var(--ember); font-weight: 600; }
+  .item .meta .rm { background: none; border: 0; color: var(--muted); font: inherit; text-decoration: underline; cursor: pointer; padding: 0; margin-left: 6px; }
+  .plus {
+    grid-row: 1 / span 2; grid-column: 2; align-self: center;
+    display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+    font: 700 0.95rem var(--body); padding: 8px 12px; border-radius: 999px; cursor: pointer; min-width: 64px; justify-content: center;
+    font-variant-numeric: tabular-nums; transition: background 120ms, border-color 120ms, transform 80ms;
+  }
+  .plus:active { transform: scale(0.96); }
+  .plus[aria-pressed="true"] { background: var(--pine); border-color: var(--pine); color: var(--pine-ink); }
+  .plus[disabled] { opacity: 0.6; cursor: wait; }
+  .item.hot { border-color: var(--pine); }
+  .empty { margin-top: 24px; padding: 20px; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); font-size: 0.92rem; text-align: center; }
+
+  .bar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--surface); border-top: 1px solid var(--line);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  .bar-inner { max-width: 560px; margin-inline: auto; display: flex; align-items: center; gap: 10px; }
+  .bar .status { flex: 1; min-width: 0; font-size: 0.88rem; color: var(--muted); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar .status b { color: var(--fg); font-weight: 600; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--line); margin-right: 6px; vertical-align: middle; }
+  .dot.live { background: var(--pine); }
+  .btn { border: 0; background: var(--pine-soft); color: var(--pine); font: 700 0.88rem var(--body); padding: 10px 12px; border-radius: 12px; cursor: pointer; white-space: nowrap; }
+  .btn.primary { background: var(--pine); color: var(--pine-ink); }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 0.9rem;
+    opacity: 0; pointer-events: none; transition: opacity 180ms; max-width: calc(100% - 32px); text-align: center; z-index: 6;
+  }
+  .toast.show { opacity: 1; }
+  .skeleton { margin-top: 28px; color: var(--muted); font-size: 0.92rem; }
+  @media (max-width: 420px) { .adder .row { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { .plus, .toast { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Cabin trip</div>
+  <h1>What are we bringing?</h1>
+  <p class="lede">Add anything we should get. Tap <b>+1</b> on what you want. The most-wanted stuff floats to the top, and the final list becomes the shopping run.</p>
+  <div class="notice" id="setup" hidden></div>
+
+  <div class="name-row">
+    <label for="voter">Your name</label>
+    <input type="text" id="voter" placeholder="So we know who wants what" autocomplete="name" maxlength="40">
+  </div>
+
+  <form class="adder" id="adder">
+    <h2>Add something</h2>
+    <div class="row">
+      <input type="text" id="new-name" placeholder="What should we get?" maxlength="60" aria-label="Item" autocomplete="off">
+      <select id="new-cat" aria-label="Category">
+        <option>Food</option><option>Drinks</option><option>Booze</option><option>Snacks</option><option>Supplies</option><option>Other</option>
+      </select>
+    </div>
+    <div class="row2">
+      <input type="text" id="new-note" placeholder="Optional note: brand, how much, who's bringing it" maxlength="80" aria-label="Note" autocomplete="off">
+      <button class="addbtn" type="submit">Add</button>
+    </div>
+  </form>
+
+  <div class="filters" id="filters" role="group" aria-label="Filter by category"></div>
+  <div id="groups"><p class="skeleton">Loading the list…</p></div>
+</div>
+
+<div class="bar">
+  <div class="bar-inner">
+    <div class="status" id="status"><span class="dot" id="dot"></span><b>0 items</b></div>
+    <button class="btn" id="copylink" type="button">Copy link</button>
+    <button class="btn primary" id="copylist" type="button">Copy list</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // Your Supabase URL and anon key live in config.js (see README). This file never needs editing.
+  var CFG = window.CABIN_CONFIG || {};
+  var SUPABASE_URL = String(CFG.supabaseUrl || 'PASTE_YOUR_PROJECT_URL');
+  var SUPABASE_ANON_KEY = String(CFG.supabaseAnonKey || 'PASTE_YOUR_ANON_KEY');
+
+  var CATEGORIES = ['Food', 'Drinks', 'Booze', 'Snacks', 'Supplies', 'Other'];
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function norm(s) { return String(s).trim().replace(/\s+/g, ' ').toLowerCase(); }
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+
+  var toastEl = document.getElementById('toast'), toastTimer;
+  function toast(msg) {
+    toastEl.textContent = msg; toastEl.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 2600);
+  }
+  function copyText(text, okMsg) {
+    var ok = function () { toast(okMsg); };
+    var no = function () { toast('Copy didn\'t work on this browser. Long-press the list text instead.'); };
+    try { navigator.clipboard.writeText(text).then(ok, no); } catch (e) { no(); }
+  }
+
+  // ---- Identity (kept in this browser) ----
+  var voterEl = document.getElementById('voter');
+  var voterId = lsGet('cabin-haul-voter-id');
+  if (!voterId) {
+    voterId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2);
+    lsSet('cabin-haul-voter-id', voterId);
+  }
+  voterEl.value = lsGet('cabin-haul-voter-name') || '';
+  voterEl.addEventListener('input', function () { lsSet('cabin-haul-voter-name', voterEl.value.trim()); updateStatus(); });
+  function myName() { return voterEl.value.trim(); }
+  function requireName() {
+    if (myName()) return true;
+    voterEl.focus(); toast('Add your name first so we know who wants what.');
+    return false;
+  }
+
+  document.getElementById('copylink').addEventListener('click', function () {
+    copyText(location.href.split('#')[0], 'Link copied. Paste it into the group chat.');
+  });
+
+  var setupEl = document.getElementById('setup');
+  if (SUPABASE_URL.indexOf('PASTE_') === 0 || SUPABASE_ANON_KEY.indexOf('PASTE_') === 0 || !window.supabase) {
+    setupEl.hidden = false;
+    setupEl.innerHTML = window.supabase
+      ? 'This copy isn\'t connected to a database yet. Copy <code>config.example.js</code> to <code>config.js</code> and paste in your Supabase URL and anon key. See README.md.'
+      : 'The database library didn\'t load. Check your internet connection and reload.';
+    document.getElementById('groups').innerHTML = '';
+    return;
+  }
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ---- Data ----
+  var items = [];     // {id, name, note, category, added_by, adder_id, created_at}
+  var plus = [];      // {item_id, voter_id, voter_name}
+  var busy = {};
+  var filter = lsGet('cabin-haul-filter') || 'All';
+
+  function load() {
+    return Promise.all([
+      sb.from('items').select('id,name,note,category,added_by,adder_id,created_at').order('created_at', { ascending: true }),
+      sb.from('plus_ones').select('item_id,voter_id,voter_name')
+    ]).then(function (res) {
+      if (res[0].error) throw res[0].error;
+      if (res[1].error) throw res[1].error;
+      items = res[0].data || [];
+      plus = res[1].data || [];
+      render();
+    }).catch(function (e) {
+      document.getElementById('groups').innerHTML = '<p class="skeleton">Couldn\'t load the list (' + esc(e.message || e) + '). Check the URL and key in config.js, and that schema.sql was run.</p>';
+    });
+  }
+
+  function plusFor(itemId) {
+    var who = [], mine = false;
+    plus.forEach(function (p) {
+      if (p.item_id !== itemId) return;
+      if (p.voter_id === voterId) mine = true;
+      who.push(p.voter_name || 'Someone');
+    });
+    return { n: who.length, who: who, mine: mine };
+  }
+  function sorted(list) {
+    return list.map(function (it) { return { it: it, p: plusFor(it.id) }; })
+      .sort(function (a, b) { return (b.p.n - a.p.n) || (a.it.created_at < b.it.created_at ? 1 : -1); });
+  }
+  function allCats() {
+    var cats = CATEGORIES.slice();
+    items.forEach(function (it) { if (cats.indexOf(it.category) < 0) cats.push(it.category); });
+    return cats;
+  }
+
+  // ---- Render ----
+  function renderFilters() {
+    var counts = {};
+    items.forEach(function (it) { counts[it.category] = (counts[it.category] || 0) + 1; });
+    var cats = ['All'].concat(allCats().filter(function (c) { return counts[c]; }));
+    if (cats.indexOf(filter) < 0) filter = 'All';
+    document.getElementById('filters').innerHTML = cats.map(function (c) {
+      var k = c === 'All' ? items.length : counts[c];
+      return '<button type="button" data-filter="' + esc(c) + '" aria-pressed="' + (filter === c) + '">' + esc(c) + '<span class="k">' + k + '</span></button>';
+    }).join('');
+  }
+
+  function render() {
+    renderFilters();
+    var groupsEl = document.getElementById('groups');
+    if (!items.length) {
+      groupsEl.innerHTML = '<div class="empty">Nothing on the list yet. Add the first thing above.</div>';
+      updateStatus(); return;
+    }
+    var cats = allCats().filter(function (c) { return filter === 'All' || c === filter; });
+    var html = '';
+    cats.forEach(function (cat) {
+      var rows = sorted(items.filter(function (it) { return it.category === cat; }));
+      if (!rows.length) return;
+      html += '<section class="group"><div class="group-head"><h2>' + esc(cat) + '</h2><span class="k">' + plural(rows.length, 'item', 'items') + '</span></div><div class="list">';
+      rows.forEach(function (r) {
+        var it = r.it, p = r.p;
+        var mineItem = it.adder_id && it.adder_id === voterId;
+        var meta = [];
+        if (it.added_by) meta.push('<span class="by">' + esc(it.added_by) + '</span> added');
+        if (p.n) meta.push('+1 from ' + esc(p.who.join(', ')));
+        if (!p.n && !it.added_by) meta.push('starter item');
+        var rm = (mineItem && p.n <= (p.mine ? 1 : 0)) ? '<button type="button" class="rm" data-rm="' + esc(it.id) + '">remove</button>' : '';
+        html += '<div class="item' + (p.n >= 3 ? ' hot' : '') + '" data-id="' + esc(it.id) + '">' +
+          '<div class="title">' + esc(it.name) + (it.note ? ' <span class="note">· ' + esc(it.note) + '</span>' : '') + '</div>' +
+          '<button type="button" class="plus" data-plus="' + esc(it.id) + '" aria-pressed="' + p.mine + '" aria-label="+1 ' + esc(it.name) + '" title="' + esc(p.who.join(', ') || 'Be the first to +1') + '">+1 <span>' + p.n + '</span></button>' +
+          '<div class="meta">' + meta.join(' · ') + rm + '</div>' +
+          '</div>';
+      });
+      html += '</div></section>';
+    });
+    groupsEl.innerHTML = html || '<div class="empty">Nothing in this category yet.</div>';
+    updateStatus();
+  }
+
+  var live = false;
+  function updateStatus() {
+    var people = {};
+    plus.forEach(function (p) { people[p.voter_id] = true; });
+    items.forEach(function (it) { if (it.adder_id) people[it.adder_id] = true; });
+    var n = Object.keys(people).length;
+    var s = '<span class="dot' + (live ? ' live' : '') + '" id="dot"></span><b>' + plural(items.length, 'item', 'items') + '</b>';
+    if (n) s += ' · ' + plural(n, 'person', 'people');
+    if (myName()) s += ' · ' + esc(myName());
+    document.getElementById('status').innerHTML = s;
+  }
+
+  // ---- Actions ----
+  function togglePlus(itemId) {
+    if (!requireName() || busy[itemId]) return;
+    busy[itemId] = true;
+    var btn = document.querySelector('.plus[data-plus="' + itemId + '"]');
+    if (btn) btn.disabled = true;
+    var mine = plusFor(itemId).mine;
+    var q = mine
+      ? sb.from('plus_ones').delete().match({ item_id: itemId, voter_id: voterId })
+      : sb.from('plus_ones').insert({ item_id: itemId, voter_id: voterId, voter_name: myName() });
+    q.then(function (res) {
+      if (res.error) throw res.error;
+      if (mine) plus = plus.filter(function (p) { return !(p.item_id === itemId && p.voter_id === voterId); });
+      else plus.push({ item_id: itemId, voter_id: voterId, voter_name: myName() });
+      render();
+    }).catch(function (e) { toast('That didn\'t save: ' + (e.message || e)); })
+      .then(function () { busy[itemId] = false; if (btn) btn.disabled = false; });
+  }
+
+  function addItem() {
+    if (!requireName()) return;
+    var nameEl = document.getElementById('new-name'), noteEl = document.getElementById('new-note'), catEl = document.getElementById('new-cat');
+    var name = nameEl.value.replace(/\s+/g, ' ').trim();
+    var note = noteEl.value.replace(/\s+/g, ' ').trim();
+    if (!name) { nameEl.focus(); return; }
+    var dup = items.filter(function (it) { return norm(it.name) === norm(name); })[0];
+    if (dup) {
+      toast('"' + dup.name + '" is already on the list. Giving it your +1.');
+      nameEl.value = ''; noteEl.value = '';
+      if (!plusFor(dup.id).mine) togglePlus(dup.id);
+      return;
+    }
+    var row = { name: name, note: note || null, category: catEl.value, added_by: myName(), adder_id: voterId };
+    sb.from('items').insert(row).select().single()
+      .then(function (res) {
+        if (res.error) throw res.error;
+        items.push(res.data);
+        nameEl.value = ''; noteEl.value = '';
+        if (filter !== 'All' && filter !== res.data.category) { filter = 'All'; lsSet('cabin-haul-filter', filter); }
+        render();
+        togglePlus(res.data.id);
+        nameEl.focus();
+      }).catch(function (e) {
+        if (e && e.code === '23505') { nameEl.value = ''; load().then(function () { toast('Someone just added that one. Give it a +1.'); }); }
+        else toast('Couldn\'t add that: ' + (e.message || e));
+      });
+  }
+
+  function removeItem(itemId) {
+    var it = items.filter(function (x) { return x.id === itemId; })[0];
+    if (!it) return;
+    sb.from('items').delete().match({ id: itemId }).then(function (res) {
+      if (res.error) throw res.error;
+      items = items.filter(function (x) { return x.id !== itemId; });
+      plus = plus.filter(function (p) { return p.item_id !== itemId; });
+      render();
+      toast('Removed "' + it.name + '".');
+    }).catch(function (e) { toast('Couldn\'t remove that: ' + (e.message || e)); });
+  }
+
+  document.getElementById('adder').addEventListener('submit', function (e) { e.preventDefault(); addItem(); });
+  document.getElementById('groups').addEventListener('click', function (e) {
+    var p = e.target.closest('[data-plus]');
+    if (p) { togglePlus(p.getAttribute('data-plus')); return; }
+    var rm = e.target.closest('[data-rm]');
+    if (rm) removeItem(rm.getAttribute('data-rm'));
+  });
+  document.getElementById('filters').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-filter]');
+    if (!b) return;
+    filter = b.getAttribute('data-filter'); lsSet('cabin-haul-filter', filter); render();
+  });
+
+  // ---- Shopping list export ----
+  function listText() {
+    var lines = ['Cabin haul · ' + new Date().toLocaleDateString()];
+    allCats().forEach(function (cat) {
+      var rows = sorted(items.filter(function (it) { return it.category === cat; }));
+      if (!rows.length) return;
+      lines.push('', cat.toUpperCase());
+      rows.forEach(function (r) {
+        var line = '☐ ' + r.it.name;
+        if (r.it.note) line += ' (' + r.it.note + ')';
+        if (r.p.n) line += ' · +' + r.p.n;
+        lines.push(line);
+      });
+    });
+    return lines.join('\n');
+  }
+  document.getElementById('copylist').addEventListener('click', function () {
+    if (!items.length) { toast('Nothing to copy yet.'); return; }
+    copyText(listText(), 'Shopping list copied, grouped by category with +1 counts.');
+  });
+
+  // ---- Live updates (realtime channel, with polling as a fallback) ----
+  var reloadTimer;
+  function scheduleReload() { clearTimeout(reloadTimer); reloadTimer = setTimeout(load, 250); }
+  try {
+    sb.channel('cabin-haul')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, scheduleReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'plus_ones' }, scheduleReload)
+      .subscribe(function (status) { live = status === 'SUBSCRIBED'; updateStatus(); });
+  } catch (e) { /* polling covers it */ }
+  setInterval(function () { if (!document.hidden) load(); }, 15000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) load(); });
+
+  load();
+})();
+</script>
+</body>
+</html>
