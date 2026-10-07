@@ -86,7 +86,7 @@
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
       cv.style.width = W + 'px'; cv.style.height = H + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      dimpleTile = null; limbCache = {}; layerCache = {};
+      dimpleTile = null; layerCache = {};
     }
     resize();
     var colors = {};
@@ -172,7 +172,7 @@
       if (stroke) { ctx.lineWidth = lw || 2; ctx.strokeStyle = stroke; ctx.stroke(); }
     }
     // Dimple tile: concave dimples (shadow on the far wall, highlight on the near wall), tiled under the middle of each ball.
-    var dimpleTile = null, dimpleSp = 0, dimpleRowH = 0, limbCache = {};
+    var dimpleTile = null, dimpleSp = 0, dimpleRowH = 0;
     function dimpleAt(o, x, y, dr, alpha) {
       o.globalAlpha = alpha == null ? 1 : alpha;
       o.beginPath(); o.arc(x - 0.7, y - 0.7, dr, 0, Math.PI * 2); o.fillStyle = 'rgba(90,100,95,0.30)'; o.fill();     // shaded wall (top-left)
@@ -189,30 +189,6 @@
       dimpleTile = ctx.createPattern(off, 'repeat');
       try { dimpleTile.setTransform(new DOMMatrix().scale(1 / dpr)); } catch (e) { /* older browsers: slightly soft dimples */ }
       dimpleSp = sp; dimpleRowH = rowH;
-    }
-    // Limb texture: dimples projected onto the sphere for the outer band, so they squash toward the edge like a real ball.
-    function limbTexture(r) {
-      var key = Math.round(r) + '@' + dpr;
-      if (limbCache[key]) return limbCache[key];
-      var size = Math.ceil(r * 2 + 4);
-      var off = document.createElement('canvas'); off.width = Math.round(size * dpr); off.height = Math.round(size * dpr);
-      var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
-      var cx = size / 2, cy = size / 2, sp = 8.6, dr = 2.75;
-      // points spread evenly over the visible hemisphere (sunflower spiral), dimples only in the outer band
-      var n = Math.round(2 * Math.PI * r * r / (sp * sp * 0.866)), golden = Math.PI * (3 - Math.sqrt(5));
-      for (var i = 0; i < n; i++) {
-        var z = 1 - (i / n);                       // 1 at the pole facing us, 0 at the limb
-        var rad = Math.sqrt(1 - z * z), ang = i * golden;
-        var px = cx + Math.cos(ang) * rad * r, py = cy + Math.sin(ang) * rad * r;
-        var d = rad;                               // 0..1 distance from center
-        if (d < 0.48) continue;
-        var alpha = Math.min(1, (d - 0.48) / 0.14);
-        o.save(); o.translate(px, py); o.rotate(ang); o.scale(Math.max(0.12, z), 1); o.rotate(-ang);
-        dimpleAt(o, 0, 0, dr * (0.8 + 0.2 * z), alpha);
-        o.restore();
-      }
-      limbCache[key] = { canvas: off, size: size };
-      return limbCache[key];
     }
     // Everything that doesn't move is pre-rendered once per ball size: the body under the rolling dimples, and the
     // limb dimples + shading + highlights over them. Per frame a ball is two image draws and one pattern fill.
@@ -232,10 +208,6 @@
         circ(o, c, c, r, grad);
       });
       var over = make(function (o) {
-        var fade = o.createRadialGradient(c, c, r * 0.42, c, c, r * 0.66);
-        fade.addColorStop(0, 'rgba(250,251,249,0)'); fade.addColorStop(1, 'rgba(250,251,249,1)');
-        circ(o, c, c, r, fade);
-        var lt = limbTexture(r); o.drawImage(lt.canvas, c - lt.size / 2, c - lt.size / 2, lt.size, lt.size);
         var sh = o.createRadialGradient(c - r * 0.28, c - r * 0.32, r * 0.3, c, c, r);
         sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.6, 'rgba(40,50,45,0.04)'); sh.addColorStop(0.88, 'rgba(25,35,30,0.28)'); sh.addColorStop(1, 'rgba(15,25,20,0.5)');
         circ(o, c, c, r, sh);
@@ -269,7 +241,7 @@
       ctx.drawImage(L.shadow, b.x - half, b.y - half, L.size, L.size);
       ctx.drawImage(L.under, b.x - half, b.y - half, L.size, L.size);
       // rolling dimples across the middle
-      ctx.save(); ctx.beginPath(); ctx.arc(b.x, b.y, r * 0.66, 0, Math.PI * 2); ctx.clip();
+      ctx.save(); ctx.beginPath(); ctx.arc(b.x, b.y, r - 0.5, 0, Math.PI * 2); ctx.clip();
       var ox = ((b.ox % dimpleSp) + dimpleSp) % dimpleSp, oy = ((b.oy % (dimpleRowH * 2)) + dimpleRowH * 2) % (dimpleRowH * 2);
       ctx.translate(b.x - r + ox, b.y - r + oy); ctx.fillStyle = dimpleTile; ctx.fillRect(-dimpleSp * 2, -dimpleRowH * 4, r * 2 + dimpleSp * 4, r * 2 + dimpleRowH * 8);
       ctx.restore();
