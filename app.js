@@ -728,6 +728,101 @@
   }
   $('nav').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) showTab(b.getAttribute('data-tab')); });
 
+  // ---- Games: random team picker ----
+  var teams = null, teamsLoaded = false, teamsSub = false, teamsDraft = null, teamsEdit = false;
+  var TEAM_NAMES = ['Moose', 'Bear', 'Elk', 'Trout', 'Hawk', 'Fox'];
+  var TEAM_COLORS = ['#2d6a4f', '#d2691e', '#3f7cae', '#8e44ad', '#c0392b', '#b7950b'];
+  function subscribeTeams() {
+    if (teamsSub || !store || !store.game) return;
+    teamsSub = true;
+    store.game('teams', function (doc) { teams = doc; teamsLoaded = true; renderTeams(); });
+  }
+  function teamsDefaults() { return { players: NAMES.slice(), count: 2, split: true }; }
+  function partnerOf(name) {
+    var p = PARTIES.filter(function (x) { return x.indexOf(name) >= 0; })[0];
+    return p ? (p.filter(function (n) { return n !== name; })[0] || null) : null;
+  }
+  function shuffled(a) { a = a.slice(); for (var j = a.length - 1; j > 0; j--) { var k = Math.floor(Math.random() * (j + 1)); var t = a[j]; a[j] = a[k]; a[k] = t; } return a; }
+  function teamSizes(n, count) { var out = []; for (var i = 0; i < count; i++) out.push(Math.floor(n / count) + (i < n % count ? 1 : 0)); return out; }
+  function makeTeams(players, count, split) {
+    var order;
+    if (split) {
+      // couples go in as consecutive pairs, so round-robin dealing always puts them on different teams
+      var used = {}, pairs = [], singles = [];
+      shuffled(players).forEach(function (p) {
+        if (used[p]) return;
+        var q = partnerOf(p);
+        if (q && players.indexOf(q) >= 0 && !used[q]) { used[p] = used[q] = true; pairs.push(Math.random() < 0.5 ? [p, q] : [q, p]); }
+        else { used[p] = true; singles.push(p); }
+      });
+      order = [];
+      pairs.forEach(function (pr) { order.push(pr[0], pr[1]); });
+      order = order.concat(singles);
+    } else order = shuffled(players);
+    var out = []; for (var i = 0; i < count; i++) out.push([]);
+    order.forEach(function (p, i) { out[i % count].push(p); });
+    return shuffled(out).map(function (t) { return shuffled(t); });
+  }
+  function renderTeams() {
+    var body = $('teams-body'), status = $('teams-status'); if (!body) return;
+    if (!teamsLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
+    var t = teams && teams.status === 'set' ? teams : null;
+    var html = '';
+    if (!t || teamsEdit) {
+      var d = teamsDraft || (teamsDraft = t ? { players: t.players.slice(), count: t.count, split: !!t.split } : teamsDefaults());
+      var n = d.players.length;
+      status.textContent = t ? 'Changing who’s in' : 'No teams yet';
+      html += '<p class="info-sub">Pick who’s in, how many teams, and let the phone decide. Everyone sees the same teams.</p>';
+      html += '<div class="name-grid">' + NAMES.map(function (nm) {
+        return '<button type="button" data-player="' + esc(nm) + '" aria-pressed="' + (d.players.indexOf(nm) >= 0) + '">' + esc(nm) + '</button>';
+      }).join('') + '</div>';
+      var cnt = Math.min(d.count, Math.max(2, n)), sizes = n >= cnt ? teamSizes(n, cnt).join(' / ') : '';
+      html += '<div class="mafia-opts">' +
+        '<div class="opt-row"><span>Teams <span class="info-sub">(' + n + ' in' + (sizes ? ' → ' + sizes : '') + ')</span></span><span class="stepper"><button type="button" data-step="-1">−</button><b>' + d.count + '</b><button type="button" data-step="1">+</button></span></div>' +
+        '<div class="opt-row"><span>Split up couples</span><button type="button" class="toggle" data-opt="split" aria-pressed="' + d.split + '" aria-label="Split up couples"></button></div>' +
+        '</div>';
+      html += '<div class="mafia-actions"><button type="button" class="addbtn" id="teams-make"' + (n < 2 || n < d.count ? ' disabled' : '') + '>Make teams</button>' + (t ? '<button type="button" class="linkbtn" id="teams-cancel">Cancel</button>' : '') + '</div>';
+      body.innerHTML = html;
+      return;
+    }
+    status.textContent = t.players.length + ' in · by ' + (t.by === me ? 'you' : t.by) + ' ' + agoText(t.made_at);
+    html += '<div class="team-list">' + t.teams.map(function (members, i) {
+      return '<div class="team" style="--tc:' + TEAM_COLORS[i % TEAM_COLORS.length] + '"><div class="tname">Team ' + TEAM_NAMES[i % TEAM_NAMES.length] + '<small>' + members.length + '</small></div><div class="tmem">' +
+        members.map(function (m) { return '<span' + (m === me ? ' class="me"' : '') + '>' + esc(m) + '</span>'; }).join('') + '</div></div>';
+    }).join('') + '</div>';
+    if (t.split) html += '<p class="info-sub" style="margin-top:8px">Couples split up.</p>';
+    html += '<div class="mafia-actions"><button type="button" class="btn primary" id="teams-shuffle">Shuffle again</button><button type="button" class="btn" id="teams-edit">Change who’s in</button><button type="button" class="btn" id="teams-clear">Clear</button></div>';
+    body.innerHTML = html;
+  }
+  function saveTeams(players, count, split) {
+    count = Math.max(2, Math.min(count, players.length));
+    if (players.length < 2) { toast('Need at least two people.'); return; }
+    var doc = { status: 'set', by: me, players: players, count: count, split: !!split, teams: makeTeams(players, count, split), made_at: new Date().toISOString() };
+    store.setGame('teams', doc).then(function () { teams = doc; teamsDraft = null; teamsEdit = false; renderTeams(); })
+      .catch(function (e) { toast('Couldn’t save the teams: ' + ((e && e.message) || e)); });
+  }
+  $('teams-body').addEventListener('click', function (e) {
+    var d = teamsDraft || (teamsDraft = teamsDefaults());
+    var pl = e.target.closest('[data-player]');
+    if (pl) {
+      var nm = pl.getAttribute('data-player');
+      if (d.players.indexOf(nm) >= 0) d.players = d.players.filter(function (x) { return x !== nm; }); else d.players.push(nm);
+      renderTeams(); return;
+    }
+    var st = e.target.closest('[data-step]');
+    if (st) { d.count = Math.max(2, Math.min(6, d.count + (+st.getAttribute('data-step')))); renderTeams(); return; }
+    var op = e.target.closest('[data-opt]');
+    if (op) { var key = op.getAttribute('data-opt'); d[key] = !d[key]; renderTeams(); return; }
+    if (e.target.closest('#teams-make')) { saveTeams(d.players.slice(), d.count, d.split); return; }
+    if (e.target.closest('#teams-cancel')) { teamsEdit = false; teamsDraft = null; renderTeams(); return; }
+    if (e.target.closest('#teams-shuffle') && teams) { saveTeams(teams.players.slice(), teams.count, teams.split); return; }
+    if (e.target.closest('#teams-edit') && teams) { teamsEdit = true; teamsDraft = null; renderTeams(); return; }
+    if (e.target.closest('#teams-clear') && teams) {
+      var cleared = { status: 'cleared', by: me, cleared_at: new Date().toISOString() };
+      store.setGame('teams', cleared).then(function () { teams = cleared; teamsDraft = null; teamsEdit = false; renderTeams(); }).catch(function (err) { toast('Couldn’t clear: ' + ((err && err.message) || err)); });
+    }
+  });
+
   // ---- Games: Mafia dealer ----
   var mafia = null, mafiaLoaded = false, mafiaSub = false, mafiaDraft = null, revealHold = false, modReveal = false;
   var ROLE_INFO = {
@@ -755,7 +850,7 @@
       status.textContent = 'No game running';
       var n = d.players.length + (d.hostPlays ? 1 : 0);
       var html = '<p class="info-sub">You’d be the moderator. Pick who’s playing, deal, and everyone sees their own role on their own phone.</p>';
-      html += '<div class="mafia-grid">' + NAMES.map(function (nm) {
+      html += '<div class="name-grid">' + NAMES.map(function (nm) {
         var inGame = nm === me ? d.hostPlays : d.players.indexOf(nm) >= 0;
         return '<button type="button" data-player="' + esc(nm) + '" aria-pressed="' + inGame + '">' + esc(nm === me ? 'You' : nm) + '</button>';
       }).join('') + '</div>';
@@ -1157,6 +1252,7 @@
     subscribePredictions();
     subscribePhotos();
     subscribeMafia();
+    subscribeTeams();
     if (!store) { showSetup('No data layer loaded. The page is missing its store script.'); return; }
     store.init({
       onItems: function (rows) { items = rows.slice(); itemsLoaded = true; render(); },

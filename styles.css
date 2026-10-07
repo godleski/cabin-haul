@@ -237,10 +237,10 @@
   .game-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
   .game-head h2 { font-size: 1.2rem; }
   .game-head .k { font-size: 0.78rem; color: var(--muted); text-align: right; }
-  .mafia-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px; }
-  .mafia-grid button { border: 1px solid var(--line); background: var(--bg); color: var(--muted); font: 600 0.85rem var(--body); padding: 8px 6px; border-radius: 10px; cursor: pointer; }
-  .mafia-grid button[aria-pressed="true"] { background: var(--pine); border-color: var(--pine); color: var(--pine-ink); }
-  .mafia-grid button.dead { text-decoration: line-through; opacity: 0.55; }
+  .name-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px; }
+  .name-grid button { border: 1px solid var(--line); background: var(--bg); color: var(--muted); font: 600 0.85rem var(--body); padding: 8px 6px; border-radius: 10px; cursor: pointer; }
+  .name-grid button[aria-pressed="true"] { background: var(--pine); border-color: var(--pine); color: var(--pine-ink); }
+  .name-grid button.dead { text-decoration: line-through; opacity: 0.55; }
   .mafia-opts { display: grid; gap: 8px; margin-top: 12px; }
   .opt-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 0.92rem; }
   .stepper { display: inline-flex; align-items: center; gap: 6px; }
@@ -249,6 +249,13 @@
   .toggle { width: 44px; height: 26px; border-radius: 13px; border: 0; background: var(--line); position: relative; cursor: pointer; }
   .toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left 120ms; }
   .toggle[aria-pressed="true"] { background: var(--pine); } .toggle[aria-pressed="true"]::after { left: 21px; }
+  .team-list { display: grid; gap: 10px; margin-top: 12px; }
+  .team { border-radius: 12px; padding: 10px 12px; background: var(--bg); border-left: 5px solid var(--tc); }
+  .team .tname { font: 700 0.95rem var(--display); color: var(--tc); display: flex; justify-content: space-between; align-items: baseline; }
+  .team .tname small { font: 500 0.75rem var(--body); color: var(--muted); }
+  .team .tmem { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+  .team .tmem span { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 0.85rem; font-weight: 600; }
+  .team .tmem span.me { border-color: var(--tc); box-shadow: inset 0 0 0 1px var(--tc); }
   .mafia-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
   .role-card { margin-top: 12px; border-radius: 14px; padding: 18px 16px; text-align: center; background: var(--bg); border: 1px dashed var(--line); user-select: none; -webkit-user-select: none; }
   .role-card .hold { font: 700 1rem var(--display); color: var(--pine); }
