@@ -81,39 +81,51 @@
       return { name: n, tone: tones[i % 3], r: r, m: r * r, scale: 1, alpha: 1,
         x: (W / (cols + 1)) * (col + 1) + (row % 2 ? 18 : -18) + (Math.random() * 10 - 5),
         y: 70 + row * 100 + (Math.random() * 10 - 5),
-        vx: reduce ? 0 : Math.random() * 1.6 - 0.8, vy: reduce ? 0 : Math.random() * 1.6 - 0.8,
-        ang: Math.random() * Math.PI * 2, held: false };
+        vx: 0, vy: 0, held: false,
+        w1: 0.7 + Math.random() * 0.35, w2: 0.45 + Math.random() * 0.25,       // slow wander frequencies (rad/s)
+        p1: Math.random() * 6.28, p2: Math.random() * 6.28, p3: Math.random() * 6.28 };
     });
-    balls.forEach(function (b) { b.x = Math.max(b.r, Math.min(W - b.r, b.x)); b.y = Math.max(b.r, Math.min(H - b.r, b.y)); });
+    balls.forEach(function (b) { b.x = Math.max(b.r, Math.min(W - b.r, b.x)); b.y = Math.max(b.r, Math.min(H - b.r, b.y)); b.hx = b.x; b.hy = b.y; });
     box.__balls = balls;   // for tests
 
     var running = true, last = performance.now(), held = null, popping = null;
-    function physics(dt) {
+    function physics(dt, now) {
+      var t = now / 1000;
       balls.forEach(function (b) {
         if (b.held) {
           var tx = Math.max(b.r, Math.min(W - b.r, b.tx)), ty = Math.max(b.r, Math.min(H - b.r, b.ty));
           b.vx = (tx - b.x) * 0.55; b.vy = (ty - b.y) * 0.55;
           b.x += b.vx * dt; b.y += b.vy * dt;
+          b.hx = b.x; b.hy = b.y;
           return;
         }
-        if (!reduce) {
-          b.ang += (Math.random() - 0.5) * 0.04 * dt;
-          b.vx += Math.cos(b.ang) * 0.02 * dt; b.vy += Math.sin(b.ang) * 0.02 * dt;
+        var speed = Math.hypot(b.vx, b.vy);
+        if (speed > 4) {                 // flying after a fling or a hit: free motion, home follows along
+          b.hx = b.x; b.hy = b.y;
+          b.vx *= Math.pow(0.992, dt); b.vy *= Math.pow(0.992, dt);
+        } else if (!reduce) {            // idle: glide toward a target that wanders on smooth sine paths
+          var tx2 = b.hx + 42 * Math.sin(t * b.w1 + b.p1) + 20 * Math.sin(t * b.w2 + b.p2);
+          var ty2 = b.hy + 42 * Math.cos(t * b.w2 + b.p1) + 20 * Math.sin(t * b.w1 + b.p3);
+          tx2 = Math.max(b.r, Math.min(W - b.r, tx2)); ty2 = Math.max(b.r, Math.min(H - b.r, ty2));
+          var blend = 1 - speed / 4;     // spring fades in as the bubble slows, so there's no jolt
+          b.vx += (tx2 - b.x) * 0.006 * blend * dt; b.vy += (ty2 - b.y) * 0.006 * blend * dt;
+          b.vx *= Math.pow(0.98, dt); b.vy *= Math.pow(0.98, dt);
+        } else {
+          b.vx *= Math.pow(0.975, dt); b.vy *= Math.pow(0.975, dt);
         }
         b.x += b.vx * dt; b.y += b.vy * dt;
-        b.vx *= Math.pow(0.992, dt); b.vy *= Math.pow(0.992, dt);
-        if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.85; b.ang = Math.random() * Math.PI - Math.PI / 2; }
-        if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.85; b.ang = Math.PI / 2 + Math.random() * Math.PI; }
-        if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.85; b.ang = Math.random() * Math.PI; }
-        if (b.y > H - b.r) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 0.85; b.ang = Math.PI + Math.random() * Math.PI; }
+        if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.85; }
+        if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.85; }
+        if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.85; }
+        if (b.y > H - b.r) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 0.85; }
       });
       for (var pass = 0; pass < 2; pass++) {
         for (var i = 0; i < balls.length; i++) for (var j = i + 1; j < balls.length; j++) {
           var a = balls[i], c = balls[j];
           var dx = c.x - a.x, dy = c.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 0.01, min = a.r + c.r;
           if (d >= min) continue;
-          var nx = dx / d, ny = dy / d, overlap = (min - d) * 0.6;
-          if (overlap < 0.2) continue;
+          var nx = dx / d, ny = dy / d, overlap = (min - d) * 0.35;
+          if (overlap < 0.15) continue;
           var wa = a.held ? 0 : (c.held ? 1 : c.m / (a.m + c.m)), wc = c.held ? 0 : (a.held ? 1 : a.m / (a.m + c.m));
           a.x -= nx * overlap * wa; a.y -= ny * overlap * wa;
           c.x += nx * overlap * wc; c.y += ny * overlap * wc;
@@ -151,7 +163,7 @@
     function step(now) {
       if (!running) return;
       var dt = Math.min(32, now - last) / 16.67; last = now;
-      physics(dt);
+      physics(dt, now);
       if (popping) {
         var t = (now - popping.t0) / 280;
         popping.b.scale = 1 + 0.5 * Math.min(1, t); popping.b.alpha = Math.max(0, 1 - t);
