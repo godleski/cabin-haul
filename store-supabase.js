@@ -52,7 +52,7 @@
       if (!ensure()) return;
       var read = function () {
         sb.from('kv').select('value').eq('key', 'hockey').maybeSingle().then(function (res) {
-          onScores((res.data && res.data.value) || { humans: 0, cpu: 0, byName: {} });
+          onScores((res.data && res.data.value) || { humans: 0, cpu: 0 });
         });
       };
       try { sb.channel('cabin-kv').on('postgres_changes', { event: '*', schema: 'public', table: 'kv' }, read).subscribe(); } catch (e) { /* ignore */ }
@@ -61,9 +61,8 @@
     recordWin: function (winner, name) {
       if (!ensure()) return Promise.resolve();
       return sb.from('kv').select('value').eq('key', 'hockey').maybeSingle().then(function (res) {
-        var sc = (res.data && res.data.value) || { humans: 0, cpu: 0, byName: {} };
-        sc.byName = sc.byName || {};
-        if (winner === 'human') { sc.humans = (sc.humans || 0) + 1; sc.byName[name] = (sc.byName[name] || 0) + 1; }
+        var sc = (res.data && res.data.value) || { humans: 0, cpu: 0 };
+        if (winner === 'human') sc.humans = (sc.humans || 0) + 1;
         else sc.cpu = (sc.cpu || 0) + 1;
         return sb.from('kv').upsert({ key: 'hockey', value: sc }).then(one);
       });

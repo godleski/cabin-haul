@@ -56,16 +56,15 @@
   function renderScores() {
     var el = $('scores'); if (!el) return;
     if (!scores || !boardShown) { el.hidden = true; return; }
-    var names = Object.keys(scores.byName || {}).sort(function (a, b) { return scores.byName[b] - scores.byName[a]; }).slice(0, 3);
     var h = scores.humans || 0, c = scores.cpu || 0;
     el.hidden = false;
     el.innerHTML = '<div class="side' + (h > c ? ' lead' : '') + '"><span class="num">' + h + '</span><span class="lbl">Humans</span></div>' +
       '<div class="vs">vs</div>' +
-      '<div class="side' + (c > h ? ' lead' : '') + '"><span class="num">' + c + '</span><span class="lbl">Claude</span></div>' +
-      (names.length ? '<div class="top">' + esc(names.map(function (n) { return n + ' ' + scores.byName[n]; }).join(' · ')) + '</div>' : '');
+      '<div class="side' + (c > h ? ' lead' : '') + '"><span class="num">' + c + '</span><span class="lbl">Claude</span></div>';
   }
   function renderRoster() {
     if (sim) sim.stop();
+    boardShown = false;
     if (store && store.scores && !scoresSub) { scoresSub = true; store.scores(function (sc) { scores = sc; renderScores(); }); }
     renderScores();
     var box = $('roster');

@@ -40,7 +40,7 @@
     scores: function (onScores) {
       ensure().then(function () {
         if (!db) return;
-        db.doc('meta/hockey').onSnapshot(function (snap) { onScores(snap.exists ? snap.data() : { humans: 0, cpu: 0, byName: {} }); }, function () { /* ignore */ });
+        db.doc('meta/hockey').onSnapshot(function (snap) { onScores(snap.exists ? snap.data() : { humans: 0, cpu: 0 }); }, function () { /* ignore */ });
       });
     },
     recordWin: function (winner, name) {
@@ -48,9 +48,8 @@
         if (!db) return;
         var ref = db.doc('meta/hockey');
         return ref.get().then(function (snap) {
-          var sc = snap.exists ? JSON.parse(JSON.stringify(snap.data())) : { humans: 0, cpu: 0, byName: {} };
-          sc.byName = sc.byName || {};
-          if (winner === 'human') { sc.humans = (sc.humans || 0) + 1; sc.byName[name] = (sc.byName[name] || 0) + 1; }
+          var sc = snap.exists ? JSON.parse(JSON.stringify(snap.data())) : { humans: 0, cpu: 0 };
+            if (winner === 'human') sc.humans = (sc.humans || 0) + 1;
           else sc.cpu = (sc.cpu || 0) + 1;
           return ref.set(sc);
         });
