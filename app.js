@@ -98,7 +98,7 @@
       return { name: n, tone: 'pine', r: r, m: r * r, scale: 1, alpha: 1,
         x: (W / (cols + 1)) * (col + 1) + (row % 2 ? 22 : -22) + (Math.random() * 10 - 5),
         y: 64 + row * 92 + (Math.random() * 10 - 5),
-        vx: 0, vy: 0, held: false, ox: Math.random() * 12, oy: Math.random() * 12 };
+        vx: 0, vy: 0, held: false, ox: Math.random() * 12, oy: Math.random() * 12, num: (i % 4) + 1 };
     });
     balls.forEach(function (b) { b.x = Math.max(b.r, Math.min(W - b.r, b.x)); b.y = Math.max(b.r, Math.min(H - b.r, b.y)); });
     box.__balls = balls;   // for tests
@@ -167,14 +167,14 @@
     // Dimple tile: concave dimples (shadow on the lit side's far wall, highlight on the near wall), tiled under each ball.
     var dimpleTile = null, dimpleSp = 0, dimpleRowH = 0;
     function buildDimpleTile() {
-      var sp = 11, rowH = sp * 0.866, dr = 3.4;
+      var sp = 8.6, rowH = sp * 0.866, dr = 2.75;
       var tw = sp, th = rowH * 2;
       var off = document.createElement('canvas'); off.width = Math.round(tw * dpr); off.height = Math.round(th * dpr);
       var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
       function dimple(x, y) {
-        o.beginPath(); o.arc(x - 0.9, y - 0.9, dr, 0, Math.PI * 2); o.fillStyle = 'rgba(70,80,70,0.32)'; o.fill();      // shaded wall (top-left)
-        o.beginPath(); o.arc(x + 0.9, y + 0.9, dr, 0, Math.PI * 2); o.fillStyle = 'rgba(255,255,255,0.95)'; o.fill();  // lit wall (bottom-right)
-        o.beginPath(); o.arc(x, y, dr - 0.6, 0, Math.PI * 2); o.fillStyle = 'rgba(232,236,228,1)'; o.fill();           // dimple floor
+        o.beginPath(); o.arc(x - 0.7, y - 0.7, dr, 0, Math.PI * 2); o.fillStyle = 'rgba(90,100,95,0.30)'; o.fill();     // shaded wall (top-left)
+        o.beginPath(); o.arc(x + 0.7, y + 0.7, dr, 0, Math.PI * 2); o.fillStyle = 'rgba(255,255,255,1)'; o.fill();      // lit wall (bottom-right)
+        o.beginPath(); o.arc(x, y, dr - 0.5, 0, Math.PI * 2); o.fillStyle = 'rgba(241,243,240,1)'; o.fill();           // dimple floor
       }
       // hex arrangement: centers at (0,0),(sp,0) row 0; (sp/2,rowH) row 1; wrap neighbours so the tile is seamless
       [[0, 0], [sp, 0], [sp / 2, rowH], [-sp / 2, rowH], [0, th], [sp, th], [sp / 2, -rowH]].forEach(function (c) { dimple(c[0], c[1]); });
@@ -190,7 +190,7 @@
       ctx.save(); ctx.translate(b.x, b.y + r * 0.92); ctx.scale(1, 0.32); circle(0, 0, r * 0.95, colors.shadow); ctx.restore();
       // ball body: white with soft darkening toward the lower-right limb
       var grad = ctx.createRadialGradient(b.x - r * 0.3, b.y - r * 0.3, r * 0.2, b.x, b.y, r * 1.05);
-      grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.6, '#f4f5f0'); grad.addColorStop(1, '#b9bfb4');
+      grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.65, '#fafbf9'); grad.addColorStop(1, '#c4c9c6');
       circle(b.x, b.y, r, grad);
       // dimples, rolling with the ball
       ctx.save(); ctx.beginPath(); ctx.arc(b.x, b.y, r - 0.5, 0, Math.PI * 2); ctx.clip();
@@ -199,7 +199,7 @@
       ctx.restore();
       // sphere shading over the dimples: darker limb, plus a soft specular highlight
       var sh = ctx.createRadialGradient(b.x - r * 0.25, b.y - r * 0.3, r * 0.35, b.x, b.y, r);
-      sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.7, 'rgba(40,55,40,0.06)'); sh.addColorStop(1, 'rgba(25,40,30,0.38)');
+      sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.72, 'rgba(40,50,45,0.05)'); sh.addColorStop(1, 'rgba(20,30,28,0.42)');
       circle(b.x, b.y, r, sh);
       var hl = ctx.createRadialGradient(b.x - r * 0.42, b.y - r * 0.45, 0, b.x - r * 0.42, b.y - r * 0.45, r * 0.5);
       hl.addColorStop(0, 'rgba(255,255,255,0.9)'); hl.addColorStop(0.5, 'rgba(255,255,255,0.25)'); hl.addColorStop(1, 'rgba(255,255,255,0)');
@@ -211,10 +211,17 @@
         ctx.beginPath(); ctx.arc(b.x, b.y, r + 5, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
         ctx.lineWidth = 3; ctx.strokeStyle = colors.pine[0]; ctx.stroke();
       }
-      ctx.fillStyle = col[1];
-      ctx.font = '700 ' + Math.round(15 * (b.r / 40) * b.scale) + 'px ' + fontFamily;
+      var k = (b.r / 40) * b.scale;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(b.name, b.x, b.y + 1);
+      ctx.fillStyle = '#111';
+      ctx.font = '800 ' + Math.round(15 * k) + 'px ' + fontFamily;                 // the logo
+      ctx.fillText(b.name, b.x, b.y - 5 * k);
+      ctx.font = '700 ' + Math.round(11 * k) + 'px ' + fontFamily;                 // play number
+      ctx.fillText(String(b.num), b.x, b.y + 10 * k);
+      if (k > 0.8) {                                                                // sidestamp with alignment arrows
+        ctx.fillStyle = 'rgba(17,17,17,0.85)'; ctx.font = '600 ' + Math.round(5.2 * k) + 'px ' + fontFamily;
+        ctx.fillText('\u25C0  CABIN HAUL  \u25B6', b.x, b.y + 21 * k);
+      }
       ctx.globalAlpha = 1;
     }
     function draw(now) {
