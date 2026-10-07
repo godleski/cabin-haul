@@ -61,7 +61,7 @@
     el.hidden = false;
     el.innerHTML = '<div class="side' + (h > c ? ' lead' : '') + '"><span class="num">' + h + '</span><span class="lbl">Humans</span></div>' +
       '<div class="vs">vs</div>' +
-      '<div class="side' + (c > h ? ' lead' : '') + '"><span class="num">' + c + '</span><span class="lbl">CPU</span></div>' +
+      '<div class="side' + (c > h ? ' lead' : '') + '"><span class="num">' + c + '</span><span class="lbl">Claude</span></div>' +
       (names.length ? '<div class="top">' + esc(names.map(function (n) { return n + ' ' + scores.byName[n]; }).join(' · ')) + '</div>' : '');
   }
   function renderRoster() {
@@ -285,7 +285,7 @@
       // fading bubbles
       balls.forEach(function (b) { if (b.fade) { b.alpha = Math.max(0, 1 - fade); if (b.alpha > 0) drawBubble(b, now); } });
       // cpu mallet
-      mallet(c.x, c.y, c.r, colors.ember[0], 'CPU');
+      mallet(c.x, c.y, c.r, colors.ember[0], 'Claude');
       // puck
       if (g.serveFlash && now - g.serveFlash < 900) {
         ctx.globalAlpha = 1 - (now - g.serveFlash) / 900; ctx.fillStyle = colors.muted; ctx.font = '600 13px ' + fontFamily;
@@ -300,9 +300,9 @@
         var k = Math.min(1, (now - g.over.t) / 300);
         ctx.globalAlpha = 0.85 * k; ctx.fillStyle = colors.bg; ctx.fillRect(0, H / 2 - 60, W, 120); ctx.globalAlpha = k;
         ctx.fillStyle = g.over.winner === 'human' ? colors.pine[0] : colors.ember[0];
-        ctx.font = '800 34px ' + fontFamily; ctx.fillText(g.over.winner === 'human' ? 'GOAL!' : 'CPU SCORES', W / 2, H / 2 - 14);
+        ctx.font = '800 34px ' + fontFamily; ctx.fillText(g.over.winner === 'human' ? 'GOAL!' : 'CLAUDE SCORES', W / 2, H / 2 - 14);
         ctx.fillStyle = colors.fg; ctx.font = '600 15px ' + fontFamily;
-        ctx.fillText(g.over.winner === 'human' ? me.name + ' beats the machine' : 'Better luck next time, ' + me.name, W / 2, H / 2 + 22);
+        ctx.fillText(g.over.winner === 'human' ? me.name + ' beats Claude' : 'Nice try, ' + me.name, W / 2, H / 2 + 22);
         ctx.globalAlpha = 1;
       }
     }
