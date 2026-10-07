@@ -81,9 +81,10 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     resize();
-    var tones = ['pine', 'plain', 'ember'], colors = {};
+    var tones = ['pine', 'plain', 'lake'], colors = {};
     function readColors() {
-      colors = { pine: [cssVar('--pine'), cssVar('--pine-ink')], plain: [cssVar('--surface'), cssVar('--fg')], ember: [cssVar('--ember'), '#ffffff'],
+      colors = { pine: [cssVar('--pine'), cssVar('--pine-ink')], plain: [cssVar('--surface'), cssVar('--fg')], lake: [cssVar('--lake'), cssVar('--lake-ink')],
+        claude: cssVar('--claude') || '#d97757', cream: '#f5efe6',
         line: cssVar('--line'), fg: cssVar('--fg'), bg: cssVar('--bg'), muted: cssVar('--muted'), shadow: 'rgba(27,42,34,0.14)' };
     }
     readColors();
@@ -175,7 +176,7 @@
       if (b.held && !game && now - holdStart >= HOLD_SHOW_MS) {   // ring appears late, fills over the last stretch
         var frac = Math.min(1, (now - holdStart - HOLD_SHOW_MS) / (HOLD_MS - HOLD_SHOW_MS));
         ctx.beginPath(); ctx.arc(b.x, b.y, r + 5, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
-        ctx.lineWidth = 3; ctx.strokeStyle = colors.ember[0]; ctx.stroke();
+        ctx.lineWidth = 3; ctx.strokeStyle = colors.pine[0]; ctx.stroke();
       }
       ctx.fillStyle = col[1];
       ctx.font = '700 ' + Math.round(16 * (b.r / 46) * b.scale) + 'px ' + fontFamily;
@@ -261,13 +262,27 @@
       game.over = { winner: winner, t: performance.now() };
       if (store && store.recordWin) store.recordWin(winner, game.me.name).catch(function () { /* tally is best-effort */ });
     }
-    function mallet(x, y, r, color, label) {
+    function spark(x, y, size, color) {                                   // Claude's starburst mark
+      ctx.save(); ctx.translate(x, y); ctx.strokeStyle = color; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(2, size * 0.16);
+      var rays = 12;
+      for (var i = 0; i < rays; i++) {
+        var a = (i / rays) * Math.PI * 2 - Math.PI / 2, len = size * (i % 3 === 0 ? 1 : (i % 3 === 1 ? 0.72 : 0.86));
+        ctx.beginPath(); ctx.moveTo(Math.cos(a) * size * 0.18, Math.sin(a) * size * 0.18); ctx.lineTo(Math.cos(a) * len, Math.sin(a) * len); ctx.stroke();
+      }
+      ctx.restore();
+    }
+    function mallet(x, y, r, color, label, isClaude) {
       circle(x, y + 3, r, colors.shadow);
       circle(x, y, r, color, 'rgba(0,0,0,0.22)', 3);                       // base disc with a rim
       circle(x, y, r * 0.66, color, 'rgba(0,0,0,0.28)', 2);                // raised handle
-      circle(x, y, r * 0.42, 'rgba(255,255,255,0.22)');                    // knob top
-      ctx.beginPath(); ctx.arc(x - r * 0.12, y - r * 0.12, r * 0.3, Math.PI * 1.05, Math.PI * 1.65);
-      ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.stroke();   // highlight
+      if (isClaude) {
+        circle(x, y, r * 0.56, colors.claude);
+        spark(x, y, r * 0.46, colors.cream);
+      } else {
+        circle(x, y, r * 0.42, 'rgba(255,255,255,0.22)');                  // knob top
+        ctx.beginPath(); ctx.arc(x - r * 0.12, y - r * 0.12, r * 0.3, Math.PI * 1.05, Math.PI * 1.65);
+        ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.stroke();   // highlight
+      }
       if (label) { ctx.fillStyle = colors.muted; ctx.font = '600 11px ' + fontFamily; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, x, y + r + 12); }
     }
     function drawGame(now) {
@@ -279,7 +294,7 @@
       ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke(); ctx.setLineDash([]);
       circle(W / 2, H / 2, 46, null, colors.line, 2);
       ctx.lineWidth = 6; ctx.lineCap = 'round';
-      ctx.strokeStyle = colors.ember[0]; ctx.beginPath(); ctx.moveTo(g.goal.x1, 3); ctx.lineTo(g.goal.x2, 3); ctx.stroke();
+      ctx.strokeStyle = colors.claude; ctx.beginPath(); ctx.moveTo(g.goal.x1, 3); ctx.lineTo(g.goal.x2, 3); ctx.stroke();
       ctx.strokeStyle = colors.pine[0]; ctx.beginPath(); ctx.moveTo(g.goal.x1, H - 3); ctx.lineTo(g.goal.x2, H - 3); ctx.stroke();
       ctx.font = '600 11px ' + fontFamily; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = colors.muted;
       ctx.fillText('SHOOT HERE', W / 2, 18); ctx.fillText('DEFEND', W / 2, H - 18);
@@ -287,7 +302,7 @@
       // fading bubbles
       balls.forEach(function (b) { if (b.fade) { b.alpha = Math.max(0, 1 - fade); if (b.alpha > 0) drawBubble(b, now); } });
       // cpu mallet
-      mallet(c.x, c.y, c.r, colors.ember[0], 'Claude');
+      mallet(c.x, c.y, c.r, colors.claude, 'Claude', true);
       // puck
       if (g.kickoff && !g.over) {
         ctx.globalAlpha = 0.6 + 0.4 * Math.sin(now / 300); ctx.fillStyle = colors.muted; ctx.font = '600 13px ' + fontFamily;
@@ -305,7 +320,7 @@
       if (g.over) {
         var k = Math.min(1, (now - g.over.t) / 300);
         ctx.globalAlpha = 0.85 * k; ctx.fillStyle = colors.bg; ctx.fillRect(0, H / 2 - 60, W, 120); ctx.globalAlpha = k;
-        ctx.fillStyle = g.over.winner === 'human' ? colors.pine[0] : colors.ember[0];
+        ctx.fillStyle = g.over.winner === 'human' ? colors.pine[0] : colors.claude;
         ctx.font = '800 34px ' + fontFamily; ctx.fillText(g.over.winner === 'human' ? 'GOAL!' : 'CLAUDE SCORES', W / 2, H / 2 - 14);
         ctx.fillStyle = colors.fg; ctx.font = '600 15px ' + fontFamily;
         ctx.fillText(g.over.winner === 'human' ? me.name + ' beats Claude' : 'Nice try, ' + me.name, W / 2, H / 2 + 22);

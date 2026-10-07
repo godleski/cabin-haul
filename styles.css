@@ -1,6 +1,7 @@
   :root {
     --bg: #f2f4ee; --surface: #ffffff; --fg: #1b2a22; --muted: #5f6f66; --line: #d6dcd4;
     --pine: #2d6a4f; --pine-ink: #ffffff; --pine-soft: #e3efe8; --ember: #d2691e; --ember-soft: #fbe9db;
+    --lake: #3f7cae; --lake-ink: #ffffff; --claude: #d97757;
     --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
     --body: "Instrument Sans", "Helvetica Neue", Arial, system-ui, sans-serif;
     color-scheme: light;
@@ -9,6 +10,7 @@
     :root {
       --bg: #121a15; --surface: #1b2620; --fg: #e9efe9; --muted: #9fb0a6; --line: #2f3d35;
       --pine: #6fbf95; --pine-ink: #0f1d16; --pine-soft: #1f3a2d; --ember: #f0994f; --ember-soft: #3d2a1b;
+      --lake: #7fb3e0; --lake-ink: #0f1d2a; --claude: #d97757;
       color-scheme: dark;
     }
   }
@@ -47,7 +49,7 @@
   .board .side { display: inline-flex; align-items: baseline; gap: 6px; }
   .board .side:first-child { flex-direction: row-reverse; }
   .board .num { font: 800 1.6rem var(--display); line-height: 1; letter-spacing: -0.03em; color: var(--muted); }
-  .board .side.lead .num { color: var(--pine); } .board .side:nth-child(3).lead .num { color: var(--ember); }
+  .board .side.lead .num { color: var(--pine); } .board .side:nth-child(3).lead .num { color: var(--claude); }
   .board .lbl { font: 600 0.68rem var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
   .board .vs { font: 700 0.8rem var(--display); color: var(--muted); }
 
