@@ -18,13 +18,30 @@
     <div class="board" id="scores" hidden></div>
     <div class="eyebrow">Cabin trip</div>
     <h1>Who are you?</h1>
-    <p class="lede"><span class="secret" id="golfword">Tap</span> your ball. Or putt a few around first, we won't judge.</p>
+    <p class="lede"><span class="secret" id="golfword">Tap</span> your bubble. Or fling a few around first, we won't judge.</p>
     <div class="bubbles" id="roster"></div>
-    <p class="hint">Drag a ball and let go to roll it.</p>
+    <p class="hint">Drag a bubble and let go to send it flying.</p>
   </div>
 
   <!-- Screen 1.5: predictions questionnaire -->
   <div id="predict" hidden>
+    <div id="q-intro" class="intro" hidden>
+      <div class="eyebrow">Before you go in</div>
+      <h1>Call your shots for the weekend</h1>
+      <p class="lede" id="q-intro-sub"></p>
+      <ul class="intro-list">
+        <li>Who passes out somewhere that isn't a bed</li>
+        <li>Who's most fucked up</li>
+        <li>Who gets stuck in I-70 traffic the longest</li>
+        <li>First into the hot tub</li>
+        <li>Who starts the shots</li>
+        <li>Who makes the best cocktail</li>
+      </ul>
+      <div class="intro-actions">
+        <button type="button" class="addbtn" id="q-start">Make my predictions</button>
+        <button type="button" class="linkbtn" id="q-intro-later">Later</button>
+      </div>
+    </div>
     <div id="q-wrap" class="slide">
       <div class="eyebrow" id="q-progress">Prediction 1 of 6</div>
       <h1 id="q-text"></h1>
