@@ -47,6 +47,21 @@
     update: function (id, patch) { return sb.from('items').update(patch).eq('id', id).select(COLS).single().then(one); },
     remove: function (id) { return sb.from('items').delete().eq('id', id).then(one); },
 
+    // Predictions: table "predictions" (question_id, voter, pick, updated_at), primary key (question_id, voter).
+    // Not in schema.sql yet; added with the one-time setup when the site goes live.
+    predictions: function (onRows) {
+      if (!ensure()) return;
+      var read = function () {
+        sb.from('predictions').select('question_id,voter,pick,updated_at').then(function (res) { onRows(res.data || []); });
+      };
+      try { sb.channel('cabin-pred').on('postgres_changes', { event: '*', schema: 'public', table: 'predictions' }, read).subscribe(); } catch (e) { /* ignore */ }
+      read();
+    },
+    vote: function (questionId, voter, pick) {
+      if (!ensure()) return Promise.reject(new Error('not connected'));
+      return sb.from('predictions').upsert({ question_id: questionId, voter: voter, pick: pick, updated_at: new Date().toISOString() }).then(one);
+    },
+
     // Air hockey tally: one row in the "kv" table, key "hockey".
     scores: function (onScores) {
       if (!ensure()) return;

@@ -36,6 +36,24 @@
     },
     remove: function (id) { return db.doc('items/' + id).delete(); },
 
+    // Predictions: one document per voter per question (future Supabase table "predictions",
+    // primary key (question_id, voter); answers and lock time will live in meta/predictions later).
+    predictions: function (onRows) {
+      ensure().then(function () {
+        if (!db) return;
+        db.collection('predictions').onSnapshot(function (qs) {
+          onRows(qs.docs.filter(function (d) { return d.exists; }).map(function (d) { return d.data(); }));
+        }, function () { /* ignore */ });
+      });
+    },
+    vote: function (questionId, voter, pick) {
+      return ensure().then(function () {
+        if (!db) throw new Error('not signed in');
+        var id = questionId + '__' + voter.replace(/[^A-Za-z0-9_-]/g, '_');
+        return db.doc('predictions/' + id).set({ question_id: questionId, voter: voter, pick: pick, updated_at: new Date().toISOString() });
+      });
+    },
+
     // Air hockey tally: one shared document.
     scores: function (onScores) {
       ensure().then(function () {

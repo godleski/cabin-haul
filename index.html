@@ -23,6 +23,17 @@
     <p class="hint">Drag a ball and let go to roll it.</p>
   </div>
 
+  <!-- Screen 1.5: predictions questionnaire -->
+  <div id="predict" hidden>
+    <div id="q-wrap" class="slide">
+      <div class="eyebrow" id="q-progress">Prediction 1 of 6</div>
+      <h1 id="q-text"></h1>
+      <p class="lede" id="q-current"></p>
+      <div class="bubbles" id="q-arena"></div>
+      <p class="q-foot"><button type="button" class="linkbtn" id="q-back">Back</button><button type="button" class="linkbtn" id="q-later">Later</button></p>
+    </div>
+  </div>
+
   <!-- Screen 2: who's bringing what -->
   <div id="main" hidden>
     <div class="topbar">
@@ -32,6 +43,7 @@
     <h1 style="margin-top:8px">Who's bringing what</h1>
     <p class="lede">Add what you're bringing so nobody doubles up. If something's needed and you can't grab it, flag it and someone else can claim it.</p>
     <div class="notice" id="setup" hidden></div>
+    <div class="pred" id="pred" hidden></div>
 
     <form class="adder" id="adder">
       <div class="mode" role="group" aria-label="What kind of entry">

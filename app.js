@@ -67,11 +67,18 @@
     boardShown = false;
     if (store && store.scores && !scoresSub) { scoresSub = true; store.scores(function (sc) { scores = sc; renderScores(); }); }
     renderScores();
-    var box = $('roster');
+    sim = renderArena({ box: $('roster'), names: NAMES, games: true, onPick: function (name) {
+      me = name; myParty = partyOf(me); lsSet('cabin-haul-me', me);
+      showScreen();
+    } });
+  }
+  // A physics arena of name balls. opts: box, names, onPick(name), games (hockey/golf easter eggs), current (ring this name).
+  function renderArena(opts) {
+    var box = opts.box, names = opts.names;
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    box.innerHTML = '<canvas id="arena" aria-hidden="true"></canvas><div class="sr-list">' +
-      NAMES.map(function (n) { return '<button type="button" data-me="' + esc(n) + '">' + esc(n) + '</button>'; }).join('') + '</div>';
-    var cv = $('arena'), ctx = cv.getContext('2d');
+    box.innerHTML = '<canvas class="arena" aria-hidden="true"></canvas><div class="sr-list">' +
+      names.map(function (n) { return '<button type="button" data-me="' + esc(n) + '">' + esc(n) + '</button>'; }).join('') + '</div>';
+    var cv = box.querySelector('canvas'), ctx = cv.getContext('2d');
     var W = 0, H = 0, dpr = 1;
     function resize() {
       dpr = Math.min(3, window.devicePixelRatio || 1);
@@ -92,8 +99,8 @@
     var fontFamily = cssVar('--display'), font = '700 16px ' + fontFamily;
     if (document.fonts && document.fonts.load) document.fonts.load(font).catch(function () { /* fallback font is fine */ });
 
-    var balls = NAMES.map(function (n, i) {
-      var r = 40;
+    var balls = names.map(function (n, i) {
+      var r = n.indexOf(' & ') >= 0 ? 54 : 40;
       var cols = 3, col = i % cols, row = Math.floor(i / cols);
       return { name: n, tone: 'pine', r: r, m: r * r, scale: 1, alpha: 1,
         x: (W / (cols + 1)) * (col + 1) + (row % 2 ? 22 : -22) + (Math.random() * 10 - 5),
@@ -206,7 +213,8 @@
       circle(b.x - r * 0.42, b.y - r * 0.45, r * 0.5, hl);
       // thin rim so the ball separates from the grass
       circle(b.x, b.y, r - 0.5, null, 'rgba(60,80,65,0.25)', 1);
-      if (b.held && !game && now - holdStart >= HOLD_SHOW_MS) {   // ring appears late, fills over the last stretch
+      if (opts.current && opts.current === b.name) circle(b.x, b.y, r + 4, null, colors.pine[0], 3);   // your current pick
+      if (opts.games && b.held && !game && now - holdStart >= HOLD_SHOW_MS) {   // ring appears late, fills over the last stretch
         var frac = Math.min(1, (now - holdStart - HOLD_SHOW_MS) / (HOLD_MS - HOLD_SHOW_MS));
         ctx.beginPath(); ctx.arc(b.x, b.y, r + 5, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
         ctx.lineWidth = 3; ctx.strokeStyle = colors.pine[0]; ctx.stroke();
@@ -215,12 +223,17 @@
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = '#111';
       ctx.font = '800 ' + Math.round(15 * k) + 'px ' + fontFamily;                 // the logo
-      ctx.fillText(b.name, b.x, b.y - 5 * k);
+      if (b.name.indexOf(' & ') >= 0) {                                             // couples: two lines
+        var pair = b.name.split(' & ');
+        ctx.font = '800 ' + Math.round(14 * k) + 'px ' + fontFamily;
+        ctx.fillText(pair[0] + ' &', b.x, b.y - 12 * k); ctx.fillText(pair[1], b.x, b.y + 2 * k);
+      } else ctx.fillText(b.name, b.x, b.y - 5 * k);
       ctx.font = '700 ' + Math.round(11 * k) + 'px ' + fontFamily;                 // play number
-      ctx.fillText(String(b.num), b.x, b.y + 10 * k);
+      var couple = b.name.indexOf(' & ') >= 0;
+      ctx.fillText(String(b.num), b.x, b.y + (couple ? 17 : 10) * k);
       if (k > 0.8) {                                                                // sidestamp with alignment arrows
         ctx.fillStyle = 'rgba(17,17,17,0.85)'; ctx.font = '600 ' + Math.round(5.2 * k) + 'px ' + fontFamily;
-        ctx.fillText('\u25C0  PRO G1  \u25B6', b.x, b.y + 21 * k);
+        ctx.fillText('\u25C0  PRO G1  \u25B6', b.x, b.y + (couple ? 27 : 21) * k);
       }
       ctx.globalAlpha = 1;
     }
@@ -530,7 +543,7 @@
         if (game.over && now - game.over.t > 2400) { running = false; renderRoster(); return; }   // back to the bubbles
       } else {
         physics(dt, now);
-        if (held && now - holdStart >= HOLD_MS && !popping) startGame(held);
+        if (opts.games && held && now - holdStart >= HOLD_MS && !popping) startGame(held);
       }
       if (popping) {
         var t = (now - popping.t0) / 280;
@@ -615,25 +628,121 @@
       if (reduce) { running = false; finishPick(); return; }
       popping = { b: b, t0: performance.now() };
     }
-    function finishPick() {
-      me = pendingPick; myParty = partyOf(me); lsSet('cabin-haul-me', me);
-      showScreen();
-    }
+    function finishPick() { opts.onPick(pendingPick); }
     box.__golf = function () { return golf; };
-    sim = { stop: function () { running = false; if (ro) ro.disconnect(); }, startGolf: startGolf };
+    return { stop: function () { running = false; if (ro) ro.disconnect(); }, startGolf: startGolf, setCurrent: function (n) { opts.current = n; } };
   }
   $('switch').addEventListener('click', function () { me = null; myParty = null; lsDel('cabin-haul-me'); showScreen(); });
   $('golfword').addEventListener('click', function () { if (sim && sim.startGolf && !me) { sim.startGolf(); window.scrollTo({ top: $('roster').offsetTop - 12, behavior: 'smooth' }); } });
 
   function showScreen() {
     var picking = !me;
+    if (qsim) { qsim.stop(); qsim = null; }
+    $('predict').hidden = true;
     $('pick').hidden = !picking; $('main').hidden = picking; $('bar').hidden = picking;
     document.body.classList.toggle('picking', picking);
     if (picking) { renderRoster(); window.scrollTo(0, 0); return; }
+    if (!booted) boot();
+    if (shouldAsk()) { openQuestionnaire(firstUnanswered()); return; }
     var partner = PARTIES.filter(function (p) { return p.indexOf(me) >= 0; })[0].filter(function (n) { return n !== me; })[0];
     $('me').innerHTML = 'Hey <b>' + esc(me) + '</b>' + (partner ? ' · with ' + esc(partner) : '');
-    if (!booted) boot(); else render();
+    render();
   }
+
+  // ---- Predictions ----
+  var QUESTIONS = [
+    { id: 'passout', text: 'Who passes out somewhere that isn\'t a bed?', type: 'person' },
+    { id: 'wrecked', text: 'Most fucked up', type: 'person' },
+    { id: 'traffic', text: 'Who gets stuck in I-70 traffic the longest?', type: 'person' },
+    { id: 'hottub', text: 'First into the hot tub', type: 'person' },
+    { id: 'fight', text: 'Which couple fights first?', type: 'couple' },
+    { id: 'cocktail', text: 'Who makes the best cocktail?', type: 'person' }
+  ];
+  var COUPLES = PARTIES.filter(function (p) { return p.length === 2; }).map(function (p) { return p.join(' & '); });
+  var votes = [], qsim = null, qIndex = 0, predSub = false, expanded = null;
+  function myVotes() { var m = {}; votes.forEach(function (v) { if (v.voter === me) m[v.question_id] = v.pick; }); return m; }
+  function answeredCount() { return Object.keys(myVotes()).length; }
+  function firstUnanswered() { var m = myVotes(); for (var i = 0; i < QUESTIONS.length; i++) if (!m[QUESTIONS[i].id]) return i; return 0; }
+  function shouldAsk() {
+    if (!me || !store || !store.predictions) return false;
+    if (answeredCount() >= QUESTIONS.length) return false;
+    return lsGet('cabin-haul-pred-later-' + me) !== '1';
+  }
+  function subscribePredictions() {
+    if (predSub || !store || !store.predictions) return;
+    predSub = true;
+    store.predictions(function (rows) {
+      votes = rows.slice();
+      if (!$('predict').hidden && qsim) { qsim.setCurrent(myVotes()[QUESTIONS[qIndex].id] || null); }
+      renderPredictions();
+    });
+  }
+  function openQuestionnaire(index) {
+    qIndex = Math.max(0, Math.min(QUESTIONS.length - 1, index || 0));
+    $('main').hidden = true; $('bar').hidden = true; $('pick').hidden = true; $('predict').hidden = false;
+    document.body.classList.add('picking');
+    window.scrollTo(0, 0);
+    showQuestion(false);
+  }
+  function showQuestion(animate) {
+    var q = QUESTIONS[qIndex], mine = myVotes()[q.id] || null;
+    $('q-progress').textContent = 'Prediction ' + (qIndex + 1) + ' of ' + QUESTIONS.length;
+    $('q-text').textContent = q.text;
+    $('q-current').textContent = mine ? 'Your pick: ' + mine + '. Tap another to change it.' : (q.type === 'couple' ? 'Tap a couple.' : 'Tap a name. Yes, you can pick yourself.');
+    var wrap = $('q-wrap');
+    if (animate) { wrap.classList.remove('slide'); void wrap.offsetWidth; wrap.classList.add('slide'); }
+    if (qsim) qsim.stop();
+    var names = (q.type === 'couple' ? COUPLES : NAMES).slice().sort(function () { return Math.random() - 0.5; });
+    qsim = renderArena({ box: $('q-arena'), names: names, games: false, current: mine, onPick: function (pick) {
+      store.vote(q.id, me, pick).catch(function (e) { toast('That pick didn\'t save: ' + ((e && e.message) || e)); });
+      votes = votes.filter(function (v) { return !(v.voter === me && v.question_id === q.id); });
+      votes.push({ question_id: q.id, voter: me, pick: pick, updated_at: new Date().toISOString() });
+      if (qIndex + 1 < QUESTIONS.length) { qIndex++; showQuestion(true); }
+      else { toast('Picks are in. You can change them any time from the tally.'); showScreen(); }
+    } });
+  }
+  $('q-later').addEventListener('click', function () { lsSet('cabin-haul-pred-later-' + me, '1'); showScreen(); });
+  $('q-back').addEventListener('click', function () { if (qIndex > 0) { qIndex--; showQuestion(true); } });
+
+  function tallyFor(q) {
+    var counts = {}, voters = {};
+    votes.forEach(function (v) { if (v.question_id !== q.id) return; counts[v.pick] = (counts[v.pick] || 0) + 1; voters[v.voter] = true; });
+    var rows = Object.keys(counts).map(function (k) { return { pick: k, n: counts[k] }; }).sort(function (a, b) { return b.n - a.n || a.pick.localeCompare(b.pick); });
+    return { rows: rows, voted: Object.keys(voters).length };
+  }
+  function renderPredictions() {
+    var el = $('pred'); if (!el || !me) return;
+    if (!store || !store.predictions) { el.hidden = true; return; }
+    el.hidden = false;
+    var left = QUESTIONS.length - answeredCount();
+    var html = '<div class="pred-head"><span class="eyebrow">Predictions</span>' +
+      (left ? '<button type="button" class="nudge" id="pred-open">Make your picks (' + left + ' left)</button>' : '<button type="button" class="linkbtn" id="pred-open">Change my picks</button>') + '</div>';
+    html += '<div class="pred-strip">';
+    QUESTIONS.forEach(function (q, i) {
+      var t = tallyFor(q), lead = t.rows[0], second = t.rows[1];
+      html += '<button type="button" class="pred-card' + (expanded === i ? ' open' : '') + '" data-q="' + i + '">' +
+        '<div class="pq">' + esc(q.text) + '</div>' +
+        '<div class="lead">' + (lead ? esc(lead.pick) : '—') + '</div>' +
+        '<div class="sub">' + (second ? 'then ' + esc(second.pick) + ' · ' : '') + t.voted + ' of ' + NAMES.length + ' voted</div></button>';
+    });
+    html += '</div>';
+    if (expanded !== null) {
+      var q = QUESTIONS[expanded], t = tallyFor(q), max = t.rows.length ? t.rows[0].n : 1;
+      html += '<div class="pred-detail"><div class="pq-big">' + esc(q.text) + '</div>';
+      if (!t.rows.length) html += '<div class="empty">No picks yet.</div>';
+      t.rows.forEach(function (r) {
+        html += '<div class="bar-row"><span class="bar-name">' + esc(r.pick) + '</span><span class="bar-track"><span class="bar-fill" style="width:' + Math.round(100 * r.n / max) + '%"></span></span><span class="bar-n">' + r.n + '</span></div>';
+      });
+      html += '<div class="pred-actions"><button type="button" class="linkbtn" id="pred-change" data-q="' + expanded + '">Change my pick</button><button type="button" class="linkbtn" id="pred-close">Close</button></div></div>';
+    }
+    el.innerHTML = html;
+  }
+  $('pred').addEventListener('click', function (e) {
+    var open = e.target.closest('#pred-open'); if (open) { lsDel('cabin-haul-pred-later-' + me); openQuestionnaire(firstUnanswered()); return; }
+    var ch = e.target.closest('#pred-change'); if (ch) { openQuestionnaire(+ch.getAttribute('data-q')); return; }
+    if (e.target.closest('#pred-close')) { expanded = null; renderPredictions(); return; }
+    var card = e.target.closest('.pred-card'); if (card) { var i = +card.getAttribute('data-q'); expanded = expanded === i ? null : i; renderPredictions(); }
+  });
 
   // ---- Data ----
   var store = window.STORE, booted = false, items = [], busy = {}, live = false;
@@ -642,6 +751,7 @@
 
   function boot() {
     booted = true;
+    subscribePredictions();
     if (!store) { showSetup('No data layer loaded. The page is missing its store script.'); return; }
     store.init({
       onItems: function (rows) { items = rows.slice(); render(); },
