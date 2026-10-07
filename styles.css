@@ -36,13 +36,10 @@
   /* ---- Who are you: bubbles you can fling around (drawn on a canvas) ---- */
   .bubbles {
     position: relative; margin-top: 20px; height: min(62vh, 560px); min-height: 420px;
-    border-radius: 18px; background: linear-gradient(180deg, transparent, var(--pine-soft));
-    overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
-  }
-  .bubbles.green {
-    border: 6px solid var(--fringe);
+    border-radius: 18px; border: 6px solid var(--fringe);
     background: repeating-linear-gradient(135deg, var(--grass-a) 0 40px, var(--grass-b) 40px 80px);
     box-shadow: inset 0 0 40px rgba(0, 30, 10, 0.18);
+    overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
   }
   .bubbles canvas { display: block; width: 100%; height: 100%; cursor: grab; -webkit-tap-highlight-color: transparent; }
   .sr-list { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -65,16 +62,23 @@
   #q-wrap.slide { animation: slidein 320ms cubic-bezier(.2,.8,.2,1); }
   @keyframes slidein { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
   #predict h1 { font-size: 1.7rem; }
-  #q-arena { height: min(56vh, 500px); min-height: 380px; }
-  .q-foot { display: flex; justify-content: space-between; margin: 12px 0 0; }
-  .q-foot .linkbtn { font-size: 0.95rem; padding: 8px 4px; }
-  @media (prefers-reduced-motion: reduce) { #q-wrap.slide { animation: none; } }
-
+  .pickgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+  .pickbtn {
+    position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 12px;
+    font: 700 1.1rem var(--display); color: var(--fg); cursor: pointer; text-align: center; min-width: 0; overflow-wrap: anywhere;
+    transition: background 120ms, border-color 120ms, transform 80ms;
+  }
+  .pickbtn:active { transform: scale(0.97); }
+  .pickbtn[aria-pressed="true"] { background: var(--pine); border-color: var(--pine); color: var(--pine-ink); }
+  .pickbtn .tick { position: absolute; top: 8px; right: 10px; font-size: 0.8rem; opacity: 0.9; }
   .intro { padding-top: 8vh; }
   .intro h1 { font-size: 2.1rem; }
   .intro-list { margin: 18px 0 0; padding-left: 20px; color: var(--muted); font-size: 0.95rem; display: grid; gap: 4px; }
   .intro-actions { display: flex; align-items: center; gap: 16px; margin-top: 24px; }
   .intro-actions .addbtn { background: var(--pine); color: var(--pine-ink); padding: 12px 20px; font-size: 1rem; }
+  .q-foot { display: flex; justify-content: space-between; margin: 12px 0 0; }
+  .q-foot .linkbtn { font-size: 0.95rem; padding: 8px 4px; }
+  @media (prefers-reduced-motion: reduce) { #q-wrap.slide { animation: none; } }
 
   /* ---- Predictions tally ---- */
   .pred { margin-top: 18px; }

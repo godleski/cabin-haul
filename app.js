@@ -91,7 +91,7 @@
     resize();
     var colors = {};
     function readColors() {
-      colors = { pine: [cssVar('--pine'), cssVar('--pine-ink')], plain: [cssVar('--surface'), cssVar('--fg')], lake: [cssVar('--lake'), cssVar('--lake-ink')], ball: ['#fbfbf7', '#1b2a22'],
+      colors = { pine: [cssVar('--pine'), cssVar('--pine-ink')], ball: ['#fbfbf7', '#1b2a22'],
         claude: cssVar('--claude') || '#d97757', cream: '#f5efe6',
         line: cssVar('--line'), fg: cssVar('--fg'), bg: cssVar('--bg'), muted: cssVar('--muted'), shadow: 'rgba(10,40,20,0.28)' };
     }
@@ -99,18 +99,15 @@
     var fontFamily = cssVar('--display'), font = '700 16px ' + fontFamily;
     if (document.fonts && document.fonts.load) document.fonts.load(font).catch(function () { /* fallback font is fine */ });
 
-    var tones = ['pine', 'plain', 'lake'];
     var balls = names.map(function (n, i) {
-      var r = n.indexOf(' & ') >= 0 ? 56 : [46, 41, 52, 46, 44][i % 5];
+      var r = n.indexOf(' & ') >= 0 ? 54 : 40;
       var cols = 3, col = i % cols, row = Math.floor(i / cols);
-      return { name: n, tone: tones[i % 3], r: r, m: r * r, scale: 1, alpha: 1,
-        x: (W / (cols + 1)) * (col + 1) + (row % 2 ? 18 : -18) + (Math.random() * 10 - 5),
-        y: 70 + row * 100 + (Math.random() * 10 - 5),
-        vx: 0, vy: 0, held: false, ox: 0, oy: 0,
-        w1: 0.7 + Math.random() * 0.35, w2: 0.45 + Math.random() * 0.25,
-        p1: Math.random() * 6.28, p2: Math.random() * 6.28, p3: Math.random() * 6.28 };
+      return { name: n, tone: 'pine', r: r, m: r * r, scale: 1, alpha: 1,
+        x: (W / (cols + 1)) * (col + 1) + (row % 2 ? 22 : -22) + (Math.random() * 10 - 5),
+        y: 64 + row * 92 + (Math.random() * 10 - 5),
+        vx: 0, vy: 0, held: false, ox: Math.random() * 12, oy: Math.random() * 12, num: (i % 4) + 1 };
     });
-    balls.forEach(function (b) { b.x = Math.max(b.r, Math.min(W - b.r, b.x)); b.y = Math.max(b.r, Math.min(H - b.r, b.y)); b.hx = b.x; b.hy = b.y; });
+    balls.forEach(function (b) { b.x = Math.max(b.r, Math.min(W - b.r, b.x)); b.y = Math.max(b.r, Math.min(H - b.r, b.y)); });
     box.__balls = balls;   // for tests
 
     var running = true, last = performance.now(), held = null, popping = null, holdStart = 0;
@@ -127,25 +124,22 @@
           b.ox += b.vx * dt; b.oy += b.vy * dt;
           return;
         }
-        var speed = Math.hypot(b.vx, b.vy);
-        if (speed > 4) {                 // flying after a fling or a hit: free motion, home follows along
-          b.hx = b.x; b.hy = b.y;
-          b.vx *= Math.pow(0.992, dt); b.vy *= Math.pow(0.992, dt);
-        } else if (!reduce) {            // idle: glide toward a target that wanders on smooth sine paths
-          var tx2 = b.hx + 42 * Math.sin(t * b.w1 + b.p1) + 20 * Math.sin(t * b.w2 + b.p2);
-          var ty2 = b.hy + 42 * Math.cos(t * b.w2 + b.p1) + 20 * Math.sin(t * b.w1 + b.p3);
-          tx2 = Math.max(b.r, Math.min(W - b.r, tx2)); ty2 = Math.max(b.r, Math.min(H - b.r, ty2));
-          var blend = 1 - speed / 4;
-          b.vx += (tx2 - b.x) * 0.006 * blend * dt; b.vy += (ty2 - b.y) * 0.006 * blend * dt;
-          b.vx *= Math.pow(0.98, dt); b.vy *= Math.pow(0.98, dt);
-        } else {
-          b.vx *= Math.pow(0.975, dt); b.vy *= Math.pow(0.975, dt);
+        if (!reduce) {                   // the green has a gentle break that slowly shifts, so balls creep and settle
+          var kx = 2 * Math.PI / 260, ky = 2 * Math.PI / 220;
+          var gx = -0.035 * Math.cos(b.x * kx + t * 0.25) * Math.cos(b.y * ky - t * 0.18);
+          var gy = 0.035 * Math.sin(b.x * kx + t * 0.25) * Math.sin(b.y * ky - t * 0.18);
+          b.vx += gx * dt; b.vy += gy * dt;
         }
+        var speed = Math.hypot(b.vx, b.vy);
+        var fr = speed > 6 ? 0.992 : 0.982;   // rolling friction bites harder as the ball slows
+        b.vx *= Math.pow(fr, dt); b.vy *= Math.pow(fr, dt);
+        if (speed < 0.05) { b.vx = 0; b.vy = 0; }
         b.x += b.vx * dt; b.y += b.vy * dt;
-        if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.85; }
-        if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.85; }
-        if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.85; }
-        if (b.y > H - b.r) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 0.85; }
+        b.ox += b.vx * dt; b.oy += b.vy * dt;   // dimple texture rolls with the ball
+        if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.6; }
+        if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.6; }
+        if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.6; }
+        if (b.y > H - b.r) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 0.6; }
       });
       for (var pass = 0; pass < 2; pass++) {
         for (var i = 0; i < balls.length; i++) for (var j = i + 1; j < balls.length; j++) {
@@ -159,7 +153,7 @@
           c.x += nx * overlap * wc; c.y += ny * overlap * wc;
           var rel = (c.vx - a.vx) * nx + (c.vy - a.vy) * ny;
           if (rel > 0) continue;
-          var e = 0.9;
+          var e = 0.82;
           if (a.held || c.held) {
             var mover = a.held ? c : a, sign = a.held ? 1 : -1;
             var push = Math.max(Math.abs(rel), 1.0) * (1 + e);
@@ -196,29 +190,6 @@
       dimpleSp = sp; dimpleRowH = rowH;
     }
     function drawBubble(b, now) {
-      var r = b.r * b.scale, col = colors[b.tone] || colors.plain;
-      ctx.globalAlpha = b.alpha;
-      circle(b.x, b.y + 3, r, colors.shadow);
-      circle(b.x, b.y, r, col[0], b.tone === 'plain' ? colors.line : null, 2);
-      if (opts.current && opts.current === b.name) circle(b.x, b.y, r + 4, null, colors.pine[0], 3);   // your current pick
-      if (opts.games && b.held && !game && now - holdStart >= HOLD_SHOW_MS) {   // ring appears late, fills over the last stretch
-        var frac = Math.min(1, (now - holdStart - HOLD_SHOW_MS) / (HOLD_MS - HOLD_SHOW_MS));
-        ctx.beginPath(); ctx.arc(b.x, b.y, r + 5, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
-        ctx.lineWidth = 3; ctx.strokeStyle = colors.pine[0]; ctx.stroke();
-      }
-      ctx.fillStyle = col[1]; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      var k = (b.r / 46) * b.scale;
-      if (b.name.indexOf(' & ') >= 0) {
-        var pair = b.name.split(' & ');
-        ctx.font = '700 ' + Math.round(15 * k) + 'px ' + fontFamily;
-        ctx.fillText(pair[0] + ' &', b.x, b.y - 8 * k); ctx.fillText(pair[1], b.x, b.y + 9 * k);
-      } else {
-        ctx.font = '700 ' + Math.round(16 * k) + 'px ' + fontFamily;
-        ctx.fillText(b.name, b.x, b.y + 1);
-      }
-      ctx.globalAlpha = 1;
-    }
-    function drawGolfBall(b, now) {
       var r = b.r * b.scale, col = colors.ball;
       if (!dimpleTile) buildDimpleTile();
       ctx.globalAlpha = b.alpha;
@@ -242,6 +213,28 @@
       circle(b.x - r * 0.42, b.y - r * 0.45, r * 0.5, hl);
       // thin rim so the ball separates from the grass
       circle(b.x, b.y, r - 0.5, null, 'rgba(60,80,65,0.25)', 1);
+      if (opts.current && opts.current === b.name) circle(b.x, b.y, r + 4, null, colors.pine[0], 3);   // your current pick
+      if (opts.games && b.held && !game && now - holdStart >= HOLD_SHOW_MS) {   // ring appears late, fills over the last stretch
+        var frac = Math.min(1, (now - holdStart - HOLD_SHOW_MS) / (HOLD_MS - HOLD_SHOW_MS));
+        ctx.beginPath(); ctx.arc(b.x, b.y, r + 5, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+        ctx.lineWidth = 3; ctx.strokeStyle = colors.pine[0]; ctx.stroke();
+      }
+      var k = (b.r / 40) * b.scale;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#111';
+      ctx.font = '800 ' + Math.round(15 * k) + 'px ' + fontFamily;                 // the logo
+      if (b.name.indexOf(' & ') >= 0) {                                             // couples: two lines
+        var pair = b.name.split(' & ');
+        ctx.font = '800 ' + Math.round(14 * k) + 'px ' + fontFamily;
+        ctx.fillText(pair[0] + ' &', b.x, b.y - 12 * k); ctx.fillText(pair[1], b.x, b.y + 2 * k);
+      } else ctx.fillText(b.name, b.x, b.y - 5 * k);
+      ctx.font = '700 ' + Math.round(11 * k) + 'px ' + fontFamily;                 // play number
+      var couple = b.name.indexOf(' & ') >= 0;
+      ctx.fillText(String(b.num), b.x, b.y + (couple ? 17 : 10) * k);
+      if (k > 0.8) {                                                                // sidestamp with alignment arrows
+        ctx.fillStyle = 'rgba(17,17,17,0.85)'; ctx.font = '600 ' + Math.round(5.2 * k) + 'px ' + fontFamily;
+        ctx.fillText('\u25C0  PRO G1  \u25B6', b.x, b.y + (couple ? 27 : 21) * k);
+      }
       ctx.globalAlpha = 1;
     }
     function draw(now) {
@@ -258,7 +251,6 @@
       { par: 3, tee: [0.5, 0.9], cup: [0.18, 0.18], rects: [[0.0, 0.3, 0.42, 0.05], [0.58, 0.58, 0.42, 0.05]], circles: [[0.56, 0.42, 0.06]] }
     ];
     function startGolf() {
-      box.classList.add('green');
       golf = { hole: 0, strokes: 0, total: 0, t0: performance.now(), msg: null, done: false };
       loadHole();
     }
@@ -280,7 +272,7 @@
           if (g.hole + 1 < HOLES.length) { g.hole++; loadHole(); }
           else { g.done = g.done || now; }
         }
-        if (g.done && now - g.done > 2600) { golf = null; box.classList.remove('green'); }
+        if (g.done && now - g.done > 2600) { golf = null; }
         return;
       }
       var speed = Math.hypot(b.vx, b.vy);
@@ -364,7 +356,7 @@
       // tee marker
       circle(g.def.tee[0] * W, g.def.tee[1] * H, 3, 'rgba(255,255,255,0.5)');
       // ball
-      if (b.alpha > 0) drawGolfBall({ x: b.x, y: b.y, r: b.r, scale: b.scale, alpha: b.alpha, ox: b.ox, oy: b.oy }, now);
+      if (b.alpha > 0) drawBubble({ x: b.x, y: b.y, r: b.r, scale: b.scale, alpha: b.alpha, ox: b.ox, oy: b.oy, name: '', num: '' }, now);
       // putter following the finger
       if (g.putter && !g.sunk) {
         var pt = g.putter, ang = Math.atan2(pt.vy, pt.vx);
@@ -525,7 +517,7 @@
       // player mallet (the bubble shrinks into it)
       var k2 = Math.min(1, (now - g.t0) / 450);
       if (k2 < 1) { me.alpha = 1; drawBubble(me, now); }
-      ctx.globalAlpha = k2; mallet(me.x, me.y, me.r, me.tone === 'plain' ? colors.pine[0] : colors[me.tone][0], me.name); ctx.globalAlpha = 1;
+      ctx.globalAlpha = k2; mallet(me.x, me.y, me.r, colors.pine[0], me.name); ctx.globalAlpha = 1;
       if (g.over) {
         var k = Math.min(1, (now - g.over.t) / 300);
         ctx.globalAlpha = 0.85 * k; ctx.fillStyle = colors.bg; ctx.fillRect(0, H / 2 - 60, W, 120); ctx.globalAlpha = k;
@@ -578,7 +570,7 @@
       if (popping) return;
       var p = pos(e);
       if (golf) {
-        if (p.x > W - 58 && p.y < 34) { golf = null; box.classList.remove('green'); return; }   // quit
+        if (p.x > W - 58 && p.y < 34) { golf = null; return; }                 // quit
         golf.putter = { x: p.x, y: p.y, vx: 0, vy: 0 }; golf.struck = false; trail = [p];
         try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
         e.preventDefault(); return;
@@ -645,7 +637,6 @@
 
   function showScreen() {
     var picking = !me;
-    if (qsim) { qsim.stop(); qsim = null; }
     $('predict').hidden = true;
     $('pick').hidden = !picking; $('main').hidden = picking; $('bar').hidden = picking;
     document.body.classList.toggle('picking', picking);
@@ -681,7 +672,6 @@
     predSub = true;
     store.predictions(function (rows) {
       votes = rows.slice();
-      if (!$('predict').hidden && qsim) { qsim.setCurrent(myVotes()[QUESTIONS[qIndex].id] || null); }
       renderPredictions();
     });
   }
@@ -691,12 +681,12 @@
     document.body.classList.add('picking');
     window.scrollTo(0, 0);
     if (skipIntro) { $('q-intro').hidden = true; $('q-wrap').hidden = false; showQuestion(false); return; }
-    if (qsim) { qsim.stop(); qsim = null; }
     $('q-wrap').hidden = true; $('q-intro').hidden = false;
     $('q-intro-sub').textContent = answeredCount() ? 'You\'ve answered ' + answeredCount() + ' of ' + QUESTIONS.length + '. Pick up where you left off.' : 'Six quick calls. Everyone sees the running tally, nobody sees who picked whom.';
   }
   $('q-start').addEventListener('click', function () { $('q-intro').hidden = true; $('q-wrap').hidden = false; showQuestion(true); });
   $('q-intro-later').addEventListener('click', function () { lsSet('cabin-haul-pred-later-' + me, '1'); showScreen(); });
+  var picking = false;
   function showQuestion(animate) {
     var q = QUESTIONS[qIndex], mine = myVotes()[q.id] || null;
     $('q-progress').textContent = 'Prediction ' + (qIndex + 1) + ' of ' + QUESTIONS.length;
@@ -704,16 +694,25 @@
     $('q-current').textContent = mine ? 'Your pick: ' + mine + '. Tap another to change it.' : (q.type === 'couple' ? 'Tap a couple.' : 'Tap a name. Yes, you can pick yourself.');
     var wrap = $('q-wrap');
     if (animate) { wrap.classList.remove('slide'); void wrap.offsetWidth; wrap.classList.add('slide'); }
-    if (qsim) qsim.stop();
-    var names = (q.type === 'couple' ? COUPLES : NAMES).slice().sort(function () { return Math.random() - 0.5; });
-    qsim = renderArena({ box: $('q-arena'), names: names, games: false, current: mine, onPick: function (pick) {
-      store.vote(q.id, me, pick).catch(function (e) { toast('That pick didn\'t save: ' + ((e && e.message) || e)); });
-      votes = votes.filter(function (v) { return !(v.voter === me && v.question_id === q.id); });
-      votes.push({ question_id: q.id, voter: me, pick: pick, updated_at: new Date().toISOString() });
+    var names = q.type === 'couple' ? COUPLES : NAMES.slice().sort();
+    $('q-grid').innerHTML = names.map(function (n) {
+      return '<button type="button" class="pickbtn" data-pick="' + esc(n) + '" aria-pressed="' + (mine === n) + '">' + esc(n) + (mine === n ? '<span class="tick">\u2713</span>' : '') + '</button>';
+    }).join('');
+    picking = false;
+  }
+  $('q-grid').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-pick]'); if (!b || picking) return;
+    picking = true;
+    var q = QUESTIONS[qIndex], pick = b.getAttribute('data-pick');
+    Array.prototype.forEach.call($('q-grid').children, function (el) { el.setAttribute('aria-pressed', String(el === b)); });
+    store.vote(q.id, me, pick).catch(function (e2) { toast('That pick didn\'t save: ' + ((e2 && e2.message) || e2)); });
+    votes = votes.filter(function (v) { return !(v.voter === me && v.question_id === q.id); });
+    votes.push({ question_id: q.id, voter: me, pick: pick, updated_at: new Date().toISOString() });
+    setTimeout(function () {
       if (qIndex + 1 < QUESTIONS.length) { qIndex++; showQuestion(true); }
       else { toast('Picks are in. You can change them any time from the tally.'); showScreen(); }
-    } });
-  }
+    }, 260);
+  });
   $('q-later').addEventListener('click', function () { lsSet('cabin-haul-pred-later-' + me, '1'); showScreen(); });
   $('q-back').addEventListener('click', function () { if (qIndex > 0) { qIndex--; showQuestion(true); } });
 
@@ -758,7 +757,7 @@
   });
 
   // ---- Data ----
-  var store = window.STORE, booted = false, items = [], busy = {}, live = false;
+  var store = window.STORE, booted = false, items = [], busy = {}, live = false, itemsLoaded = false;
   var view = lsGet('cabin-haul-view') || 'items';
   var mode = 'bring';
 
@@ -767,7 +766,7 @@
     subscribePredictions();
     if (!store) { showSetup('No data layer loaded. The page is missing its store script.'); return; }
     store.init({
-      onItems: function (rows) { items = rows.slice(); render(); },
+      onItems: function (rows) { items = rows.slice(); itemsLoaded = true; render(); },
       onLive: function (on) { live = on; updateStatus(); },
       onError: function (msg) { $('groups').innerHTML = '<p class="skeleton">' + esc(msg) + '</p>'; },
       onSetup: showSetup
@@ -803,7 +802,7 @@
     $('tab-people').innerHTML = 'By person' + (needed.length ? '<span class="k">' + needed.length + ' needed</span>' : '');
     var html = '';
     if (!items.length) {
-      html = '<div class="empty">Nothing on the list yet. Add the first thing above.</div>';
+      html = itemsLoaded ? '<div class="empty">Nothing on the list yet. Add the first thing above.</div>' : '<p class="skeleton">Loading the list\u2026</p>';
     } else if (view === 'items') {
       if (needed.length) {
         html += '<section class="group needed"><div class="group-head"><h2>Still needed</h2><span class="k">' + plural(needed.length, 'item', 'items') + '</span></div><div class="list">';
