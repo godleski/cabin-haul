@@ -21,8 +21,20 @@ create policy "add items"    on items for insert with check (true);
 create policy "claim items"  on items for update using (true) with check (true);
 create policy "remove items" on items for delete using (true);
 
+-- Small shared settings and tallies (air hockey scores, and anything else later),
+-- so new features never need another table.
+create table if not exists kv (
+  key text primary key,
+  value jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+alter table kv enable row level security;
+create policy "read kv"   on kv for select using (true);
+create policy "write kv"  on kv for insert with check (true);
+create policy "update kv" on kv for update using (true) with check (true);
+
 -- Live updates for everyone who has the page open.
-alter publication supabase_realtime add table items;
+alter publication supabase_realtime add table items, kv;
 
 -- A few things that always need bringing, unclaimed. Delete for a blank slate.
 insert into items (name, category) values

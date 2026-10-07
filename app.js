@@ -48,11 +48,22 @@
   var NAMES = ['Mitch', 'Katelyn', 'Drew', 'Luke', 'Kelly', 'Gabby', 'Joe', 'Liv', 'Terry', 'Jess', 'Kyle', 'Kyrsten', 'Justin'];
   PARTIES.forEach(function (p) { p.forEach(function (n) { if (NAMES.indexOf(n) < 0) NAMES.push(n); }); });
 
-  // ---- Bubble physics on a canvas: grab, fling, collide. A quick tap picks the name. ----
-  var sim = null;
+  // ---- Bubble physics on a canvas: grab, fling, collide. A quick tap picks the name.
+  //      Hold one for 5 seconds and it turns into air hockey against the CPU. ----
+  var sim = null, scores = null, scoresSub = false;
+  var HOLD_MS = 5000;
   function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function renderScores() {
+    var el = $('scores'); if (!el) return;
+    if (!scores) { el.textContent = ''; return; }
+    var names = Object.keys(scores.byName || {}).sort(function (a, b) { return scores.byName[b] - scores.byName[a]; }).slice(0, 3);
+    el.innerHTML = '<b>Air hockey</b> · Humans ' + (scores.humans || 0) + ' · CPU ' + (scores.cpu || 0) +
+      (names.length ? ' <span class="who-won">(' + esc(names.map(function (n) { return n + ' ' + scores.byName[n]; }).join(', ')) + ')</span>' : '');
+  }
   function renderRoster() {
     if (sim) sim.stop();
+    if (store && store.scores && !scoresSub) { scoresSub = true; store.scores(function (sc) { scores = sc; renderScores(); }); }
+    renderScores();
     var box = $('roster');
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     box.innerHTML = '<canvas id="arena" aria-hidden="true"></canvas><div class="sr-list">' +
@@ -69,7 +80,8 @@
     resize();
     var tones = ['pine', 'plain', 'ember'], colors = {};
     function readColors() {
-      colors = { pine: [cssVar('--pine'), cssVar('--pine-ink')], plain: [cssVar('--surface'), cssVar('--fg')], ember: [cssVar('--ember'), '#ffffff'], line: cssVar('--line'), shadow: 'rgba(27,42,34,0.14)' };
+      colors = { pine: [cssVar('--pine'), cssVar('--pine-ink')], plain: [cssVar('--surface'), cssVar('--fg')], ember: [cssVar('--ember'), '#ffffff'],
+        line: cssVar('--line'), fg: cssVar('--fg'), bg: cssVar('--bg'), muted: cssVar('--muted'), shadow: 'rgba(27,42,34,0.14)' };
     }
     readColors();
     var fontFamily = cssVar('--display'), font = '700 16px ' + fontFamily;
@@ -82,13 +94,16 @@
         x: (W / (cols + 1)) * (col + 1) + (row % 2 ? 18 : -18) + (Math.random() * 10 - 5),
         y: 70 + row * 100 + (Math.random() * 10 - 5),
         vx: 0, vy: 0, held: false,
-        w1: 0.7 + Math.random() * 0.35, w2: 0.45 + Math.random() * 0.25,       // slow wander frequencies (rad/s)
+        w1: 0.7 + Math.random() * 0.35, w2: 0.45 + Math.random() * 0.25,
         p1: Math.random() * 6.28, p2: Math.random() * 6.28, p3: Math.random() * 6.28 };
     });
     balls.forEach(function (b) { b.x = Math.max(b.r, Math.min(W - b.r, b.x)); b.y = Math.max(b.r, Math.min(H - b.r, b.y)); b.hx = b.x; b.hy = b.y; });
     box.__balls = balls;   // for tests
 
-    var running = true, last = performance.now(), held = null, popping = null;
+    var running = true, last = performance.now(), held = null, popping = null, holdStart = 0;
+    var game = null;       // air hockey state once it starts
+    box.__game = function () { return game; };
+
     function physics(dt, now) {
       var t = now / 1000;
       balls.forEach(function (b) {
@@ -100,14 +115,14 @@
           return;
         }
         var speed = Math.hypot(b.vx, b.vy);
-        if (speed > 4) {                 // flying after a fling or a hit: free motion, home follows along
+        if (speed > 4) {
           b.hx = b.x; b.hy = b.y;
           b.vx *= Math.pow(0.992, dt); b.vy *= Math.pow(0.992, dt);
-        } else if (!reduce) {            // idle: glide toward a target that wanders on smooth sine paths
+        } else if (!reduce) {
           var tx2 = b.hx + 42 * Math.sin(t * b.w1 + b.p1) + 20 * Math.sin(t * b.w2 + b.p2);
           var ty2 = b.hy + 42 * Math.cos(t * b.w2 + b.p1) + 20 * Math.sin(t * b.w1 + b.p3);
           tx2 = Math.max(b.r, Math.min(W - b.r, tx2)); ty2 = Math.max(b.r, Math.min(H - b.r, ty2));
-          var blend = 1 - speed / 4;     // spring fades in as the bubble slows, so there's no jolt
+          var blend = 1 - speed / 4;
           b.vx += (tx2 - b.x) * 0.006 * blend * dt; b.vy += (ty2 - b.y) * 0.006 * blend * dt;
           b.vx *= Math.pow(0.98, dt); b.vy *= Math.pow(0.98, dt);
         } else {
@@ -144,32 +159,135 @@
         }
       }
     }
-    function draw() {
-      ctx.clearRect(0, 0, W, H);
-      ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      balls.forEach(function (b) {
-        var r = b.r * b.scale, col = colors[b.tone];
-        ctx.globalAlpha = b.alpha;
-        ctx.beginPath(); ctx.arc(b.x, b.y + 3, r, 0, Math.PI * 2); ctx.fillStyle = colors.shadow; ctx.fill();   // cheap drop shadow
-        ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.fillStyle = col[0]; ctx.fill();
-        if (b.tone === 'plain') { ctx.lineWidth = 2; ctx.strokeStyle = colors.line; ctx.stroke(); }
-        if (b.held) { ctx.lineWidth = 3; ctx.strokeStyle = colors.ember[0]; ctx.stroke(); }
-        ctx.fillStyle = col[1];
-        ctx.font = '700 ' + Math.round(16 * (b.r / 46) * b.scale) + 'px ' + fontFamily;
-        ctx.fillText(b.name, b.x, b.y + 1);
-      });
+    function circle(x, y, r, fill, stroke, lw) {
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+      if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+      if (stroke) { ctx.lineWidth = lw || 2; ctx.strokeStyle = stroke; ctx.stroke(); }
+    }
+    function drawBubble(b, now) {
+      var r = b.r * b.scale, col = colors[b.tone];
+      ctx.globalAlpha = b.alpha;
+      circle(b.x, b.y + 3, r, colors.shadow);
+      circle(b.x, b.y, r, col[0], b.tone === 'plain' ? colors.line : null, 2);
+      if (b.held && !game) {                                   // hold progress ring toward hockey mode
+        var frac = Math.min(1, (now - holdStart) / HOLD_MS);
+        ctx.beginPath(); ctx.arc(b.x, b.y, r + 5, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+        ctx.lineWidth = 3; ctx.strokeStyle = colors.ember[0]; ctx.stroke();
+      }
+      ctx.fillStyle = col[1];
+      ctx.font = '700 ' + Math.round(16 * (b.r / 46) * b.scale) + 'px ' + fontFamily;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(b.name, b.x, b.y + 1);
       ctx.globalAlpha = 1;
     }
+    function draw(now) {
+      ctx.clearRect(0, 0, W, H);
+      if (game) { drawGame(now); return; }
+      balls.forEach(function (b) { drawBubble(b, now); });
+    }
+
+    // ---- Air hockey ----
+    function startGame(paddle) {
+      var gw = Math.round(W * 0.42);
+      game = { me: paddle, t0: performance.now(), over: null,
+        goal: { x1: (W - gw) / 2, x2: (W + gw) / 2 },
+        cpu: { x: W / 2, y: 70, vx: 0, vy: 0, r: 44 },
+        puck: { x: W / 2, y: H / 2, vx: (Math.random() - 0.5) * 3, vy: (Math.random() < 0.5 ? -1 : 1) * 2.5, r: 15 } };
+      paddle.held = true; paddle.tx = paddle.x; paddle.ty = Math.max(H / 2 + paddle.r, paddle.y);
+      balls.forEach(function (b) { if (b !== paddle) b.fade = true; });
+    }
+    function gamePhysics(dt, now) {
+      var g = game, me = g.me, p = g.puck, c = g.cpu;
+      if (g.over) return;
+      // player paddle follows finger, bottom half only
+      var tx = Math.max(me.r, Math.min(W - me.r, me.tx)), ty = Math.max(H / 2 + me.r, Math.min(H - me.r, me.ty));
+      me.vx = (tx - me.x) * 0.55; me.vy = (ty - me.y) * 0.55;
+      me.x += me.vx * dt; me.y += me.vy * dt;
+      // cpu paddle: chase the puck in its half, otherwise hover in front of its goal
+      var cx, cy;
+      if (p.y < H / 2) { cx = p.x; cy = p.y - 10; } else { cx = W / 2 + (p.x - W / 2) * 0.4; cy = 70; }
+      cx = Math.max(c.r, Math.min(W - c.r, cx)); cy = Math.max(c.r, Math.min(H / 2 - c.r, cy));
+      var maxv = 7.5;
+      var nvx = (cx - c.x) * 0.12, nvy = (cy - c.y) * 0.12, nv = Math.hypot(nvx, nvy);
+      if (nv > maxv) { nvx *= maxv / nv; nvy *= maxv / nv; }
+      c.vx = nvx; c.vy = nvy; c.x += c.vx * dt; c.y += c.vy * dt;
+      // puck
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vx *= Math.pow(0.996, dt); p.vy *= Math.pow(0.996, dt);
+      if (p.x < p.r) { p.x = p.r; p.vx = Math.abs(p.vx) * 0.9; }
+      if (p.x > W - p.r) { p.x = W - p.r; p.vx = -Math.abs(p.vx) * 0.9; }
+      var inGoal = p.x > g.goal.x1 && p.x < g.goal.x2;
+      if (p.y < p.r && !inGoal) { p.y = p.r; p.vy = Math.abs(p.vy) * 0.9; }
+      if (p.y > H - p.r && !inGoal) { p.y = H - p.r; p.vy = -Math.abs(p.vy) * 0.9; }
+      if (p.y < -p.r) endGame('human');
+      if (p.y > H + p.r) endGame('cpu');
+      [me, c].forEach(function (pad) {
+        var dx = p.x - pad.x, dy = p.y - pad.y, d = Math.hypot(dx, dy) || 0.01, min = p.r + pad.r;
+        if (d >= min) return;
+        var nx = dx / d, ny = dy / d;
+        p.x = pad.x + nx * min; p.y = pad.y + ny * min;
+        var rvx = p.vx - pad.vx, rvy = p.vy - pad.vy, rel = rvx * nx + rvy * ny;
+        if (rel < 0) { rvx -= (1 + 0.9) * rel * nx; rvy -= (1 + 0.9) * rel * ny; }
+        p.vx = rvx + pad.vx * 1.1; p.vy = rvy + pad.vy * 1.1;
+        var sp = Math.hypot(p.vx, p.vy), cap = 16;
+        if (sp > cap) { p.vx *= cap / sp; p.vy *= cap / sp; }
+        if (sp < 2) { p.vx += nx * 2; p.vy += ny * 2; }
+      });
+    }
+    function endGame(winner) {
+      game.over = { winner: winner, t: performance.now() };
+      if (store && store.recordWin) store.recordWin(winner, game.me.name).catch(function () { /* tally is best-effort */ });
+    }
+    function drawGame(now) {
+      var g = game, p = g.puck, c = g.cpu, me = g.me;
+      var fade = Math.min(1, (now - g.t0) / 500);
+      // rink
+      ctx.globalAlpha = fade;
+      ctx.strokeStyle = colors.line; ctx.lineWidth = 2; ctx.setLineDash([8, 8]);
+      ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke(); ctx.setLineDash([]);
+      circle(W / 2, H / 2, 46, null, colors.line, 2);
+      ctx.lineWidth = 6; ctx.lineCap = 'round';
+      ctx.strokeStyle = colors.ember[0]; ctx.beginPath(); ctx.moveTo(g.goal.x1, 3); ctx.lineTo(g.goal.x2, 3); ctx.stroke();
+      ctx.strokeStyle = colors.pine[0]; ctx.beginPath(); ctx.moveTo(g.goal.x1, H - 3); ctx.lineTo(g.goal.x2, H - 3); ctx.stroke();
+      ctx.font = '600 11px ' + fontFamily; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = colors.muted;
+      ctx.fillText('SHOOT HERE', W / 2, 18); ctx.fillText('DEFEND', W / 2, H - 18);
+      ctx.globalAlpha = 1;
+      // fading bubbles
+      balls.forEach(function (b) { if (b.fade) { b.alpha = Math.max(0, 1 - fade); if (b.alpha > 0) drawBubble(b, now); } });
+      // cpu paddle
+      circle(c.x, c.y + 3, c.r, colors.shadow); circle(c.x, c.y, c.r, colors.ember[0]);
+      ctx.fillStyle = '#fff'; ctx.font = '700 15px ' + fontFamily; ctx.fillText('CPU', c.x, c.y + 1);
+      // puck
+      circle(p.x, p.y + 2, p.r, colors.shadow); circle(p.x, p.y, p.r, colors.fg); circle(p.x, p.y, p.r * 0.45, null, colors.bg, 2);
+      // player paddle
+      drawBubble(me, now);
+      if (g.over) {
+        var k = Math.min(1, (now - g.over.t) / 300);
+        ctx.globalAlpha = 0.85 * k; ctx.fillStyle = colors.bg; ctx.fillRect(0, H / 2 - 60, W, 120); ctx.globalAlpha = k;
+        ctx.fillStyle = g.over.winner === 'human' ? colors.pine[0] : colors.ember[0];
+        ctx.font = '800 34px ' + fontFamily; ctx.fillText(g.over.winner === 'human' ? 'GOAL!' : 'CPU SCORES', W / 2, H / 2 - 14);
+        ctx.fillStyle = colors.fg; ctx.font = '600 15px ' + fontFamily;
+        ctx.fillText(g.over.winner === 'human' ? me.name + ' beats the machine' : 'Better luck next time, ' + me.name, W / 2, H / 2 + 22);
+        ctx.globalAlpha = 1;
+      }
+    }
+
     function step(now) {
       if (!running) return;
       var dt = Math.min(32, now - last) / 16.67; last = now;
-      physics(dt, now);
+      if (game) {
+        gamePhysics(dt, now);
+        if (game.over && now - game.over.t > 1800) { running = false; renderRoster(); return; }   // back to the bubbles
+      } else {
+        physics(dt, now);
+        if (held && now - holdStart >= HOLD_MS && !popping) startGame(held);
+      }
       if (popping) {
         var t = (now - popping.t0) / 280;
         popping.b.scale = 1 + 0.5 * Math.min(1, t); popping.b.alpha = Math.max(0, 1 - t);
-        if (t >= 1) { running = false; popping = null; draw(); finishPick(); return; }
+        if (t >= 1) { running = false; popping = null; draw(now); finishPick(); return; }
       }
-      draw();
+      draw(now);
       requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
@@ -178,18 +296,24 @@
     var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
     if (mq && mq.addEventListener) mq.addEventListener('change', readColors);
 
-    // Pointer handling: drag to fling, tap to pick.
+    // Pointer handling: drag to fling, tap to pick, hold for hockey. In a game, any touch steers the paddle.
     var trail = [], start = null, pendingPick = null;
     function pos(e) { var rct = cv.getBoundingClientRect(); return { x: e.clientX - rct.left, y: e.clientY - rct.top, t: performance.now() }; }
     function hit(p) {
-      var best = null;
-      for (var i = balls.length - 1; i >= 0; i--) { var b = balls[i]; if (Math.hypot(p.x - b.x, p.y - b.y) <= b.r + 4) { best = b; break; } }
-      return best;
+      for (var i = balls.length - 1; i >= 0; i--) { var b = balls[i]; if (Math.hypot(p.x - b.x, p.y - b.y) <= b.r + 4) return b; }
+      return null;
     }
     cv.addEventListener('pointerdown', function (e) {
       if (popping) return;
-      var p = pos(e), b = hit(p); if (!b) return;
-      held = b; b.held = true; b.vx = 0; b.vy = 0; b.tx = b.x; b.ty = b.y;
+      var p = pos(e);
+      if (game) {
+        var me = game.me; me.gx = p.x - me.x; me.gy = p.y - me.y;
+        if (Math.hypot(me.gx, me.gy) > me.r + 24) { me.gx = 0; me.gy = 0; }   // tapped far away: paddle jumps to finger
+        held = me; try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+        e.preventDefault(); return;
+      }
+      var b = hit(p); if (!b) return;
+      held = b; b.held = true; b.vx = 0; b.vy = 0; b.tx = b.x; b.ty = b.y; holdStart = p.t;
       start = p; trail = [p]; b.gx = p.x - b.x; b.gy = p.y - b.y;
       try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
       e.preventDefault();
@@ -202,6 +326,7 @@
     });
     function release(e) {
       if (!held) return;
+      if (game) { held = null; return; }               // paddle stays where you left it
       var b = held, p = pos(e); held = null; b.held = false;
       var moved = Math.hypot(p.x - start.x, p.y - start.y), dur = p.t - start.t;
       if (moved < 8 && dur < 400) { pick(b); return; }

@@ -6,6 +6,12 @@
   var URL = String(CFG.supabaseUrl || ''), KEY = String(CFG.supabaseAnonKey || '');
   var COLS = 'id,name,note,category,party,claimed_by,added_by,adder_id,created_at';
   var sb = null, cb = null;
+  function ensure() {
+    if (sb) return sb;
+    if (!URL || !KEY || URL.indexOf('PASTE') >= 0 || !window.supabase) return null;
+    sb = window.supabase.createClient(URL, KEY);
+    return sb;
+  }
 
   function load() {
     return sb.from('items').select(COLS).order('created_at', { ascending: true }).then(function (res) {
@@ -27,7 +33,7 @@
         return;
       }
       if (!window.supabase) { cb.onSetup('The database library didn\'t load. Check your internet connection and reload.'); return; }
-      sb = window.supabase.createClient(URL, KEY);
+      ensure();
       try {
         sb.channel('cabin-haul')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, scheduleReload)
@@ -39,6 +45,28 @@
     },
     add: function (row) { return sb.from('items').insert(row).select(COLS).single().then(one); },
     update: function (id, patch) { return sb.from('items').update(patch).eq('id', id).select(COLS).single().then(one); },
-    remove: function (id) { return sb.from('items').delete().eq('id', id).then(one); }
+    remove: function (id) { return sb.from('items').delete().eq('id', id).then(one); },
+
+    // Air hockey tally: one row in the "kv" table, key "hockey".
+    scores: function (onScores) {
+      if (!ensure()) return;
+      var read = function () {
+        sb.from('kv').select('value').eq('key', 'hockey').maybeSingle().then(function (res) {
+          onScores((res.data && res.data.value) || { humans: 0, cpu: 0, byName: {} });
+        });
+      };
+      try { sb.channel('cabin-kv').on('postgres_changes', { event: '*', schema: 'public', table: 'kv' }, read).subscribe(); } catch (e) { /* ignore */ }
+      read();
+    },
+    recordWin: function (winner, name) {
+      if (!ensure()) return Promise.resolve();
+      return sb.from('kv').select('value').eq('key', 'hockey').maybeSingle().then(function (res) {
+        var sc = (res.data && res.data.value) || { humans: 0, cpu: 0, byName: {} };
+        sc.byName = sc.byName || {};
+        if (winner === 'human') { sc.humans = (sc.humans || 0) + 1; sc.byName[name] = (sc.byName[name] || 0) + 1; }
+        else sc.cpu = (sc.cpu || 0) + 1;
+        return sb.from('kv').upsert({ key: 'hockey', value: sc }).then(one);
+      });
+    }
   };
 })();
