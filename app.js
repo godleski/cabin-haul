@@ -836,7 +836,7 @@
     }
   });
 
-  // ---- Games: For Liv (deep question generator) ----
+  // ---- Games: Liv’s Question Gauntlet (deep question generator) ----
   // heat 1 = deep, 2 = uncomfortable, 3 = no mercy
   var LIV_Q = [
     [1, 'What’s something you believed about yourself at 18 that turned out to be completely wrong?'],
@@ -898,7 +898,47 @@
     [3, 'Who was the one that got away, and does your partner know about them?'],
     [3, 'What’s something you did in your twenties that you’d be horrified if your kids did?'],
     [3, 'What do you think happens when we die, and are you okay with it?'],
-    [3, 'If your partner died tomorrow, how long before you’d date again? Honestly.']
+    [3, 'If your partner died tomorrow, how long before you’d date again? Honestly.'],
+    [1, 'What’s a piece of advice you ignored that you wish you’d taken?'],
+    [1, 'What’s something you loved as a kid that you quietly gave up on?'],
+    [1, 'When did you last surprise yourself?'],
+    [1, 'Who was the first person who made you feel truly seen?'],
+    [1, 'What’s a version of your life you think about more than you should?'],
+    [1, 'What’s something you’d tell your 16-year-old self that they wouldn’t believe?'],
+    [1, 'What are you still waiting for permission to do?'],
+    [1, 'What’s a habit you have that you know comes straight from a parent?'],
+    [1, 'What would you want to be remembered for by the people in this room specifically?'],
+    [1, 'What’s the most important thing a friend ever told you that you didn’t want to hear?'],
+    [1, 'What does a perfect Sunday look like for you, honestly, not the Instagram version?'],
+    [1, 'When was the last time you felt completely out of your depth?'],
+    [1, 'What’s a goal you quietly gave up on this year?'],
+    [1, 'What’s something nobody here has ever asked you about that you wish they would?'],
+    [2, 'Who in this room do you text the least, and why is that?'],
+    [2, 'What’s a conversation you’ve been avoiding with someone in this cabin?'],
+    [2, 'What’s a habit of your partner’s that you’ve complained about to someone else here?'],
+    [2, 'What’s the most you’ve exaggerated a story that people here still believe?'],
+    [2, 'Which of us would you trust to babysit your kid, and who would you never leave alone with a plant?'],
+    [2, 'What do you think your partner would say is the worst thing about dating you?'],
+    [2, 'Who here has seen you at your absolute worst? Describe it.'],
+    [2, 'What’s a time you ghosted someone, and did they deserve it?'],
+    [2, 'What’s something you’ve been pretending to understand this whole trip?'],
+    [2, 'Which of these couples did you think wouldn’t last? Be honest, it’s been long enough.'],
+    [2, 'What’s a purchase you’re still defending to your partner?'],
+    [2, 'What’s the last thing you lied about at work?'],
+    [2, 'Who in this room do you think talks about you when you leave?'],
+    [2, 'What do you only say to your partner when you’re drunk?'],
+    [2, 'What’s a thing you do to look busy when you’re not?'],
+    [3, 'Who in this room do you think would be the worst partner, and what makes you say that?'],
+    [3, 'What’s the most hurtful thing you’ve ever said to your partner, and did you mean it?'],
+    [3, 'What’s something you’re hiding from the person sitting next to you?'],
+    [3, 'Of everyone here, whose life would you least want to trade for? Say it to their face.'],
+    [3, 'What’s a time you chose yourself over someone who really needed you?'],
+    [3, 'What do you think your partner is settling for by being with you?'],
+    [3, 'Who in this room have you fantasized about? Nobody leaves until you answer.'],
+    [3, 'What’s the thing you’d change about your partner if they’d never find out you did it?'],
+    [3, 'Which friendship in this room do you think is already over and nobody’s said it?'],
+    [3, 'What would your ex say is the real reason it ended, and are they right?'],
+    [3, 'What’s the biggest thing you’ve never told anyone, and are you going to tell us tonight?']
   ];
   var liv = null, livLoaded = false, livSub = false;
   var HEAT = { 1: 'Deep', 2: 'Uncomfortable', 3: 'No mercy' };
