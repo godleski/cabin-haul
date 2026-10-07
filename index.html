@@ -104,6 +104,49 @@
       <div id="groups"><p class="skeleton">Loading the list…</p></div>
     </section>
 
+    <section class="page" id="page-cabin" hidden>
+      <div class="eyebrow" id="cabin-countdown">Winter Park, Colorado</div>
+      <h1>The cabin</h1>
+      <p class="lede">WP Resort Home 2225 · hot tub, bunks, great view. Hosted by Winter Park Escapes.</p>
+
+      <div class="carousel" id="carousel" aria-label="Cabin photos"></div>
+      <div class="dots" id="dots"></div>
+
+      <div class="dates">
+        <div class="date"><span class="lbl">Check-in</span><span class="day">Fri, Oct 23</span><span class="time">4:00 PM</span></div>
+        <div class="date right"><span class="lbl">Checkout</span><span class="day">Sun, Oct 25</span><span class="time">10:00 AM</span></div>
+      </div>
+
+      <div class="info-card">
+        <div class="info-row">
+          <span class="info-icon">📍</span>
+          <div class="info-body"><div class="info-title">Getting there</div><div class="info-sub" id="cabin-address">2225 Lakota Trail, Winter Park, CO 80482</div></div>
+        </div>
+        <div class="info-actions">
+          <button type="button" class="btn" id="copy-address">Copy address</button>
+          <a class="btn primary" id="directions" href="https://maps.apple.com/?daddr=2225+Lakota+Trail,+Winter+Park,+CO+80482" target="_blank" rel="noopener">Directions</a>
+          <a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=2225+Lakota+Trail,+Winter+Park,+CO+80482" target="_blank" rel="noopener">Google Maps</a>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <div class="info-row">
+          <span class="info-icon">🔑</span>
+          <div class="info-body"><div class="info-title">Checking in</div><div class="info-sub">Check-in instructions get emailed one week before arrival. The host also wants everyone on their "Happy Stays X" guest app for property details, discounted attractions, and scheduled events.</div></div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <div class="info-row">
+          <span class="info-icon">🏡</span>
+          <div class="info-body"><div class="info-title">The listing</div><div class="info-sub">13 guests · booked through Airbnb</div></div>
+        </div>
+        <div class="info-actions">
+          <a class="btn primary" href="https://www.airbnb.com/rooms/1546620340301001197" target="_blank" rel="noopener">Open on Airbnb</a>
+        </div>
+      </div>
+    </section>
+
     <section class="page" id="page-photos" hidden>
       <h1>Photos</h1>
       <p class="lede">The wall of evidence. Coming soon.</p>
@@ -118,6 +161,7 @@
 <nav class="nav" id="nav" hidden>
   <button type="button" class="nav-btn" data-tab="home" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
   <button type="button" class="nav-btn" data-tab="bringing" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm1 5h8v2H8zm0 4h8v2H8zm0 4h5v2H8z"/></svg><span>Bringing</span></button>
+  <button type="button" class="nav-btn" data-tab="cabin" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 11h3v9h5v-6h4v6h5v-9h3zm6 3V4h-2v1z"/></svg><span>Cabin</span></button>
   <button type="button" class="nav-btn" data-tab="photos" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1.5 2H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5zm3 4.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg><span>Photos</span></button>
 </nav>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>

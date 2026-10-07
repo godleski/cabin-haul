@@ -650,16 +650,40 @@
   }
 
   // ---- Bottom tabs ----
+  var TABS = ['home', 'bringing', 'cabin', 'photos'];
   var tab = lsGet('cabin-haul-tab') || 'home';
-  if (['home', 'bringing', 'photos'].indexOf(tab) < 0) tab = 'home';
+  if (TABS.indexOf(tab) < 0) tab = 'home';
   function showTab(name) {
     tab = name; lsSet('cabin-haul-tab', tab);
-    ['home', 'bringing', 'photos'].forEach(function (t) { $('page-' + t).hidden = t !== tab; });
+    TABS.forEach(function (t) { $('page-' + t).hidden = t !== tab; });
     Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function (b) { b.setAttribute('aria-selected', String(b.getAttribute('data-tab') === tab)); });
     window.scrollTo(0, 0);
   }
   $('nav').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) showTab(b.getAttribute('data-tab')); });
   $('go-bringing').addEventListener('click', function () { showTab('bringing'); });
+
+  // ---- Cabin tab ----
+  var CABIN_PHOTOS = [];   // [{src: 'photos/cabin-1.jpg', cap: 'Hot tub'}, ...] published alongside the page
+  var CHECK_IN = new Date(2026, 9, 23, 16, 0, 0);
+  function renderCabin() {
+    var days = Math.ceil((CHECK_IN - Date.now()) / 86400000);
+    $('cabin-countdown').textContent = days > 1 ? 'Winter Park, Colorado \u00b7 ' + days + ' days out' : days === 1 ? 'Winter Park, Colorado \u00b7 tomorrow' : days === 0 ? 'Winter Park, Colorado \u00b7 today' : 'Winter Park, Colorado';
+    var car = $('carousel');
+    if (!CABIN_PHOTOS.length) {
+      car.innerHTML = '<div class="slide placeholder">Listing photos go here. Swipe through them once they\'re in.</div>';
+      $('dots').innerHTML = ''; return;
+    }
+    car.innerHTML = CABIN_PHOTOS.map(function (ph, i) {
+      return '<div class="slide"><img src="' + esc(ph.src) + '" alt="' + esc(ph.cap || 'Cabin photo ' + (i + 1)) + '" loading="' + (i ? 'lazy' : 'eager') + '">' + (ph.cap ? '<div class="cap">' + esc(ph.cap) + '</div>' : '') + '</div>';
+    }).join('');
+    $('dots').innerHTML = CABIN_PHOTOS.map(function (_, i) { return '<span' + (i === 0 ? ' class="on"' : '') + '></span>'; }).join('');
+  }
+  $('carousel').addEventListener('scroll', function () {
+    var car = $('carousel'), i = Math.round(car.scrollLeft / (car.clientWidth + 10));
+    Array.prototype.forEach.call($('dots').children, function (d, k) { d.classList.toggle('on', k === i); });
+  }, { passive: true });
+  $('copy-address').addEventListener('click', function () { copyText($('cabin-address').textContent, 'Address copied.'); });
+  renderCabin();
 
   // ---- Predictions ----
   var QUESTIONS = [
