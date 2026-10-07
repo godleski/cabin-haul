@@ -45,7 +45,7 @@
   .sr-list { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .sr-list button:focus-visible { position: fixed; left: 16px; bottom: 16px; width: auto; height: auto; padding: 10px 14px; background: var(--surface); color: var(--fg); border: 2px solid var(--ember); border-radius: 10px; z-index: 9; }
   .hint { margin: 10px 0 0; text-align: center; font-size: 0.82rem; color: var(--muted); }
-  .golf-row { margin: 12px 0 0; text-align: center; }
+  .secret { cursor: default; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   .board {
     display: flex; align-items: baseline; justify-content: center; gap: 10px; flex-wrap: wrap;
     margin: 0 0 14px; padding: 8px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px;

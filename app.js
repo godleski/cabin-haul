@@ -623,7 +623,7 @@
     sim = { stop: function () { running = false; if (ro) ro.disconnect(); }, startGolf: startGolf };
   }
   $('switch').addEventListener('click', function () { me = null; myParty = null; lsDel('cabin-haul-me'); showScreen(); });
-  $('golfbtn').addEventListener('click', function () { if (sim && sim.startGolf) sim.startGolf(); });
+  $('golfword').addEventListener('click', function () { if (sim && sim.startGolf && !me) { sim.startGolf(); window.scrollTo({ top: $('roster').offsetTop - 12, behavior: 'smooth' }); } });
 
   function showScreen() {
     var picking = !me;
