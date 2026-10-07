@@ -92,19 +92,13 @@
     var fontFamily = cssVar('--display'), font = '700 16px ' + fontFamily;
     if (document.fonts && document.fonts.load) document.fonts.load(font).catch(function () { /* fallback font is fine */ });
 
-    var BALL_COLORS = ['#fbfbf7', '#f4e63a', '#ff6fa6', '#b9f03a', '#ea4a42', '#3f8dff', '#36c57c', '#a66dff', '#28c8c0', '#7cc3ff'];
-    var deck = BALL_COLORS.concat(BALL_COLORS).sort(function () { return Math.random() - 0.5; });
-    function hexToRgb(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
-    function mix(h, target, t) { var a = hexToRgb(h); return 'rgb(' + a.map(function (v, i) { return Math.round(v + (target[i] - v) * t); }).join(',') + ')'; }
-    function isDark(h) { var a = hexToRgb(h); return (0.299 * a[0] + 0.587 * a[1] + 0.114 * a[2]) < 150; }
     var balls = NAMES.map(function (n, i) {
-      var r = 40, color = deck[i % deck.length];
+      var r = 40;
       var cols = 3, col = i % cols, row = Math.floor(i / cols);
       return { name: n, tone: 'pine', r: r, m: r * r, scale: 1, alpha: 1,
         x: (W / (cols + 1)) * (col + 1) + (row % 2 ? 22 : -22) + (Math.random() * 10 - 5),
         y: 64 + row * 92 + (Math.random() * 10 - 5),
-        vx: 0, vy: 0, held: false, ox: Math.random() * 12, oy: Math.random() * 12, num: (i % 4) + 1,
-        color: color, ink: isDark(color) ? '#ffffff' : '#111111' };
+        vx: 0, vy: 0, held: false, ox: Math.random() * 12, oy: Math.random() * 12, num: (i % 4) + 1 };
     });
     balls.forEach(function (b) { b.x = Math.max(b.r, Math.min(W - b.r, b.x)); b.y = Math.max(b.r, Math.min(H - b.r, b.y)); });
     box.__balls = balls;   // for tests
@@ -178,12 +172,9 @@
       var off = document.createElement('canvas'); off.width = Math.round(tw * dpr); off.height = Math.round(th * dpr);
       var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
       function dimple(x, y) {
-        o.beginPath(); o.arc(x - 0.7, y - 0.7, dr, 0, Math.PI * 2); o.fillStyle = 'rgba(20,30,25,0.30)'; o.fill();      // shaded wall (top-left)
-        o.beginPath(); o.arc(x + 0.7, y + 0.7, dr, 0, Math.PI * 2); o.fillStyle = 'rgba(255,255,255,0.75)'; o.fill();   // lit wall (bottom-right)
-        o.globalCompositeOperation = 'destination-out';
-        o.beginPath(); o.arc(x, y, dr - 0.5, 0, Math.PI * 2); o.fillStyle = 'rgba(0,0,0,0.6)'; o.fill();                // floor: clear most of the walls
-        o.globalCompositeOperation = 'source-over';
-        o.beginPath(); o.arc(x, y, dr - 0.5, 0, Math.PI * 2); o.fillStyle = 'rgba(0,0,0,0.05)'; o.fill();               // faint floor shade
+        o.beginPath(); o.arc(x - 0.7, y - 0.7, dr, 0, Math.PI * 2); o.fillStyle = 'rgba(90,100,95,0.30)'; o.fill();     // shaded wall (top-left)
+        o.beginPath(); o.arc(x + 0.7, y + 0.7, dr, 0, Math.PI * 2); o.fillStyle = 'rgba(255,255,255,1)'; o.fill();      // lit wall (bottom-right)
+        o.beginPath(); o.arc(x, y, dr - 0.5, 0, Math.PI * 2); o.fillStyle = 'rgba(241,243,240,1)'; o.fill();           // dimple floor
       }
       // hex arrangement: centers at (0,0),(sp,0) row 0; (sp/2,rowH) row 1; wrap neighbours so the tile is seamless
       [[0, 0], [sp, 0], [sp / 2, rowH], [-sp / 2, rowH], [0, th], [sp, th], [sp / 2, -rowH]].forEach(function (c) { dimple(c[0], c[1]); });
@@ -199,7 +190,7 @@
       ctx.save(); ctx.translate(b.x, b.y + r * 0.92); ctx.scale(1, 0.32); circle(0, 0, r * 0.95, colors.shadow); ctx.restore();
       // ball body: white with soft darkening toward the lower-right limb
       var grad = ctx.createRadialGradient(b.x - r * 0.3, b.y - r * 0.3, r * 0.2, b.x, b.y, r * 1.05);
-      grad.addColorStop(0, mix(b.color, [255, 255, 255], 0.55)); grad.addColorStop(0.65, b.color); grad.addColorStop(1, mix(b.color, [20, 30, 28], 0.3));
+      grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.65, '#fafbf9'); grad.addColorStop(1, '#c4c9c6');
       circle(b.x, b.y, r, grad);
       // dimples, rolling with the ball
       ctx.save(); ctx.beginPath(); ctx.arc(b.x, b.y, r - 0.5, 0, Math.PI * 2); ctx.clip();
@@ -222,15 +213,14 @@
       }
       var k = (b.r / 40) * b.scale;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = b.ink;
+      ctx.fillStyle = '#111';
       ctx.font = '800 ' + Math.round(15 * k) + 'px ' + fontFamily;                 // the logo
       ctx.fillText(b.name, b.x, b.y - 5 * k);
       ctx.font = '700 ' + Math.round(11 * k) + 'px ' + fontFamily;                 // play number
       ctx.fillText(String(b.num), b.x, b.y + 10 * k);
       if (k > 0.8) {                                                                // sidestamp with alignment arrows
-        ctx.globalAlpha = b.alpha * 0.85; ctx.fillStyle = b.ink; ctx.font = '600 ' + Math.round(5.2 * k) + 'px ' + fontFamily;
+        ctx.fillStyle = 'rgba(17,17,17,0.85)'; ctx.font = '600 ' + Math.round(5.2 * k) + 'px ' + fontFamily;
         ctx.fillText('\u25C0  PRO G1  \u25B6', b.x, b.y + 21 * k);
-        ctx.globalAlpha = b.alpha;
       }
       ctx.globalAlpha = 1;
     }
@@ -367,7 +357,7 @@
       // player mallet (the bubble shrinks into it)
       var k2 = Math.min(1, (now - g.t0) / 450);
       if (k2 < 1) { me.alpha = 1; drawBubble(me, now); }
-      ctx.globalAlpha = k2; mallet(me.x, me.y, me.r, me.color === '#fbfbf7' ? colors.pine[0] : me.color, me.name); ctx.globalAlpha = 1;
+      ctx.globalAlpha = k2; mallet(me.x, me.y, me.r, colors.pine[0], me.name); ctx.globalAlpha = 1;
       if (g.over) {
         var k = Math.min(1, (now - g.over.t) / 300);
         ctx.globalAlpha = 0.85 * k; ctx.fillStyle = colors.bg; ctx.fillRect(0, H / 2 - 60, W, 120); ctx.globalAlpha = k;
