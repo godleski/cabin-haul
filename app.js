@@ -663,7 +663,24 @@
   $('go-bringing').addEventListener('click', function () { showTab('bringing'); });
 
   // ---- Cabin tab ----
-  var CABIN_PHOTOS = [];   // [{src: 'photos/cabin-1.jpg', cap: 'Hot tub'}, ...] published alongside the page
+  var CABIN_PHOTOS = [    // published alongside the page
+    { src: 'photos/cabin-01.jpg', cap: 'The house at dusk' },
+    { src: 'photos/cabin-05.jpg', cap: 'Deck with the ski hill view' },
+    { src: 'photos/cabin-04.jpg', cap: 'Patio, fire pit, and the hot tub' },
+    { src: 'photos/cabin-02.jpg', cap: 'Great room' },
+    { src: 'photos/cabin-09.jpg', cap: 'Fireplace' },
+    { src: 'photos/cabin-03.jpg', cap: 'Kitchen island' },
+    { src: 'photos/cabin-07.jpg', cap: 'Kitchen' },
+    { src: 'photos/cabin-08.jpg', cap: 'Kitchen, the business end' },
+    { src: 'photos/cabin-10.jpg', cap: 'Island seating for five' },
+    { src: 'photos/cabin-06.jpg', cap: 'Dining room' },
+    { src: 'photos/cabin-11.jpg', cap: 'Dining bar and wine fridge' },
+    { src: 'photos/cabin-12.jpg', cap: 'Sitting nook' },
+    { src: 'photos/cabin-13.jpg', cap: 'Bedroom' },
+    { src: 'photos/cabin-14.jpg', cap: 'Bedroom' },
+    { src: 'photos/cabin-15.jpg', cap: 'Bedroom with desk' },
+    { src: 'photos/cabin-16.jpg', cap: 'Entry' }
+  ];
   var CHECK_IN = new Date(2026, 9, 23, 16, 0, 0);
   function renderCabin() {
     var days = Math.ceil((CHECK_IN - Date.now()) / 86400000);
