@@ -1562,51 +1562,64 @@
     var rows = Object.keys(counts).map(function (k) { return { pick: k, n: counts[k], who: who[k].sort() }; }).sort(function (a, b) { return b.n - a.n || a.pick.localeCompare(b.pick); });
     return { rows: rows, voted: Object.keys(voters).length };
   }
+  var SEG_COLORS = ['#d2691e', '#2d6a4f', '#3f7cae', '#8e44ad', '#b7950b', '#c0392b', '#7f8c8d'];
   function renderPredictions() {
     var el = $('pred'); if (!el || !me) return;
     if (!store || !store.predictions) { el.hidden = true; return; }
     el.hidden = false;
-    var left = QUESTIONS.length - answeredCount();
-    var html = '<div class="pred-head"><span class="pred-count">' + (QUESTIONS.length - left) + ' of ' + QUESTIONS.length + ' answered</span>' +
-      (left ? '<button type="button" class="nudge" id="pred-open">Make your picks (' + left + ' left)</button>' : '<button type="button" class="linkbtn" id="pred-open">Change my picks</button>') + '</div>';
+    var mine = myVotes(), left = QUESTIONS.length - answeredCount();
+    var html = '';
+    if (left) html += '<div class="pred-banner"><div><b>' + (left === QUESTIONS.length ? 'You haven’t called anything yet' : left + ' still to call') + '</b><span>Takes a minute. Then you get to talk.</span></div><button type="button" class="nudge" id="pred-open">Make my picks</button></div>';
+    else html += '<div class="pred-head"><span class="pred-count">All ' + QUESTIONS.length + ' called</span><button type="button" class="linkbtn" id="pred-open">Change my picks</button></div>';
     html += '<div class="pred-list">';
     QUESTIONS.forEach(function (q, i) {
-      var t = tallyFor(q), lead = t.rows[0], second = t.rows[1];
+      var t = tallyFor(q), lead = t.rows[0], total = t.rows.reduce(function (a, r) { return a + r.n; }, 0);
       var cc = comments.filter(function (c) { return c.question_id === q.id; }).length;
-      html += '<button type="button" class="pred-card' + (expanded === i ? ' open' : '') + '" data-q="' + i + '">' +
+      html += '<button type="button" class="pred-card" data-q="' + i + '">' +
         '<div class="pq">' + esc(q.text) + '</div>' +
-        '<div class="lead-row"><span class="lead">' + (lead ? esc(lead.pick) : '\u2014') + '</span>' + (second ? '<span class="then">then ' + esc(second.pick) + '</span>' : '') + '</div>' +
-        '<div class="sub">' + t.voted + ' of ' + NAMES.length + ' voted' + (cc ? ' \u00b7 ' + cc + ' \uD83D\uDCAC' : '') + '<span class="chev">' + (expanded === i ? '\u25B2' : '\u25BC') + '</span></div></button>';
-      if (expanded === i) html += detailFor(i);
+        '<div class="lead-row"><span class="lead' + (lead ? '' : ' none') + '">' + (lead ? esc(lead.pick) : 'No calls yet') + '</span>' + (lead ? '<span class="share">' + lead.n + ' <small>of ' + total + '</small></span>' : '') + '</div>';
+      if (total) {
+        html += '<div class="seg">' + t.rows.map(function (r, k) { return '<span style="width:' + (100 * r.n / total) + '%;background:' + SEG_COLORS[k % SEG_COLORS.length] + '"></span>'; }).join('') + '</div>';
+        html += '<div class="sub">' + t.rows.slice(1, 4).map(function (r, k) { return '<span class="k"><i class="dot" style="background:' + SEG_COLORS[(k + 1) % SEG_COLORS.length] + '"></i>' + esc(r.pick) + ' ' + r.n + '</span>'; }).join('') +
+          (cc ? '<span class="k">💬 ' + cc + '</span>' : '') +
+          (mine[q.id] ? '<span class="you">you: ' + esc(mine[q.id]) + '</span>' : '<span class="you no">no pick yet</span>') + '</div>';
+      } else {
+        html += '<div class="sub">' + t.voted + ' voted' + (mine[q.id] ? '<span class="you">you: ' + esc(mine[q.id]) + '</span>' : '<span class="you no">no pick yet</span>') + '</div>';
+      }
+      html += '</button>';
     });
     html += '</div>';
-    var hadFocus = document.activeElement && document.activeElement.id === 'chat-input';
     el.innerHTML = html;
-    if (hadFocus) { var inp = $('chat-input'); if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }
+    if (expanded !== null) renderSheet();
   }
-  function detailFor(idx) {
-    var html = '';
-    var expandedIdx = idx;
-    {
-      var q = QUESTIONS[expandedIdx], t = tallyFor(q), max = t.rows.length ? t.rows[0].n : 1;
-      html += '<div class="pred-detail">';
-      if (!t.rows.length) html += '<div class="empty">No picks yet.</div>';
-      t.rows.forEach(function (r) {
-        html += '<div class="bar-row"><span class="bar-name">' + esc(r.pick) + '</span><span class="bar-track"><span class="bar-fill" style="width:' + Math.round(100 * r.n / max) + '%"></span></span><span class="bar-n">' + r.n + '</span>' +
-          '<span class="bar-who">' + esc(r.who.map(function (n) { return n === me ? 'you' : n; }).join(', ')) + '</span></div>';
-      });
-      html += '<div class="pred-actions"><button type="button" class="linkbtn" id="pred-change" data-q="' + expandedIdx + '">Change my pick</button><button type="button" class="linkbtn" id="pred-close">Close</button></div>';
-      // the chat
-      var thread = comments.filter(function (c) { return c.question_id === q.id; });
-      html += '<div class="chat"><div class="chat-head">Talk it out' + (thread.length ? ' <span class="k">' + thread.length + '</span>' : '') + '</div>';
-      if (!thread.length) html += '<div class="chat-empty">Nobody\'s said anything yet. Be the first to stir the pot.</div>';
-      html += '<div class="chat-list" id="chat-list">' + thread.map(function (c) {
-        return '<div class="msg' + (c.author === me ? ' mine' : '') + '"><span class="who">' + esc(c.author) + '</span> <span class="when">' + esc(ago(c.created_at)) + '</span><div class="txt">' + esc(c.text) + '</div></div>';
-      }).join('') + '</div>';
-      html += '<form class="chat-form" id="chat-form"><input type="text" id="chat-input" maxlength="240" placeholder="Say something\u2026" autocomplete="off" value="' + esc(draft) + '"><button type="submit" class="btn primary">Send</button></form></div></div>';
-    }
-    return html;
+  function renderSheet() {
+    var wrap = $('pred-sheet'); if (!wrap) return;
+    if (expanded === null) { wrap.hidden = true; return; }
+    var q = QUESTIONS[expanded], t = tallyFor(q), total = t.rows.reduce(function (a, r) { return a + r.n; }, 0), mine = myVotes()[q.id];
+    $('sheet-title').textContent = q.text;
+    var html = '<div class="poll">';
+    if (!t.rows.length) html += '<div class="poll-empty">No calls yet. Be first.</div>';
+    t.rows.forEach(function (r, k) {
+      html += '<div class="poll-row' + (k === 0 ? ' top' : '') + '"><div class="poll-top"><span class="poll-name">' + esc(r.pick) + '</span><span class="poll-n"><b>' + r.n + '</b> · ' + Math.round(100 * r.n / total) + '%</span></div>' +
+        '<div class="poll-track"><span style="width:' + Math.round(100 * r.n / total) + '%"></span></div>' +
+        '<div class="poll-who">' + r.who.map(function (n) { return '<span' + (n === me ? ' class="me"' : '') + '>' + esc(n === me ? 'you' : n) + '</span>'; }).join('') + '</div></div>';
+    });
+    html += '</div>';
+    html += '<div class="sheet-actions"><span>' + t.voted + ' of ' + NAMES.length + ' have called it' + (mine ? ' · you said <b>' + esc(mine) + '</b>' : '') + '</span><button type="button" class="' + (mine ? 'linkbtn' : 'nudge') + '" id="pred-change" data-q="' + expanded + '">' + (mine ? 'Change mine' : 'Make my call') + '</button></div>';
+    var thread = comments.filter(function (c) { return c.question_id === q.id; });
+    html += '<div class="chat"><div class="chat-head">Trash talk' + (thread.length ? ' <span class="k">' + thread.length + '</span>' : '') + '</div>';
+    if (!thread.length) html += '<div class="chat-empty">Nobody’s said anything yet. Stir the pot.</div>';
+    html += '<div class="chat-list" id="chat-list">' + thread.map(function (c) {
+      return '<div class="msg' + (c.author === me ? ' mine' : '') + '"><span class="who">' + esc(c.author === me ? 'You' : c.author) + '</span><span class="when">' + esc(ago(c.created_at)) + '</span><div class="txt">' + esc(c.text) + '</div></div>';
+    }).join('') + '</div></div>';
+    var body = $('sheet-body'), atBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 40 || wrap.hidden;
+    body.innerHTML = html;
+    var inp = $('chat-input'); if (inp && inp.value !== draft) inp.value = draft;
+    wrap.hidden = false;
+    if (atBottom) body.scrollTop = body.scrollHeight;
   }
+  function openSheet(i) { expanded = i; draft = ''; renderSheet(); var body = $('sheet-body'); if (body) body.scrollTop = body.scrollHeight; }
+  function closeSheet() { expanded = null; draft = ''; $('pred-sheet').hidden = true; }
   function agoText(iso) { var a = ago(iso); return a === 'just now' ? a : a + ' ago'; }
   function ago(iso) {
     var t = Date.parse(iso || ''); if (!t) return '';
@@ -1614,8 +1627,8 @@
     if (m < 1) return 'just now'; if (m < 60) return m + 'm'; var h = Math.round(m / 60); if (h < 24) return h + 'h';
     return Math.round(h / 24) + 'd';
   }
-  $('pred').addEventListener('input', function (e) { if (e.target.id === 'chat-input') draft = e.target.value; });
-  $('pred').addEventListener('submit', function (e) {
+  $('pred-sheet').addEventListener('input', function (e) { if (e.target.id === 'chat-input') draft = e.target.value; });
+  $('pred-sheet').addEventListener('submit', function (e) {
     if (e.target.id !== 'chat-form') return;
     e.preventDefault();
     var input = $('chat-input'), text = input.value.replace(/\s+/g, ' ').trim();
@@ -1625,15 +1638,17 @@
     store.comment(q.id, me, text).catch(function (err) { toast('That didn\'t post: ' + ((err && err.message) || err)); });
     comments.push({ question_id: q.id, author: me, text: text, created_at: new Date().toISOString() });
     renderPredictions();
-    var list = $('chat-list'); if (list) list.scrollTop = list.scrollHeight;
-    var again = $('chat-input'); if (again) again.focus();
+    var body = $('sheet-body'); if (body) body.scrollTop = body.scrollHeight;
+    input.focus();
   });
-  $('pred').addEventListener('click', function (e) {
+  function predClick(e) {
     var open = e.target.closest('#pred-open'); if (open) { lsDel('cabin-haul-pred-later-' + me); openQuestionnaire(firstUnanswered(), answeredCount() >= QUESTIONS.length); return; }
-    var ch = e.target.closest('#pred-change'); if (ch) { openQuestionnaire(+ch.getAttribute('data-q'), true); return; }
-    if (e.target.closest('#pred-close')) { expanded = null; renderPredictions(); return; }
-    var card = e.target.closest('.pred-card'); if (card) { var i = +card.getAttribute('data-q'); expanded = expanded === i ? null : i; draft = ''; renderPredictions(); var list = $('chat-list'); if (list) list.scrollTop = list.scrollHeight; }
-  });
+    var ch = e.target.closest('#pred-change'); if (ch) { var qi = +ch.getAttribute('data-q'); closeSheet(); openQuestionnaire(qi, true); return; }
+    if (e.target.closest('#pred-close') || e.target.id === 'sheet-back') { closeSheet(); return; }
+    var card = e.target.closest('.pred-card'); if (card) { openSheet(+card.getAttribute('data-q')); }
+  }
+  $('pred').addEventListener('click', predClick);
+  $('pred-sheet').addEventListener('click', predClick);
 
   // ---- Data ----
   var store = window.STORE, booted = false, items = [], busy = {}, live = false, itemsLoaded = false;

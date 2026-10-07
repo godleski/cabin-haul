@@ -62,7 +62,7 @@
     <section class="page" id="page-home">
       <div class="eyebrow">Cabin trip</div>
       <h1>Predictions</h1>
-      <p class="lede">The running score on everyone's calls for the weekend. Tap one to see who voted for whom and talk your shit.</p>
+      <p class="lede">Everyone's calls for the weekend, live. Tap a question for the full breakdown and the trash talk.</p>
       <div class="pred" id="pred" hidden></div>
     </section>
 
@@ -183,6 +183,15 @@
   <button type="button" class="nav-btn" data-tab="games" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm3 3.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg><span>Games</span></button>
   <button type="button" class="nav-btn" data-tab="photos" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1.5 2H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5zm3 4.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg><span>Photos</span></button>
 </nav>
+<div class="sheet-wrap" id="pred-sheet" hidden>
+  <div class="sheet-back" id="sheet-back"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet-grip"></div>
+    <div class="sheet-head"><div class="sheet-q" id="sheet-title"></div><button type="button" class="sheet-x" id="pred-close" aria-label="Close">×</button></div>
+    <div class="sheet-body" id="sheet-body"></div>
+    <form class="sheet-foot chat-form" id="chat-form"><input type="text" id="chat-input" maxlength="240" placeholder="Talk your shit…" autocomplete="off"><button type="submit" class="btn primary">Send</button></form>
+  </div>
+</div>
 <div class="lightbox" id="lightbox" hidden>
   <button type="button" class="lb-close" id="lb-close" aria-label="Close">×</button>
   <div class="lb-track" id="lb-track"></div>
