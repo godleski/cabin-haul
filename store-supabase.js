@@ -100,6 +100,18 @@
       return sb.from('comments').insert({ question_id: questionId, author: author, text: text }).then(one);
     },
 
+    // Shared game state: a row in "kv" per game.
+    game: function (name, onDoc) {
+      if (!ensure()) return;
+      var read = function () { sb.from('kv').select('value').eq('key', 'game-' + name).maybeSingle().then(function (res) { onDoc((res.data && res.data.value) || null); }); };
+      try { sb.channel('cabin-game-' + name).on('postgres_changes', { event: '*', schema: 'public', table: 'kv' }, read).subscribe(); } catch (e) { /* ignore */ }
+      read();
+    },
+    setGame: function (name, doc) {
+      if (!ensure()) return Promise.reject(new Error('not connected'));
+      return sb.from('kv').upsert({ key: 'game-' + name, value: doc }).then(one);
+    },
+
     // Air hockey tally: one row in the "kv" table, key "hockey".
     scores: function (onScores) {
       if (!ensure()) return;

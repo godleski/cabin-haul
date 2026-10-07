@@ -103,6 +103,17 @@
       });
     },
 
+    // Shared game state (Mafia and friends): one document per game under meta/.
+    game: function (name, onDoc) {
+      ensure().then(function () {
+        if (!db) return;
+        db.doc('meta/game-' + name).onSnapshot(function (snap) { onDoc(snap.exists ? Object.assign({}, snap.data()) : null); }, function () { /* ignore */ });
+      });
+    },
+    setGame: function (name, doc) {
+      return ensure().then(function () { if (!db) throw new Error('not signed in'); return db.doc('meta/game-' + name).set(doc); });
+    },
+
     // Air hockey tally: one shared document.
     scores: function (onScores) {
       ensure().then(function () {
