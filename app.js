@@ -96,8 +96,8 @@
         line: cssVar('--line'), fg: cssVar('--fg'), bg: cssVar('--bg'), muted: cssVar('--muted'), shadow: 'rgba(10,40,20,0.28)' };
     }
     readColors();
-    var fontFamily = cssVar('--display'), font = '700 16px ' + fontFamily;
-    if (document.fonts && document.fonts.load) document.fonts.load(font).catch(function () { /* fallback font is fine */ });
+    var fontFamily = cssVar('--display'), font = '700 16px ' + fontFamily, scriptFamily = cssVar('--script') || 'cursive';
+    if (document.fonts && document.fonts.load) { document.fonts.load(font).catch(function () { /* fallback font is fine */ }); document.fonts.load('400 20px ' + scriptFamily).catch(function () { /* fallback font is fine */ }); }
 
     var balls = names.map(function (n, i) {
       var r = n.indexOf(' & ') >= 0 ? 54 : 40;
@@ -186,10 +186,15 @@
     var FRAMES = 36, frameCache = {}, lightCache = {}, spherePts = null;
     function spherePoints() {
       if (spherePts) return spherePts;
-      var n = 332, golden = Math.PI * (3 - Math.sqrt(5)), pts = [];
+      var n = 320, golden = Math.PI * (3 - Math.sqrt(5)), pts = [];
+      var seed = 7;
+      function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
       for (var i = 0; i < n; i++) {
-        var y = 1 - (2 * (i + 0.5)) / n, rad = Math.sqrt(1 - y * y), a = i * golden;
-        pts.push([Math.cos(a) * rad, y, Math.sin(a) * rad]);
+        var y = 1 - (2 * (i + 0.5)) / n, rad = Math.sqrt(1 - y * y), a = i * golden + (rnd() - 0.5) * 0.08;
+        var sizes = [1.0, 0.86, 1.08, 0.78, 0.95], sz = sizes[i % 5] * (0.95 + rnd() * 0.1);
+        var sides = 6 + Math.floor(rnd() * 2), rot = rnd() * Math.PI, wob = [];
+        for (var w = 0; w < sides; w++) wob.push(0.94 + rnd() * 0.12);
+        pts.push([Math.cos(a) * rad, y, Math.sin(a) * rad, sz, sides, rot, wob]);
       }
       spherePts = pts; return pts;
     }
@@ -203,15 +208,24 @@
       o.beginPath(); o.arc(c, c, r, 0, Math.PI * 2); o.fillStyle = '#f4f5f2'; o.fill();
       o.save(); o.beginPath(); o.arc(c, c, r - 0.3, 0, Math.PI * 2); o.clip();
       var th = (k / FRAMES) * Math.PI * 2, ct = Math.cos(th), st = Math.sin(th);
-      var pts = spherePoints(), dr = r * 0.084;           // cell radius: neighbours nearly touch, leaving thin ridges
+      var pts = spherePoints(), base = r * 0.088;
       for (var i = 0; i < pts.length; i++) {
-        var x = pts[i][0] * ct + pts[i][2] * st, y = pts[i][1], z = -pts[i][0] * st + pts[i][2] * ct;   // spin about the vertical axis
+        var P = pts[i];
+        var x = P[0] * ct + P[2] * st, y = P[1], z = -P[0] * st + P[2] * ct;   // spin about the vertical axis
         if (z < 0.04) continue;
-        var px = c + x * r, py = c + y * r, ang = Math.atan2(y, x);
+        var px = c + x * r, py = c + y * r, ang = Math.atan2(y, x), dr = base * P[3];
         o.save(); o.translate(px, py); o.rotate(ang); o.scale(z, 1); o.rotate(-ang);
-        var g = o.createRadialGradient(0, 0, 0, 0, 0, dr);
-        g.addColorStop(0, 'rgba(255,255,255,0.55)'); g.addColorStop(0.62, 'rgba(236,238,234,0.9)'); g.addColorStop(1, 'rgba(196,200,194,1)');
-        o.beginPath(); o.arc(0, 0, dr, 0, Math.PI * 2); o.fillStyle = g; o.fill();
+        // a slightly lumpy polygon reads as a pressed cell, not a stamped circle
+        o.beginPath();
+        for (var v = 0; v < P[4]; v++) {
+          var va = P[5] + (v / P[4]) * Math.PI * 2, vr = dr * P[6][v];
+          if (v === 0) o.moveTo(Math.cos(va) * vr, Math.sin(va) * vr); else o.lineTo(Math.cos(va) * vr, Math.sin(va) * vr);
+        }
+        o.closePath();
+        var g = o.createRadialGradient(-dr * 0.15, -dr * 0.15, 0, 0, 0, dr);
+        g.addColorStop(0, 'rgba(255,255,255,0.4)'); g.addColorStop(0.5, 'rgba(240,242,238,0.9)'); g.addColorStop(0.85, 'rgba(212,216,210,1)'); g.addColorStop(1, 'rgba(190,195,188,1)');
+        o.fillStyle = g; o.fill();
+        o.lineWidth = 0.5; o.strokeStyle = 'rgba(150,156,148,0.3)'; o.stroke();
         o.restore();
       }
       o.restore();
@@ -269,12 +283,12 @@
       var k = (b.r / 40) * b.scale;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = '#111';
-      ctx.font = '800 ' + Math.round(15 * k) + 'px ' + fontFamily;                 // the logo
+      ctx.font = '400 ' + Math.round(21 * k) + 'px ' + scriptFamily;               // the logo, in script
       if (b.name.indexOf(' & ') >= 0) {                                             // couples: two lines
         var pair = b.name.split(' & ');
-        ctx.font = '800 ' + Math.round(14 * k) + 'px ' + fontFamily;
-        ctx.fillText(pair[0] + ' &', b.x, b.y - 12 * k); ctx.fillText(pair[1], b.x, b.y + 2 * k);
-      } else ctx.fillText(b.name, b.x, b.y - 5 * k);
+        ctx.font = '400 ' + Math.round(19 * k) + 'px ' + scriptFamily;
+        ctx.fillText(pair[0] + ' &', b.x, b.y - 12 * k); ctx.fillText(pair[1], b.x, b.y + 3 * k);
+      } else ctx.fillText(b.name, b.x, b.y - 6 * k);
       ctx.font = '700 ' + Math.round(11 * k) + 'px ' + fontFamily;                 // play number
       var couple = b.name.indexOf(' & ') >= 0;
       ctx.fillText(String(b.num), b.x, b.y + (couple ? 17 : 10) * k);
