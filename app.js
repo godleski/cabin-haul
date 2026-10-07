@@ -48,34 +48,47 @@
   var NAMES = ['Mitch', 'Katelyn', 'Drew', 'Luke', 'Kelly', 'Gabby', 'Joe', 'Liv', 'Terry', 'Jess', 'Kyle', 'Kyrsten', 'Justin'];
   PARTIES.forEach(function (p) { p.forEach(function (n) { if (NAMES.indexOf(n) < 0) NAMES.push(n); }); });
 
-  // ---- Bubble physics: grab, fling, collide. A quick tap picks the name. ----
+  // ---- Bubble physics on a canvas: grab, fling, collide. A quick tap picks the name. ----
   var sim = null;
+  function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
   function renderRoster() {
     if (sim) sim.stop();
     var box = $('roster');
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var tones = ['pine', 'plain', 'ember'];
-    box.innerHTML = NAMES.map(function (n, i) {
-      var size = [92, 82, 104, 92, 88][i % 5];
-      return '<button type="button" class="bub ' + tones[i % 3] + '" data-me="' + esc(n) + '" style="width:' + size + 'px;height:' + size + 'px;font-size:' + (size / 88) + 'rem"><span class="in">' + esc(n) + '</span></button>';
-    }).join('');
-    var els = Array.prototype.slice.call(box.children);
-    var W = box.clientWidth, H = box.clientHeight;
-    var balls = els.map(function (el, i) {
-      var r = el.offsetWidth / 2;
+    box.innerHTML = '<canvas id="arena" aria-hidden="true"></canvas><div class="sr-list">' +
+      NAMES.map(function (n) { return '<button type="button" data-me="' + esc(n) + '">' + esc(n) + '</button>'; }).join('') + '</div>';
+    var cv = $('arena'), ctx = cv.getContext('2d');
+    var W = 0, H = 0, dpr = 1;
+    function resize() {
+      dpr = Math.min(3, window.devicePixelRatio || 1);
+      W = box.clientWidth; H = box.clientHeight;
+      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+      cv.style.width = W + 'px'; cv.style.height = H + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    resize();
+    var tones = ['pine', 'plain', 'ember'], colors = {};
+    function readColors() {
+      colors = { pine: [cssVar('--pine'), cssVar('--pine-ink')], plain: [cssVar('--surface'), cssVar('--fg')], ember: [cssVar('--ember'), '#ffffff'], line: cssVar('--line'), shadow: 'rgba(27,42,34,0.14)' };
+    }
+    readColors();
+    var fontFamily = cssVar('--display'), font = '700 16px ' + fontFamily;
+    if (document.fonts && document.fonts.load) document.fonts.load(font).catch(function () { /* fallback font is fine */ });
+
+    var balls = NAMES.map(function (n, i) {
+      var r = [46, 41, 52, 46, 44][i % 5];
       var cols = 3, col = i % cols, row = Math.floor(i / cols);
-      return { el: el, r: r, m: r * r,
+      return { name: n, tone: tones[i % 3], r: r, m: r * r, scale: 1, alpha: 1,
         x: (W / (cols + 1)) * (col + 1) + (row % 2 ? 18 : -18) + (Math.random() * 10 - 5),
         y: 70 + row * 100 + (Math.random() * 10 - 5),
         vx: reduce ? 0 : Math.random() * 1.6 - 0.8, vy: reduce ? 0 : Math.random() * 1.6 - 0.8,
-        ang: Math.random() * Math.PI * 2, held: false, name: el.getAttribute('data-me') };
+        ang: Math.random() * Math.PI * 2, held: false };
     });
     balls.forEach(function (b) { b.x = Math.max(b.r, Math.min(W - b.r, b.x)); b.y = Math.max(b.r, Math.min(H - b.r, b.y)); });
+    box.__balls = balls;   // for tests
 
-    var running = true, last = performance.now();
-    function step(now) {
-      if (!running) return;
-      var dt = Math.min(32, now - last) / 16.67; last = now;
+    var running = true, last = performance.now(), held = null, popping = null;
+    function physics(dt) {
       balls.forEach(function (b) {
         if (b.held) {
           var tx = Math.max(b.r, Math.min(W - b.r, b.tx)), ty = Math.max(b.r, Math.min(H - b.r, b.ty));
@@ -83,9 +96,9 @@
           b.x += b.vx * dt; b.y += b.vy * dt;
           return;
         }
-        if (!reduce) {                    // every bubble wanders a little, always, so it's obvious they move
-          b.ang += (Math.random() - 0.5) * 0.04 * dt;        // heading turns slowly, no per-frame jitter
-          b.vx += Math.cos(b.ang) * 0.02 * dt; b.vy += Math.sin(b.ang) * 0.02 * dt;  // cruise ~2 px/frame after damping
+        if (!reduce) {
+          b.ang += (Math.random() - 0.5) * 0.04 * dt;
+          b.vx += Math.cos(b.ang) * 0.02 * dt; b.vy += Math.sin(b.ang) * 0.02 * dt;
         }
         b.x += b.vx * dt; b.y += b.vy * dt;
         b.vx *= Math.pow(0.992, dt); b.vy *= Math.pow(0.992, dt);
@@ -104,10 +117,10 @@
           var wa = a.held ? 0 : (c.held ? 1 : c.m / (a.m + c.m)), wc = c.held ? 0 : (a.held ? 1 : a.m / (a.m + c.m));
           a.x -= nx * overlap * wa; a.y -= ny * overlap * wa;
           c.x += nx * overlap * wc; c.y += ny * overlap * wc;
-          var rel = (c.vx - a.vx) * nx + (c.vy - a.vy) * ny;   // closing speed along the normal
+          var rel = (c.vx - a.vx) * nx + (c.vy - a.vy) * ny;
           if (rel > 0) continue;
           var e = 0.9;
-          if (a.held || c.held) {                           // held bubble has infinite mass
+          if (a.held || c.held) {
             var mover = a.held ? c : a, sign = a.held ? 1 : -1;
             var push = Math.max(Math.abs(rel), 1.0) * (1 + e);
             mover.vx += nx * push * sign; mover.vy += ny * push * sign;
@@ -118,23 +131,58 @@
           }
         }
       }
-      balls.forEach(function (b) { b.el.style.transform = 'translate3d(' + (b.x - b.r).toFixed(2) + 'px,' + (b.y - b.r).toFixed(2) + 'px,0)'; });
+    }
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      balls.forEach(function (b) {
+        var r = b.r * b.scale, col = colors[b.tone];
+        ctx.globalAlpha = b.alpha;
+        ctx.beginPath(); ctx.arc(b.x, b.y + 3, r, 0, Math.PI * 2); ctx.fillStyle = colors.shadow; ctx.fill();   // cheap drop shadow
+        ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.fillStyle = col[0]; ctx.fill();
+        if (b.tone === 'plain') { ctx.lineWidth = 2; ctx.strokeStyle = colors.line; ctx.stroke(); }
+        if (b.held) { ctx.lineWidth = 3; ctx.strokeStyle = colors.ember[0]; ctx.stroke(); }
+        ctx.fillStyle = col[1];
+        ctx.font = '700 ' + Math.round(16 * (b.r / 46) * b.scale) + 'px ' + fontFamily;
+        ctx.fillText(b.name, b.x, b.y + 1);
+      });
+      ctx.globalAlpha = 1;
+    }
+    function step(now) {
+      if (!running) return;
+      var dt = Math.min(32, now - last) / 16.67; last = now;
+      physics(dt);
+      if (popping) {
+        var t = (now - popping.t0) / 280;
+        popping.b.scale = 1 + 0.5 * Math.min(1, t); popping.b.alpha = Math.max(0, 1 - t);
+        if (t >= 1) { running = false; popping = null; draw(); finishPick(); return; }
+      }
+      draw();
       requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
+    var ro = null;
+    if (window.ResizeObserver) { ro = new ResizeObserver(function () { resize(); }); ro.observe(box); }
+    var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    if (mq && mq.addEventListener) mq.addEventListener('change', readColors);
 
     // Pointer handling: drag to fling, tap to pick.
-    var held = null, trail = [], start = null;
-    function pos(e) { var rct = box.getBoundingClientRect(); return { x: e.clientX - rct.left, y: e.clientY - rct.top, t: performance.now() }; }
-    box.addEventListener('pointerdown', function (e) {
-      var el = e.target.closest('.bub'); if (!el || popping) return;
-      var b = balls.filter(function (x) { return x.el === el; })[0];
-      held = b; b.held = true; b.vx = 0; b.vy = 0; el.classList.add('grab');
-      var p = pos(e); start = p; trail = [p]; b.gx = p.x - b.x; b.gy = p.y - b.y; b.tx = b.x; b.ty = b.y;
-      try { box.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    var trail = [], start = null, pendingPick = null;
+    function pos(e) { var rct = cv.getBoundingClientRect(); return { x: e.clientX - rct.left, y: e.clientY - rct.top, t: performance.now() }; }
+    function hit(p) {
+      var best = null;
+      for (var i = balls.length - 1; i >= 0; i--) { var b = balls[i]; if (Math.hypot(p.x - b.x, p.y - b.y) <= b.r + 4) { best = b; break; } }
+      return best;
+    }
+    cv.addEventListener('pointerdown', function (e) {
+      if (popping) return;
+      var p = pos(e), b = hit(p); if (!b) return;
+      held = b; b.held = true; b.vx = 0; b.vy = 0; b.tx = b.x; b.ty = b.y;
+      start = p; trail = [p]; b.gx = p.x - b.x; b.gy = p.y - b.y;
+      try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
       e.preventDefault();
     });
-    box.addEventListener('pointermove', function (e) {
+    cv.addEventListener('pointermove', function (e) {
       if (!held) return;
       var p = pos(e);
       held.tx = p.x - held.gx; held.ty = p.y - held.gy;
@@ -142,28 +190,32 @@
     });
     function release(e) {
       if (!held) return;
-      var b = held, p = pos(e); held = null; b.held = false; b.el.classList.remove('grab');
+      var b = held, p = pos(e); held = null; b.held = false;
       var moved = Math.hypot(p.x - start.x, p.y - start.y), dur = p.t - start.t;
       if (moved < 8 && dur < 400) { pick(b); return; }
       var old = trail[0], dt = Math.max(16, p.t - old.t) / 16.67;
       b.vx = Math.max(-70, Math.min(70, (p.x - old.x) / dt));
       b.vy = Math.max(-70, Math.min(70, (p.y - old.y) / dt));
     }
-    box.addEventListener('pointerup', release);
-    box.addEventListener('pointercancel', release);
-    box.addEventListener('click', function (e) { e.preventDefault(); }); // selection happens on pointerup
+    cv.addEventListener('pointerup', release);
+    cv.addEventListener('pointercancel', release);
+    box.addEventListener('click', function (e) {
+      var k = e.target.closest('.sr-list [data-me]'); if (!k) return;
+      var b = balls.filter(function (x) { return x.name === k.getAttribute('data-me'); })[0];
+      if (b) pick(b);
+    });
     function pick(b) {
       if (popping) return;
-      popping = true; b.el.classList.add('pop');
-      setTimeout(function () {
-        popping = false; running = false;
-        me = b.name; myParty = partyOf(me); lsSet('cabin-haul-me', me);
-        showScreen();
-      }, 280);
+      pendingPick = b.name;
+      if (reduce) { running = false; finishPick(); return; }
+      popping = { b: b, t0: performance.now() };
     }
-    sim = { stop: function () { running = false; } };
+    function finishPick() {
+      me = pendingPick; myParty = partyOf(me); lsSet('cabin-haul-me', me);
+      showScreen();
+    }
+    sim = { stop: function () { running = false; if (ro) ro.disconnect(); } };
   }
-  var popping = false;
   $('switch').addEventListener('click', function () { me = null; myParty = null; lsDel('cabin-haul-me'); showScreen(); });
 
   function showScreen() {

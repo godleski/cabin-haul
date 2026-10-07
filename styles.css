@@ -28,29 +28,16 @@
   .notice code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }
   :is(input, select, button):focus-visible { outline: 3px solid var(--ember); outline-offset: 2px; }
 
-  /* ---- Who are you: bubbles you can fling around ---- */
+  /* ---- Who are you: bubbles you can fling around (drawn on a canvas) ---- */
   .bubbles {
     position: relative; margin-top: 20px; height: min(62vh, 560px); min-height: 420px;
     border-radius: 18px; background: linear-gradient(180deg, transparent, var(--pine-soft));
-    overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; contain: layout style paint;
+    overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
   }
-  .bub {
-    position: absolute; left: 0; top: 0; will-change: transform;
-    border: 2px solid transparent; border-radius: 50%; width: 92px; height: 92px; padding: 0;
-    font: 700 1.05rem var(--display); cursor: grab; display: grid; place-items: center; overflow-wrap: anywhere;
-    box-shadow: 0 3px 6px rgba(27, 42, 34, 0.12); -webkit-tap-highlight-color: transparent;
-    backface-visibility: hidden; transform: translate3d(0, 0, 0);
-  }
-  .bub.grab { cursor: grabbing; z-index: 2; }
-  .bub.grab .in { transform: scale(1.06); }
-  .bub.pine { background: var(--pine); color: var(--pine-ink); }
-  .bub.plain { background: var(--surface); color: var(--fg); border-color: var(--line); }
-  .bub.ember { background: var(--ember); color: #fff; }
-  .bub .in { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; transition: transform 120ms; }
-  .bub.pop .in { animation: pop 320ms ease-out forwards; }
-  @keyframes pop { 0% { transform: scale(1); } 60% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+  .bubbles canvas { display: block; width: 100%; height: 100%; cursor: grab; -webkit-tap-highlight-color: transparent; }
+  .sr-list { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .sr-list button:focus-visible { position: fixed; left: 16px; bottom: 16px; width: auto; height: auto; padding: 10px 14px; background: var(--surface); color: var(--fg); border: 2px solid var(--ember); border-radius: 10px; z-index: 9; }
   .hint { margin: 10px 0 0; text-align: center; font-size: 0.82rem; color: var(--muted); }
-  @media (prefers-reduced-motion: reduce) { .bub.pop .in { animation: none; opacity: 0.4; } }
 
   /* ---- Main ---- */
   .topbar { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
