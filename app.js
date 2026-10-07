@@ -823,6 +823,118 @@
     }
   });
 
+  // ---- Games: For Liv (deep question generator) ----
+  // heat 1 = deep, 2 = uncomfortable, 3 = no mercy
+  var LIV_Q = [
+    [1, 'What’s something you believed about yourself at 18 that turned out to be completely wrong?'],
+    [1, 'Who in this room knows you best, and what do they still not know?'],
+    [1, 'What’s the kindest thing anyone has ever done for you that they probably don’t remember?'],
+    [1, 'What do you want people to say about you at your funeral, and are you living like that?'],
+    [1, 'When was the last time you cried, and what was it actually about?'],
+    [1, 'What’s a compliment you got once that you still think about?'],
+    [1, 'What are you most afraid of becoming?'],
+    [1, 'What’s something you’re proud of that you’ve never said out loud?'],
+    [1, 'If you could re-live one ordinary day from your life, which one?'],
+    [1, 'What did your parents get right that you only appreciated later?'],
+    [1, 'What’s the hardest thing you’ve ever had to forgive?'],
+    [1, 'What would you do with your life if money truly didn’t matter?'],
+    [1, 'What’s a small thing that makes you feel loved?'],
+    [1, 'What’s the best decision you ever made, and did it feel like one at the time?'],
+    [1, 'What do you think about when you can’t sleep?'],
+    [1, 'Who do you miss?'],
+    [1, 'What’s something you’ve changed your mind about in the last five years?'],
+    [1, 'What’s a hill you’ll die on that nobody else in this room agrees with?'],
+    [1, 'What’s the most alive you’ve ever felt?'],
+    [1, 'What do you need more of in your life right now?'],
+    [2, 'What’s a lie you’ve told someone in this room?'],
+    [2, 'What’s the pettiest grudge you’re still holding, and against whom?'],
+    [2, 'What’s something about your relationship that you’ve never admitted to your partner?'],
+    [2, 'Who in this room would you call if you needed to hide a body, and who would you absolutely not call?'],
+    [2, 'What’s the most embarrassing thing in your search history this week?'],
+    [2, 'What’s the last thing you were jealous of?'],
+    [2, 'Which of your friends’ life choices do you secretly judge?'],
+    [2, 'What’s something you do when you’re alone that you’d be mortified for us to see?'],
+    [2, 'What’s a secret you’ve kept for someone that you’ve been dying to tell?'],
+    [2, 'What was the real reason your last relationship ended?'],
+    [2, 'What’s something your partner does that you’ve never told them annoys you?'],
+    [2, 'Who in this room do you think is the most full of shit, and about what?'],
+    [2, 'When was the last time you faked being happy for someone?'],
+    [2, 'What’s the worst thing you’ve ever said about someone here behind their back?'],
+    [2, 'What’s a text you sent that you immediately wished you could unsend?'],
+    [2, 'What’s the most you’ve ever spent on something you hid from your partner?'],
+    [2, 'What do you think your biggest flaw is? Now everyone else say what they think it actually is.'],
+    [2, 'Which couple here do you think argues the most, and about what?'],
+    [2, 'What’s the thing you’re most insecure about that you overcompensate for?'],
+    [2, 'What’s something you’ve done that your parents still don’t know about?'],
+    [2, 'What’s a time you were a genuinely bad friend?'],
+    [2, 'Who in this group has changed the most since you met them, and is it for the better?'],
+    [3, 'Rank the three people to your left by how much you trust them. Explain.'],
+    [3, 'What’s the thing you’d least want your partner to find on your phone right now?'],
+    [3, 'What’s the closest you’ve come to cheating, emotionally or otherwise?'],
+    [3, 'What’s something you’ve never forgiven your partner for?'],
+    [3, 'If you had to cut one person in this room out of your life, who, and why them?'],
+    [3, 'What’s the most selfish thing you’ve ever done and gotten away with?'],
+    [3, 'What’s a moment you’re genuinely ashamed of?'],
+    [3, 'Who in this room do you think is settling?'],
+    [3, 'What’s something you resent about your own family?'],
+    [3, 'What’s the thing you most want but are too scared to go after?'],
+    [3, 'When did you last feel truly lonely, even though you weren’t alone?'],
+    [3, 'What’s a belief you hold that would make people here think less of you?'],
+    [3, 'Have you ever pretended to like one of the partners in this room? Which one?'],
+    [3, 'What’s the biggest thing you’ve lied to yourself about this year?'],
+    [3, 'Who was the one that got away, and does your partner know about them?'],
+    [3, 'What’s something you did in your twenties that you’d be horrified if your kids did?'],
+    [3, 'What do you think happens when we die, and are you okay with it?'],
+    [3, 'If your partner died tomorrow, how long before you’d date again? Honestly.']
+  ];
+  var liv = null, livLoaded = false, livSub = false;
+  var HEAT = { 1: 'Deep', 2: 'Uncomfortable', 3: 'No mercy' };
+  function subscribeLiv() {
+    if (livSub || !store || !store.game) return;
+    livSub = true;
+    store.game('liv', function (doc) { liv = doc; livLoaded = true; renderLiv(); });
+  }
+  function livPickVictim(exclude) {
+    var pool = NAMES.filter(function (n) { return n !== exclude; });
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  function livNext(keepVictim) {
+    var seen = (liv && liv.seen) || [];
+    var left = LIV_Q.map(function (_, i) { return i; }).filter(function (i) { return seen.indexOf(i) < 0; });
+    if (!left.length) { seen = []; left = LIV_Q.map(function (_, i) { return i; }); }
+    var idx = left[Math.floor(Math.random() * left.length)];
+    var doc = { q: idx, victim: keepVictim && liv ? liv.victim : livPickVictim(liv && liv.victim), by: me, seen: seen.concat([idx]), at: new Date().toISOString() };
+    store.setGame('liv', doc).then(function () { liv = doc; renderLiv(); }).catch(function (e) { toast('Couldn’t draw one: ' + ((e && e.message) || e)); });
+  }
+  function renderLiv() {
+    var body = $('liv-body'), status = $('liv-status'); if (!body) return;
+    if (!livLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
+    var seen = (liv && liv.seen) || [];
+    var cur = liv && typeof liv.q === 'number' ? LIV_Q[liv.q] : null;
+    status.textContent = seen.length ? seen.length + ' of ' + LIV_Q.length + ' asked' : LIV_Q.length + ' questions';
+    var html = '<p class="info-sub">Liv wants to really get to know you. One question at a time, no repeats, nowhere to hide. Everyone’s phone shows the same one.</p>';
+    if (cur) {
+      html += '<div class="liv-q h' + cur[0] + '"><span class="heat h' + cur[0] + '">' + HEAT[cur[0]] + '</span><div class="qt">' + esc(cur[1]) + '</div>' +
+        '<div class="who"><span>Ask <b>' + esc(liv.victim === me ? 'you' : liv.victim) + '</b></span><button type="button" class="linkbtn" id="liv-victim">Someone else</button></div></div>';
+    } else {
+      html += '<div class="liv-empty">Tap below and Liv will take it from there.</div>';
+    }
+    html += '<div class="mafia-actions"><button type="button" class="addbtn" id="liv-next">' + (cur ? 'Next question' : 'First question') + '</button>' + (seen.length ? '<button type="button" class="linkbtn" id="liv-reset">Start over</button>' : '') + '</div>';
+    body.innerHTML = html;
+  }
+  $('liv-body').addEventListener('click', function (e) {
+    if (e.target.closest('#liv-next')) { livNext(false); return; }
+    if (e.target.closest('#liv-victim') && liv) {
+      var doc = Object.assign({}, liv, { victim: livPickVictim(liv.victim) });
+      store.setGame('liv', doc).then(function () { liv = doc; renderLiv(); }).catch(function () { /* ignore */ });
+      return;
+    }
+    if (e.target.closest('#liv-reset')) {
+      var cleared = { seen: [], by: me, at: new Date().toISOString() };
+      store.setGame('liv', cleared).then(function () { liv = cleared; renderLiv(); }).catch(function (err) { toast('Couldn’t reset: ' + ((err && err.message) || err)); });
+    }
+  });
+
   // ---- Games: Mafia dealer ----
   var mafia = null, mafiaLoaded = false, mafiaSub = false, mafiaDraft = null, revealHold = false, modReveal = false;
   var ROLE_INFO = {
@@ -1253,6 +1365,7 @@
     subscribePhotos();
     subscribeMafia();
     subscribeTeams();
+    subscribeLiv();
     if (!store) { showSetup('No data layer loaded. The page is missing its store script.'); return; }
     store.init({
       onItems: function (rows) { items = rows.slice(); itemsLoaded = true; render(); },
