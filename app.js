@@ -1079,6 +1079,97 @@
     }
   });
 
+  // ---- Games: Mitch vs Luke Smash tally ----
+  var smash = null, smashLoaded = false, smashSub = false, smashAnim = null, charge = null;
+  var SMASH_P = { p1: 'Mitch', p2: 'Luke' };
+  function subscribeSmash() {
+    if (smashSub || !store || !store.game) return;
+    smashSub = true;
+    store.game('smash', function (doc) {
+      var same = smashLoaded && JSON.stringify((doc && doc.log) || []) === JSON.stringify((smash && smash.log) || []);
+      smash = doc; smashLoaded = true;
+      if (!same) renderSmash();                       // our own write echoing back shouldn't restart the KO animation
+    });
+  }
+  function smashCounts() {
+    var log = (smash && smash.log) || [], c = { p1: 0, p2: 0 };
+    log.forEach(function (e) { if (c[e.w] != null) c[e.w]++; });
+    return c;
+  }
+  function smashStreak(side) {
+    var log = (smash && smash.log) || [], n = 0;
+    for (var i = log.length - 1; i >= 0 && log[i].w === side; i--) n++;
+    return n;
+  }
+  function renderSmash() {
+    var body = $('smash-body'), status = $('smash-status'); if (!body) return;
+    if (!smashLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
+    var c = smashCounts(), log = (smash && smash.log) || [];
+    status.textContent = c.p1 + ' – ' + c.p2 + (c.p1 === c.p2 ? (log.length ? ' · tied' : '') : ' · ' + (c.p1 > c.p2 ? SMASH_P.p1 : SMASH_P.p2) + ' leads');
+    var html = '<p class="info-sub">Every Smash match, counted. Hold the KO button on the winner’s side until it fills. Anyone can log a win, so no fudging.</p>';
+    html += '<div class="smash"><div class="smash-board">';
+    ['p1', 'p2'].forEach(function (side) {
+      var n = c[side], lead = n > c[side === 'p1' ? 'p2' : 'p1'], st = smashStreak(side);
+      var rolling = smashAnim && smashAnim.side === side;
+      html += '<div class="fighter ' + side + (lead ? ' lead' : '') + '"><div class="fname">' + esc(SMASH_P[side]) + '</div>' +
+        '<div class="odo"><div class="roll' + (rolling ? ' spin' : '') + '">' + (rolling ? '<span>' + smashAnim.from + '</span>' : '') + '<span>' + n + '</span></div></div>' +
+        '<div class="streak">' + (st >= 2 ? st + ' in a row' : '') + '</div>' +
+        '<button type="button" class="ko-btn" data-side="' + side + '"><span>Hold to KO</span></button></div>';
+      if (side === 'p1') html += '<div class="vs">VS</div>';
+    });
+    html += '</div>';
+    if (smashAnim) html += '<div class="ko-flash ' + smashAnim.side + '">GAME!</div>';
+    html += '</div>';
+    if (log.length) {
+      var last = log[log.length - 1];
+      html += '<div class="history">' + log.slice(-24).map(function (e) { return '<i class="' + e.w + '" title="' + esc(SMASH_P[e.w]) + '"></i>'; }).join('') + '<span style="margin-left:6px">last: ' + esc(SMASH_P[last.w]) + ', logged by ' + esc(last.by === me ? 'you' : last.by) + ' ' + esc(agoText(last.at)) + '</span></div>';
+      html += '<div class="mafia-actions"><button type="button" class="linkbtn" id="smash-undo">Undo last</button></div>';
+    }
+    body.innerHTML = html;
+    smashAnim = null;
+  }
+  function smashWin(side) {
+    var log = ((smash && smash.log) || []).slice(-199);
+    var before = smashCounts()[side];
+    log.push({ w: side, by: me, at: new Date().toISOString() });
+    var doc = { log: log, updated_at: new Date().toISOString() };
+    smash = doc; smashAnim = { side: side, from: before };
+    renderSmash();
+    var card = $('smash-body').querySelector('.smash'); if (card) { card.classList.add('shake'); }
+    try { if (navigator.vibrate) navigator.vibrate([30, 40, 60]); } catch (e) { /* ignore */ }
+    store.setGame('smash', doc).catch(function (e) { toast('Couldn’t save that win: ' + ((e && e.message) || e)); });
+  }
+  function chargeStart(e) {
+    var btn = e.target.closest('.ko-btn'); if (!btn || charge) return;
+    e.preventDefault();
+    try { btn.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    charge = { btn: btn, side: btn.getAttribute('data-side'), t0: performance.now(), raf: 0 };
+    btn.classList.add('charging');
+    var tick = function (now) {
+      if (!charge) return;
+      var k = Math.min(1, (now - charge.t0) / 700);
+      charge.btn.style.setProperty('--charge', k);
+      if (k >= 1) { var side = charge.side; chargeEnd(); smashWin(side); return; }
+      charge.raf = requestAnimationFrame(tick);
+    };
+    charge.raf = requestAnimationFrame(tick);
+  }
+  function chargeEnd() {
+    if (!charge) return;
+    cancelAnimationFrame(charge.raf);
+    charge.btn.classList.remove('charging'); charge.btn.style.setProperty('--charge', 0);
+    charge = null;
+  }
+  $('smash-body').addEventListener('pointerdown', chargeStart);
+  window.addEventListener('pointerup', chargeEnd); window.addEventListener('pointercancel', chargeEnd);
+  $('smash-body').addEventListener('contextmenu', function (e) { if (e.target.closest('.ko-btn')) e.preventDefault(); });
+  $('smash-body').addEventListener('click', function (e) {
+    if (e.target.closest('#smash-undo') && smash && smash.log && smash.log.length) {
+      var doc = { log: smash.log.slice(0, -1), updated_at: new Date().toISOString() };
+      store.setGame('smash', doc).then(function () { smash = doc; renderSmash(); }).catch(function (err) { toast('Couldn’t undo: ' + ((err && err.message) || err)); });
+    }
+  });
+
   // ---- Games: Mafia dealer ----
   var mafia = null, mafiaLoaded = false, mafiaSub = false, mafiaDraft = null, revealHold = false, modReveal = false;
   var ROLE_INFO = {
@@ -1510,6 +1601,7 @@
     subscribeMafia();
     subscribeTeams();
     subscribeLiv();
+    subscribeSmash();
     if (!store) { showSetup('No data layer loaded. The page is missing its store script.'); return; }
     store.init({
       onItems: function (rows) { items = rows.slice(); itemsLoaded = true; render(); },
