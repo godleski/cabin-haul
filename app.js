@@ -86,7 +86,7 @@
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
       cv.style.width = W + 'px'; cv.style.height = H + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      frameCache = {}; lightCache = {};
+      dimpleTile = null; layerCache = {};
     }
     resize();
     var colors = {};
@@ -121,6 +121,7 @@
       var diff = Math.atan2(Math.sin(dir - b.rollDir), Math.cos(dir - b.rollDir));
       b.rollDir += diff * Math.min(1, 0.25 + d * 0.05);     // steer the spin axis toward the new heading
       b.roll = (b.roll || 0) + d / b.r;
+      b.ox = (b.ox || 0) + dx; b.oy = (b.oy || 0) + dy;
     }
     function physics(dt, now) {
       var t = now / 1000;
@@ -179,100 +180,80 @@
       if (fill) { ctx.fillStyle = fill; ctx.fill(); }
       if (stroke) { ctx.lineWidth = lw || 2; ctx.strokeStyle = stroke; ctx.stroke(); }
     }
-    // ---- Golf ball rendering ----
-    // The dimple pattern lives on a real sphere: ~330 cells placed evenly, projected to the screen, squashing toward
-    // the limb. Rolling spins that sphere; frames of the spin are rendered lazily and cached per ball size. Lighting
-    // (highlight, terminator, grass bounce, shadow) is a separate cached overlay so it never rotates with the ball.
-    var FRAMES = 36, frameCache = {}, lightCache = {}, spherePts = null;
-    function spherePoints() {
-      if (spherePts) return spherePts;
-      var n = 320, golden = Math.PI * (3 - Math.sqrt(5)), pts = [];
-      var seed = 7;
-      function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
-      for (var i = 0; i < n; i++) {
-        var y = 1 - (2 * (i + 0.5)) / n, rad = Math.sqrt(1 - y * y), a = i * golden + (rnd() - 0.5) * 0.08;
-        var sizes = [1.0, 0.86, 1.08, 0.78, 0.95], sz = sizes[i % 5] * (0.95 + rnd() * 0.1);
-        var sides = 6 + Math.floor(rnd() * 2), rot = rnd() * Math.PI, wob = [];
-        for (var w = 0; w < sides; w++) wob.push(0.94 + rnd() * 0.12);
-        pts.push([Math.cos(a) * rad, y, Math.sin(a) * rad, sz, sides, rot, wob]);
-      }
-      spherePts = pts; return pts;
+    // Dimple tile: concave dimples (shadow on the far wall, highlight on the near wall), tiled under the middle of each ball.
+    var dimpleTile = null, dimpleSp = 0, dimpleRowH = 0;
+    function dimpleAt(o, x, y, dr, alpha) {
+      o.globalAlpha = alpha == null ? 1 : alpha;
+      o.beginPath(); o.arc(x - 0.7, y - 0.7, dr, 0, Math.PI * 2); o.fillStyle = 'rgba(90,100,95,0.24)'; o.fill();     // shaded wall (top-left)
+      o.beginPath(); o.arc(x + 0.7, y + 0.7, dr, 0, Math.PI * 2); o.fillStyle = 'rgba(255,255,255,1)'; o.fill();      // lit wall (bottom-right)
+      o.beginPath(); o.arc(x, y, dr - 0.5, 0, Math.PI * 2); o.fillStyle = 'rgba(247,248,246,1)'; o.fill();           // dimple floor
+      o.globalAlpha = 1;
     }
-    function ballFrame(r, k) {
-      var key = Math.round(r * 2) + '@' + dpr + '#' + k;
-      if (frameCache[key]) return frameCache[key];
-      var size = Math.ceil(r * 2 + 2), c = size / 2;
-      var off = document.createElement('canvas'); off.width = Math.round(size * dpr); off.height = Math.round(size * dpr);
+    function buildDimpleTile() {
+      var sp = 8.6, rowH = sp * 0.866, dr = 2.75;
+      var tw = sp, th = rowH * 2;
+      var off = document.createElement('canvas'); off.width = Math.round(tw * dpr); off.height = Math.round(th * dpr);
       var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
-      // body
-      o.beginPath(); o.arc(c, c, r, 0, Math.PI * 2); o.fillStyle = '#f4f5f2'; o.fill();
-      o.save(); o.beginPath(); o.arc(c, c, r - 0.3, 0, Math.PI * 2); o.clip();
-      var th = (k / FRAMES) * Math.PI * 2, ct = Math.cos(th), st = Math.sin(th);
-      var pts = spherePoints(), base = r * 0.088;
-      for (var i = 0; i < pts.length; i++) {
-        var P = pts[i];
-        var x = P[0] * ct + P[2] * st, y = P[1], z = -P[0] * st + P[2] * ct;   // spin about the vertical axis
-        if (z < 0.04) continue;
-        var px = c + x * r, py = c + y * r, ang = Math.atan2(y, x), dr = base * P[3];
-        o.save(); o.translate(px, py); o.rotate(ang); o.scale(z, 1); o.rotate(-ang);
-        // a slightly lumpy polygon reads as a pressed cell, not a stamped circle
-        o.beginPath();
-        for (var v = 0; v < P[4]; v++) {
-          var va = P[5] + (v / P[4]) * Math.PI * 2, vr = dr * P[6][v];
-          if (v === 0) o.moveTo(Math.cos(va) * vr, Math.sin(va) * vr); else o.lineTo(Math.cos(va) * vr, Math.sin(va) * vr);
-        }
-        o.closePath();
-        var g = o.createRadialGradient(-dr * 0.15, -dr * 0.15, 0, 0, 0, dr);
-        g.addColorStop(0, 'rgba(255,255,255,0.4)'); g.addColorStop(0.5, 'rgba(240,242,238,0.9)'); g.addColorStop(0.85, 'rgba(212,216,210,1)'); g.addColorStop(1, 'rgba(190,195,188,1)');
-        o.fillStyle = g; o.fill();
-        o.lineWidth = 0.5; o.strokeStyle = 'rgba(150,156,148,0.3)'; o.stroke();
-        o.restore();
-      }
-      o.restore();
-      frameCache[key] = { canvas: off, size: size };
-      return frameCache[key];
+      [[0, 0], [sp, 0], [sp / 2, rowH], [-sp / 2, rowH], [0, th], [sp, th], [sp / 2, -rowH]].forEach(function (c) { dimpleAt(o, c[0], c[1], dr); });
+      dimpleTile = ctx.createPattern(off, 'repeat');
+      try { dimpleTile.setTransform(new DOMMatrix().scale(1 / dpr)); } catch (e) { /* older browsers: slightly soft dimples */ }
+      dimpleSp = sp; dimpleRowH = rowH;
     }
-    function ballLight(r) {
+    // Everything that doesn't move is pre-rendered once per ball size: the body under the rolling dimples, and the
+    // limb dimples + shading + highlights over them. Per frame a ball is two image draws and one pattern fill.
+    var layerCache = {};
+    function ballLayers(r) {
       var key = Math.round(r * 2) + '@' + dpr;
-      if (lightCache[key]) return lightCache[key];
+      if (layerCache[key]) return layerCache[key];
       var size = Math.ceil(r * 2 + 4), c = size / 2;
       function make(draw) {
         var off = document.createElement('canvas'); off.width = Math.round(size * dpr); off.height = Math.round(size * dpr);
         var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0); draw(o); return off;
       }
       function circ(o, x, y, rr, fill) { o.beginPath(); o.arc(x, y, rr, 0, Math.PI * 2); o.fillStyle = fill; o.fill(); }
+      var under = make(function (o) {
+        var grad = o.createRadialGradient(c - r * 0.3, c - r * 0.3, r * 0.2, c, c, r * 1.05);
+        grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.65, '#fdfdfc'); grad.addColorStop(1, '#d3d7d4');
+        circ(o, c, c, r, grad);
+      });
       var over = make(function (o) {
-        o.save(); o.beginPath(); o.arc(c, c, r, 0, Math.PI * 2); o.clip();
-        var sh = o.createRadialGradient(c - r * 0.25, c - r * 0.3, r * 0.25, c, c, r);            // soft falloff to the lower-right limb
-        sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.55, 'rgba(60,70,65,0.03)'); sh.addColorStop(0.85, 'rgba(50,60,55,0.16)'); sh.addColorStop(1, 'rgba(40,50,45,0.36)');
+        var sh = o.createRadialGradient(c - r * 0.28, c - r * 0.32, r * 0.3, c, c, r);
+        sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.6, 'rgba(40,50,45,0.03)'); sh.addColorStop(0.88, 'rgba(25,35,30,0.2)'); sh.addColorStop(1, 'rgba(15,25,20,0.4)');
         circ(o, c, c, r, sh);
-        var hl = o.createRadialGradient(c - r * 0.2, c - r * 0.45, 0, c - r * 0.2, c - r * 0.45, r * 0.75);   // broad highlight, top-centre-left
-        hl.addColorStop(0, 'rgba(255,255,255,0.85)'); hl.addColorStop(0.35, 'rgba(255,255,255,0.35)'); hl.addColorStop(1, 'rgba(255,255,255,0)');
-        circ(o, c - r * 0.2, c - r * 0.45, r * 0.75, hl);
-        var bounce = o.createRadialGradient(c + r * 0.05, c + r * 1.05, r * 0.2, c + r * 0.05, c + r * 1.05, r * 1.05);
-        bounce.addColorStop(0, 'rgba(70,150,85,0.2)'); bounce.addColorStop(1, 'rgba(70,150,85,0)');
+        o.save(); o.beginPath(); o.arc(c, c, r, 0, Math.PI * 2); o.clip();
+        var bounce = o.createRadialGradient(c + r * 0.1, c + r * 1.05, r * 0.2, c + r * 0.1, c + r * 1.05, r * 1.1);
+        bounce.addColorStop(0, 'rgba(70,150,85,0.28)'); bounce.addColorStop(1, 'rgba(70,150,85,0)');
         circ(o, c, c, r, bounce);
         o.restore();
-        o.beginPath(); o.arc(c, c, r - 0.4, 0, Math.PI * 2); o.lineWidth = 0.8; o.strokeStyle = 'rgba(60,80,65,0.3)'; o.stroke();
+        var hl = o.createRadialGradient(c - r * 0.4, c - r * 0.42, 0, c - r * 0.4, c - r * 0.42, r * 0.55);
+        hl.addColorStop(0, 'rgba(255,255,255,0.75)'); hl.addColorStop(0.45, 'rgba(255,255,255,0.18)'); hl.addColorStop(1, 'rgba(255,255,255,0)');
+        circ(o, c - r * 0.4, c - r * 0.42, r * 0.55, hl);
+        var hot = o.createRadialGradient(c - r * 0.45, c - r * 0.5, 0, c - r * 0.45, c - r * 0.5, r * 0.16);
+        hot.addColorStop(0, 'rgba(255,255,255,1)'); hot.addColorStop(1, 'rgba(255,255,255,0)');
+        circ(o, c - r * 0.45, c - r * 0.5, r * 0.16, hot);
+        o.beginPath(); o.arc(c, c, r - 0.5, 0, Math.PI * 2); o.lineWidth = 1; o.strokeStyle = 'rgba(60,80,65,0.25)'; o.stroke();
       });
       var shadow = make(function (o) {
-        o.save(); o.translate(c, c + r * 0.95); o.scale(1, 0.26);
-        var cs = o.createRadialGradient(0, 0, r * 0.15, 0, 0, r * 1.15);
-        cs.addColorStop(0, 'rgba(5,30,12,0.5)'); cs.addColorStop(0.55, 'rgba(5,30,12,0.22)'); cs.addColorStop(1, 'rgba(5,30,12,0)');
-        circ(o, 0, 0, r * 1.15, cs); o.restore();
+        o.save(); o.translate(c, c + r * 0.92); o.scale(1, 0.3);
+        var cs = o.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 1.05);
+        cs.addColorStop(0, 'rgba(5,30,12,0.45)'); cs.addColorStop(0.6, 'rgba(5,30,12,0.22)'); cs.addColorStop(1, 'rgba(5,30,12,0)');
+        circ(o, 0, 0, r * 1.05, cs); o.restore();
       });
-      lightCache[key] = { over: over, shadow: shadow, size: size };
-      return lightCache[key];
+      layerCache[key] = { under: under, over: over, shadow: shadow, size: size };
+      return layerCache[key];
     }
     function drawBubble(b, now) {
-      var r = b.r * b.scale;
-      var L = ballLight(r), half = L.size / 2;
+      var r = b.r * b.scale, col = colors.ball;
+      if (!dimpleTile) buildDimpleTile();
+      var L = ballLayers(r), half = L.size / 2;
       ctx.globalAlpha = b.alpha;
       ctx.drawImage(L.shadow, b.x - half, b.y - half, L.size, L.size);
-      // spin the sphere by how far it has rolled, around the axis perpendicular to its direction of travel
-      var k = ((Math.round((b.roll || 0) / (Math.PI * 2) * FRAMES) % FRAMES) + FRAMES) % FRAMES;
-      var F = ballFrame(r, k), fh = F.size / 2;
-      ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.rollDir || 0); ctx.drawImage(F.canvas, -fh, -fh, F.size, F.size); ctx.restore();
+      ctx.drawImage(L.under, b.x - half, b.y - half, L.size, L.size);
+      // rolling dimples across the middle
+      ctx.save(); ctx.beginPath(); ctx.arc(b.x, b.y, r - 0.5, 0, Math.PI * 2); ctx.clip();
+      var ox = ((b.ox % dimpleSp) + dimpleSp) % dimpleSp, oy = ((b.oy % (dimpleRowH * 2)) + dimpleRowH * 2) % (dimpleRowH * 2);
+      ctx.translate(b.x - r + ox, b.y - r + oy); ctx.fillStyle = dimpleTile; ctx.fillRect(-dimpleSp * 2, -dimpleRowH * 4, r * 2 + dimpleSp * 4, r * 2 + dimpleRowH * 8);
+      ctx.restore();
       ctx.drawImage(L.over, b.x - half, b.y - half, L.size, L.size);
       if (opts.current && opts.current === b.name) circle(b.x, b.y, r + 4, null, colors.pine[0], 3);   // your current pick
       if (opts.games && b.held && !game && now - holdStart >= HOLD_SHOW_MS) {   // ring appears late, fills over the last stretch
@@ -418,7 +399,7 @@
       // tee marker
       circle(g.def.tee[0] * W, g.def.tee[1] * H, 3, 'rgba(255,255,255,0.5)');
       // ball
-      if (b.alpha > 0) drawBubble({ x: b.x, y: b.y, r: b.r, scale: b.scale, alpha: b.alpha, roll: b.roll, rollDir: b.rollDir, name: '', num: '' }, now);
+      if (b.alpha > 0) drawBubble({ x: b.x, y: b.y, r: b.r, scale: b.scale, alpha: b.alpha, ox: b.ox || 0, oy: b.oy || 0, name: '', num: '' }, now);
       // putter following the finger
       if (g.putter && !g.sunk) {
         var pt = g.putter, ang = Math.atan2(pt.vy, pt.vx);
