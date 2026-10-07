@@ -77,11 +77,15 @@
       if (!running) return;
       var dt = Math.min(32, now - last) / 16.67; last = now;
       balls.forEach(function (b) {
-        if (b.held) return;
+        if (b.held) {
+          var tx = Math.max(b.r, Math.min(W - b.r, b.tx)), ty = Math.max(b.r, Math.min(H - b.r, b.ty));
+          b.vx = (tx - b.x) * 0.55; b.vy = (ty - b.y) * 0.55;
+          b.x += b.vx * dt; b.y += b.vy * dt;
+          return;
+        }
         if (!reduce) {                    // every bubble wanders a little, always, so it's obvious they move
-          b.ang += (Math.random() - 0.5) * 0.3 * dt;
-          var speed = Math.hypot(b.vx, b.vy);
-          if (speed < 1.2) { b.vx += Math.cos(b.ang) * 0.05 * dt; b.vy += Math.sin(b.ang) * 0.05 * dt; }
+          b.ang += (Math.random() - 0.5) * 0.04 * dt;        // heading turns slowly, no per-frame jitter
+          b.vx += Math.cos(b.ang) * 0.02 * dt; b.vy += Math.sin(b.ang) * 0.02 * dt;  // cruise ~2 px/frame after damping
         }
         b.x += b.vx * dt; b.y += b.vy * dt;
         b.vx *= Math.pow(0.992, dt); b.vy *= Math.pow(0.992, dt);
@@ -95,7 +99,8 @@
           var a = balls[i], c = balls[j];
           var dx = c.x - a.x, dy = c.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 0.01, min = a.r + c.r;
           if (d >= min) continue;
-          var nx = dx / d, ny = dy / d, overlap = min - d;
+          var nx = dx / d, ny = dy / d, overlap = (min - d) * 0.6;
+          if (overlap < 0.2) continue;
           var wa = a.held ? 0 : (c.held ? 1 : c.m / (a.m + c.m)), wc = c.held ? 0 : (a.held ? 1 : a.m / (a.m + c.m));
           a.x -= nx * overlap * wa; a.y -= ny * overlap * wa;
           c.x += nx * overlap * wc; c.y += ny * overlap * wc;
@@ -104,8 +109,8 @@
           var e = 0.9;
           if (a.held || c.held) {                           // held bubble has infinite mass
             var mover = a.held ? c : a, sign = a.held ? 1 : -1;
-            var push = Math.max(Math.abs(rel), 1.5) * (1 + e);
-            mover.vx += nx * push * sign * 0.5; mover.vy += ny * push * sign * 0.5;
+            var push = Math.max(Math.abs(rel), 1.0) * (1 + e);
+            mover.vx += nx * push * sign; mover.vy += ny * push * sign;
           } else {
             var jimp = -(1 + e) * rel / (1 / a.m + 1 / c.m);
             a.vx -= jimp * nx / a.m; a.vy -= jimp * ny / a.m;
@@ -113,7 +118,7 @@
           }
         }
       }
-      balls.forEach(function (b) { b.el.style.transform = 'translate(' + (b.x - b.r) + 'px,' + (b.y - b.r) + 'px)'; });
+      balls.forEach(function (b) { b.el.style.transform = 'translate3d(' + (b.x - b.r).toFixed(2) + 'px,' + (b.y - b.r).toFixed(2) + 'px,0)'; });
       requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
@@ -125,15 +130,14 @@
       var el = e.target.closest('.bub'); if (!el || popping) return;
       var b = balls.filter(function (x) { return x.el === el; })[0];
       held = b; b.held = true; b.vx = 0; b.vy = 0; el.classList.add('grab');
-      var p = pos(e); start = p; trail = [p]; b.gx = p.x - b.x; b.gy = p.y - b.y;
+      var p = pos(e); start = p; trail = [p]; b.gx = p.x - b.x; b.gy = p.y - b.y; b.tx = b.x; b.ty = b.y;
       try { box.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
       e.preventDefault();
     });
     box.addEventListener('pointermove', function (e) {
       if (!held) return;
       var p = pos(e);
-      held.x = Math.max(held.r, Math.min(W - held.r, p.x - held.gx));
-      held.y = Math.max(held.r, Math.min(H - held.r, p.y - held.gy));
+      held.tx = p.x - held.gx; held.ty = p.y - held.gy;
       trail.push(p); if (trail.length > 6) trail.shift();
     });
     function release(e) {

@@ -32,15 +32,17 @@
   .bubbles {
     position: relative; margin-top: 20px; height: min(62vh, 560px); min-height: 420px;
     border-radius: 18px; background: linear-gradient(180deg, transparent, var(--pine-soft));
-    overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
+    overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; contain: layout style paint;
   }
   .bub {
     position: absolute; left: 0; top: 0; will-change: transform;
     border: 2px solid transparent; border-radius: 50%; width: 92px; height: 92px; padding: 0;
     font: 700 1.05rem var(--display); cursor: grab; display: grid; place-items: center; overflow-wrap: anywhere;
-    box-shadow: 0 6px 16px rgba(27, 42, 34, 0.14); -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 3px 6px rgba(27, 42, 34, 0.12); -webkit-tap-highlight-color: transparent;
+    backface-visibility: hidden; transform: translate3d(0, 0, 0);
   }
-  .bub.grab { cursor: grabbing; box-shadow: 0 14px 28px rgba(27, 42, 34, 0.22); z-index: 2; }
+  .bub.grab { cursor: grabbing; z-index: 2; }
+  .bub.grab .in { transform: scale(1.06); }
   .bub.pine { background: var(--pine); color: var(--pine-ink); }
   .bub.plain { background: var(--surface); color: var(--fg); border-color: var(--line); }
   .bub.ember { background: var(--ember); color: #fff; }
