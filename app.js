@@ -50,12 +50,12 @@
 
   // ---- Bubble physics on a canvas: grab, fling, collide. A quick tap picks the name.
   //      Hold one for 5 seconds and it turns into air hockey against the CPU. ----
-  var sim = null, scores = null, scoresSub = false;
+  var sim = null, scores = null, scoresSub = false, boardShown = false;
   var HOLD_MS = 5000, HOLD_SHOW_MS = 3000;
   function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
   function renderScores() {
     var el = $('scores'); if (!el) return;
-    if (!scores) { el.hidden = true; return; }
+    if (!scores || !boardShown) { el.hidden = true; return; }
     var names = Object.keys(scores.byName || {}).sort(function (a, b) { return scores.byName[b] - scores.byName[a]; }).slice(0, 3);
     var h = scores.humans || 0, c = scores.cpu || 0;
     el.hidden = false;
@@ -195,13 +195,16 @@
       var gw = Math.round(W * 0.42);
       game = { me: paddle, t0: performance.now(), over: null,
         goal: { x1: (W - gw) / 2, x2: (W + gw) / 2 },
-        cpu: { x: W / 2, y: 70, vx: 0, vy: 0, r: 44 },
-        puck: { x: W / 2, y: H / 2, vx: (Math.random() - 0.5) * 3, vy: (Math.random() < 0.5 ? -1 : 1) * 2.5, r: 15 } };
+        cpu: { x: W / 2, y: 56, vx: 0, vy: 0, r: 28 },
+        puck: { x: W / 2, y: H / 2, vx: (Math.random() - 0.5) * 3, vy: (Math.random() < 0.5 ? -1 : 1) * 2.5, r: 12 } };
       paddle.held = true; paddle.tx = paddle.x; paddle.ty = Math.max(H / 2 + paddle.r, paddle.y);
+      paddle.targetR = 28; paddle.bubbleR = paddle.r;
       balls.forEach(function (b) { if (b !== paddle) b.fade = true; });
+      boardShown = true; renderScores();
     }
     function gamePhysics(dt, now) {
       var g = game, me = g.me, p = g.puck, c = g.cpu;
+      if (me.r > me.targetR + 0.2) me.r += (me.targetR - me.r) * Math.min(1, 0.18 * dt); else me.r = me.targetR;
       if (g.over) return;
       // player paddle follows finger, bottom half only
       var tx = Math.max(me.r, Math.min(W - me.r, me.tx)), ty = Math.max(H / 2 + me.r, Math.min(H - me.r, me.ty));
@@ -211,7 +214,7 @@
       var cx, cy;
       if (p.y < H / 2 && p.y > c.y - 6) { cx = p.x; cy = p.y - 10; }           // puck in front: go hit it
       else if (p.y < H / 2) { cx = W / 2; cy = Math.min(H / 2 - c.r, p.y + c.r + p.r + 30); }   // puck behind: back away so it can roll out
-      else { cx = W / 2 + (p.x - W / 2) * 0.4; cy = 70; }
+      else { cx = W / 2 + (p.x - W / 2) * 0.4; cy = 56; }
       cx = Math.max(c.r, Math.min(W - c.r, cx)); cy = Math.max(c.r, Math.min(H / 2 - c.r, cy));
       var maxv = 7.5;
       var nvx = (cx - c.x) * 0.12, nvy = (cy - c.y) * 0.12, nv = Math.hypot(nvx, nvy);
@@ -256,6 +259,15 @@
       game.over = { winner: winner, t: performance.now() };
       if (store && store.recordWin) store.recordWin(winner, game.me.name).catch(function () { /* tally is best-effort */ });
     }
+    function mallet(x, y, r, color, label) {
+      circle(x, y + 3, r, colors.shadow);
+      circle(x, y, r, color, 'rgba(0,0,0,0.22)', 3);                       // base disc with a rim
+      circle(x, y, r * 0.66, color, 'rgba(0,0,0,0.28)', 2);                // raised handle
+      circle(x, y, r * 0.42, 'rgba(255,255,255,0.22)');                    // knob top
+      ctx.beginPath(); ctx.arc(x - r * 0.12, y - r * 0.12, r * 0.3, Math.PI * 1.05, Math.PI * 1.65);
+      ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.stroke();   // highlight
+      if (label) { ctx.fillStyle = colors.muted; ctx.font = '600 11px ' + fontFamily; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, x, y + r + 12); }
+    }
     function drawGame(now) {
       var g = game, p = g.puck, c = g.cpu, me = g.me;
       var fade = Math.min(1, (now - g.t0) / 500);
@@ -272,17 +284,18 @@
       ctx.globalAlpha = 1;
       // fading bubbles
       balls.forEach(function (b) { if (b.fade) { b.alpha = Math.max(0, 1 - fade); if (b.alpha > 0) drawBubble(b, now); } });
-      // cpu paddle
-      circle(c.x, c.y + 3, c.r, colors.shadow); circle(c.x, c.y, c.r, colors.ember[0]);
-      ctx.fillStyle = '#fff'; ctx.font = '700 15px ' + fontFamily; ctx.fillText('CPU', c.x, c.y + 1);
+      // cpu mallet
+      mallet(c.x, c.y, c.r, colors.ember[0], 'CPU');
       // puck
       if (g.serveFlash && now - g.serveFlash < 900) {
         ctx.globalAlpha = 1 - (now - g.serveFlash) / 900; ctx.fillStyle = colors.muted; ctx.font = '600 13px ' + fontFamily;
         ctx.fillText('re-serve', W / 2, H / 2 + 64); ctx.globalAlpha = 1;
       }
-      circle(p.x, p.y + 2, p.r, colors.shadow); circle(p.x, p.y, p.r, colors.fg); circle(p.x, p.y, p.r * 0.45, null, colors.bg, 2);
-      // player paddle
-      drawBubble(me, now);
+      circle(p.x, p.y + 2, p.r, colors.shadow); circle(p.x, p.y, p.r, colors.fg); circle(p.x, p.y, p.r * 0.5, null, colors.bg, 1.5);
+      // player mallet (the bubble shrinks into it)
+      var k2 = Math.min(1, (now - g.t0) / 450);
+      if (k2 < 1) { me.alpha = 1; drawBubble(me, now); }
+      ctx.globalAlpha = k2; mallet(me.x, me.y, me.r, colors[me.tone][0], me.name); ctx.globalAlpha = 1;
       if (g.over) {
         var k = Math.min(1, (now - g.over.t) / 300);
         ctx.globalAlpha = 0.85 * k; ctx.fillStyle = colors.bg; ctx.fillRect(0, H / 2 - 60, W, 120); ctx.globalAlpha = k;
@@ -299,7 +312,7 @@
       var dt = Math.min(32, now - last) / 16.67; last = now;
       if (game) {
         gamePhysics(dt, now);
-        if (game.over && now - game.over.t > 1800) { running = false; renderRoster(); return; }   // back to the bubbles
+        if (game.over && now - game.over.t > 2400) { running = false; renderRoster(); return; }   // back to the bubbles
       } else {
         physics(dt, now);
         if (held && now - holdStart >= HOLD_MS && !popping) startGame(held);
