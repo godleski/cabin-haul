@@ -44,16 +44,25 @@
   if (me && !partyOf(me)) me = null;           // roster changed; ask again
   var myParty = me ? partyOf(me) : null;
 
+  // Everyone as individuals, in a fixed shuffled order so couples aren't side by side.
+  var NAMES = ['Mitch', 'Katelyn', 'Drew', 'Luke', 'Kelly', 'Gabby', 'Joe', 'Liv', 'Terry', 'Jess', 'Kyle', 'Kyrsten', 'Justin'];
+  PARTIES.forEach(function (p) { p.forEach(function (n) { if (NAMES.indexOf(n) < 0) NAMES.push(n); }); });
+
   function renderRoster() {
-    $('roster').innerHTML = PARTIES.map(function (p) {
-      if (p.length === 1) return '<div class="party"><button type="button" class="who solo" data-me="' + esc(p[0]) + '">' + esc(p[0]) + '</button></div>';
-      return '<div class="party"><button type="button" class="who" data-me="' + esc(p[0]) + '">' + esc(p[0]) + '</button><span class="amp">&amp;</span><button type="button" class="who" data-me="' + esc(p[1]) + '">' + esc(p[1]) + '</button></div>';
+    $('roster').innerHTML = NAMES.map(function (n) {
+      return '<button type="button" class="bub" data-me="' + esc(n) + '">' + esc(n) + '</button>';
     }).join('');
   }
+  var popping = false;
   $('roster').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-me]'); if (!b) return;
-    me = b.getAttribute('data-me'); myParty = partyOf(me); lsSet('cabin-haul-me', me);
-    showScreen();
+    var b = e.target.closest('[data-me]'); if (!b || popping) return;
+    popping = true;
+    b.classList.add('pop');
+    setTimeout(function () {
+      popping = false;
+      me = b.getAttribute('data-me'); myParty = partyOf(me); lsSet('cabin-haul-me', me);
+      showScreen();
+    }, 280);
   });
   $('switch').addEventListener('click', function () { me = null; myParty = null; lsDel('cabin-haul-me'); showScreen(); });
 
