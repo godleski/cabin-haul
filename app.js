@@ -86,7 +86,7 @@
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
       cv.style.width = W + 'px'; cv.style.height = H + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      dimpleTile = null; layerCache = {};
+      dimpleTile = null; layerCache = {}; scriptCache = {};
     }
     resize();
     var colors = {};
@@ -97,7 +97,7 @@
     }
     readColors();
     var fontFamily = cssVar('--display'), font = '700 16px ' + fontFamily, scriptFamily = cssVar('--script') || 'cursive';
-    if (document.fonts && document.fonts.load) { document.fonts.load(font).catch(function () { /* fallback font is fine */ }); document.fonts.load('400 20px ' + scriptFamily).catch(function () { /* fallback font is fine */ }); }
+    if (document.fonts && document.fonts.load) { document.fonts.load(font).catch(function () { /* fallback font is fine */ }); document.fonts.load('400 20px ' + scriptFamily).then(function () { scriptCache = {}; }).catch(function () { /* fallback font is fine */ }); }
 
     var balls = names.map(function (n, i) {
       var r = n.indexOf(' & ') >= 0 ? 54 : 40;
@@ -242,6 +242,24 @@
       layerCache[key] = { under: under, over: over, shadow: shadow, size: size };
       return layerCache[key];
     }
+    var scriptCache = {};
+    function scriptSprite(text, px) {
+      var key = text + '@' + Math.round(px * 4) + '@' + dpr;
+      if (scriptCache[key]) return scriptCache[key];
+      var w = Math.ceil(px * text.length * 0.75 + px), h = Math.ceil(px * 1.8);
+      var off = document.createElement('canvas'); off.width = Math.round(w * dpr); off.height = Math.round(h * dpr);
+      var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
+      o.font = '400 ' + px + 'px ' + scriptFamily; o.textAlign = 'center'; o.textBaseline = 'middle';
+      o.fillStyle = 'rgba(18,18,18,0.95)'; o.fillText(text, w / 2, h / 2);
+      o.globalCompositeOperation = 'destination-out';                 // shave the edges so the brush face reads as a thin pen
+      o.lineWidth = Math.max(0.8, px * 0.075); o.lineJoin = 'round'; o.strokeStyle = '#000'; o.strokeText(text, w / 2, h / 2);
+      scriptCache[key] = { canvas: off, w: w, h: h };
+      return scriptCache[key];
+    }
+    function drawScript(text, x, y, px) {
+      var sp = scriptSprite(text, px);
+      ctx.drawImage(sp.canvas, x - sp.w / 2, y - sp.h / 2, sp.w, sp.h);
+    }
     function drawBubble(b, now) {
       var r = b.r * b.scale, col = colors.ball;
       if (!dimpleTile) buildDimpleTile();
@@ -263,13 +281,11 @@
       }
       var k = (b.r / 40) * b.scale;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = 'rgba(20,20,20,0.95)';
-      ctx.font = '400 ' + Math.round(21 * k) + 'px ' + scriptFamily;               // the logo, in a thin script
-      if (b.name.indexOf(' & ') >= 0) {                                             // couples: two lines
+      // the logo: brush script, thinned by eroding the glyph edges (cached per name and size)
+      if (b.name.indexOf(' & ') >= 0) {
         var pair = b.name.split(' & ');
-        ctx.font = '400 ' + Math.round(19 * k) + 'px ' + scriptFamily;
-        ctx.fillText(pair[0] + ' &', b.x, b.y - 12 * k); ctx.fillText(pair[1], b.x, b.y + 3 * k);
-      } else ctx.fillText(b.name, b.x, b.y - 5 * k);
+        drawScript(pair[0] + ' &', b.x, b.y - 12 * k, 15 * k); drawScript(pair[1], b.x, b.y + 2 * k, 15 * k);
+      } else drawScript(b.name, b.x, b.y - 5 * k, 17 * k);
       ctx.fillStyle = '#d63a1f';                                                    // play number, in red
       ctx.font = '700 ' + Math.round(11 * k) + 'px ' + fontFamily;
       var couple = b.name.indexOf(' & ') >= 0;
