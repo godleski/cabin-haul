@@ -230,6 +230,153 @@
       balls.forEach(function (b) { drawBubble(b, now); });
     }
 
+    // ---- Mini golf ----
+    var golf = null;
+    var HOLES = [   // fractions of the arena; rects are bumpers, circles are rocks
+      { par: 2, tee: [0.5, 0.88], cup: [0.5, 0.18], rects: [[0.12, 0.47, 0.58, 0.05]], circles: [] },
+      { par: 3, tee: [0.16, 0.88], cup: [0.82, 0.18], rects: [[0.47, 0.0, 0.06, 0.58], [0.68, 0.72, 0.32, 0.05]], circles: [] },
+      { par: 3, tee: [0.5, 0.9], cup: [0.18, 0.18], rects: [[0.0, 0.3, 0.42, 0.05], [0.58, 0.58, 0.42, 0.05]], circles: [[0.56, 0.42, 0.06]] }
+    ];
+    function startGolf() {
+      golf = { hole: 0, strokes: 0, total: 0, t0: performance.now(), msg: null, done: false };
+      loadHole();
+    }
+    function loadHole() {
+      var def = HOLES[golf.hole], g = golf;
+      g.def = def; g.strokes = 0; g.sunk = null; g.msg = null;
+      g.ball = { x: def.tee[0] * W, y: def.tee[1] * H, vx: 0, vy: 0, r: 9, ox: 0, oy: 0, scale: 1, alpha: 1 };
+      g.cup = { x: def.cup[0] * W, y: def.cup[1] * H, r: 13 };
+      g.rects = def.rects.map(function (r) { return { x: r[0] * W, y: r[1] * H, w: r[2] * W, h: r[3] * H }; });
+      g.circles = def.circles.map(function (c) { return { x: c[0] * W, y: c[1] * H, r: c[2] * W }; });
+      g.putter = null; g.struck = false;
+    }
+    function golfPhysics(dt, now) {
+      var g = golf, b = g.ball;
+      if (g.sunk) {
+        var t = (now - g.sunk) / 500;
+        b.scale = Math.max(0, 1 - t * 0.9); b.alpha = Math.max(0, 1 - t);
+        if (now - g.sunk > 1700) {
+          if (g.hole + 1 < HOLES.length) { g.hole++; loadHole(); }
+          else { g.done = g.done || now; }
+        }
+        if (g.done && now - g.done > 2600) { golf = null; }
+        return;
+      }
+      var speed = Math.hypot(b.vx, b.vy);
+      var fr = speed > 6 ? 0.991 : 0.978;
+      b.vx *= Math.pow(fr, dt); b.vy *= Math.pow(fr, dt);
+      if (speed < 0.06) { b.vx = 0; b.vy = 0; }
+      // sub-step so fast putts can't tunnel through bumpers
+      var steps = Math.max(1, Math.ceil(speed * dt / 4));
+      for (var si = 0; si < steps; si++) {
+        b.x += b.vx * dt / steps; b.y += b.vy * dt / steps;
+        b.ox += b.vx * dt / steps; b.oy += b.vy * dt / steps;
+        if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.7; }
+        if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.7; }
+        if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.7; }
+        if (b.y > H - b.r) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 0.7; }
+        g.rects.forEach(function (rc) {
+          var cx = Math.max(rc.x, Math.min(rc.x + rc.w, b.x)), cy = Math.max(rc.y, Math.min(rc.y + rc.h, b.y));
+          var dx = b.x - cx, dy = b.y - cy, d = Math.hypot(dx, dy);
+          if (d >= b.r) return;
+          if (d < 0.001) { dx = b.vx ? -Math.sign(b.vx) : 0; dy = b.vy ? -Math.sign(b.vy) : 1; d = Math.hypot(dx, dy) || 1; }
+          var nx = dx / d, ny = dy / d;
+          b.x = cx + nx * b.r; b.y = cy + ny * b.r;
+          var rel = b.vx * nx + b.vy * ny;
+          if (rel < 0) { b.vx -= (1 + 0.7) * rel * nx; b.vy -= (1 + 0.7) * rel * ny; }
+        });
+        g.circles.forEach(function (c) {
+          var dx = b.x - c.x, dy = b.y - c.y, d = Math.hypot(dx, dy) || 0.01, min = b.r + c.r;
+          if (d >= min) return;
+          var nx = dx / d, ny = dy / d;
+          b.x = c.x + nx * min; b.y = c.y + ny * min;
+          var rel = b.vx * nx + b.vy * ny;
+          if (rel < 0) { b.vx -= (1 + 0.7) * rel * nx; b.vy -= (1 + 0.7) * rel * ny; }
+        });
+        // the cup: drop in when over it and not too hot, otherwise it skips across the lip
+        var cd = Math.hypot(b.x - g.cup.x, b.y - g.cup.y);
+        if (cd < g.cup.r - 3 && speed < 6.5) {
+          b.x = g.cup.x; b.y = g.cup.y; b.vx = 0; b.vy = 0;
+          g.sunk = now; g.total += g.strokes;
+          var diff = g.strokes - g.def.par;
+          g.msg = g.strokes === 1 ? 'HOLE IN ONE!' : diff <= -2 ? 'EAGLE!' : diff === -1 ? 'BIRDIE!' : diff === 0 ? 'PAR' : diff === 1 ? 'BOGEY' : diff === 2 ? 'DOUBLE BOGEY' : 'IN THE HOLE';
+          return;
+        }
+      }
+      if (Math.hypot(b.x - g.cup.x, b.y - g.cup.y) < g.cup.r + 2 && speed >= 6.5) { b.vx *= 0.97; b.vy *= 0.97; g.lipFlash = now; }   // rattled the lip
+    }
+    function golfStrike(p, vel) {
+      var g = golf, b = g.ball;
+      if (!g || g.sunk || g.struck) return;
+      if (Math.hypot(b.vx, b.vy) > 0.4) return;                      // wait for the ball to stop
+      var sp = Math.hypot(vel.x, vel.y);
+      if (sp < 1.5) return;
+      if (Math.hypot(p.x - b.x, p.y - b.y) > b.r + 14) return;         // putter has to pass through the ball
+      var cap = 24, k = Math.min(1, cap / sp);
+      b.vx = vel.x * k * 0.95; b.vy = vel.y * k * 0.95;
+      g.strokes++; g.struck = true; g.hitFlash = performance.now();
+    }
+    function roundRect(x, y, w, h, r) {
+      ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+    }
+    function drawGolf(now) {
+      var g = golf, b = g.ball;
+      // bumpers (wood) and rocks
+      g.rects.forEach(function (rc) {
+        ctx.fillStyle = 'rgba(0,30,10,0.25)'; roundRect(rc.x + 2, rc.y + 4, rc.w, rc.h, 4); ctx.fill();
+        var wood = ctx.createLinearGradient(0, rc.y, 0, rc.y + rc.h); wood.addColorStop(0, '#a9794a'); wood.addColorStop(1, '#6e4a28');
+        ctx.fillStyle = wood; roundRect(rc.x, rc.y, rc.w, rc.h, 4); ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1; ctx.stroke();
+      });
+      g.circles.forEach(function (c) {
+        ctx.save(); ctx.translate(c.x, c.y + c.r * 0.5); ctx.scale(1, 0.4); circle(0, 0, c.r * 1.05, 'rgba(0,30,10,0.3)'); ctx.restore();
+        var rock = ctx.createRadialGradient(c.x - c.r * 0.3, c.y - c.r * 0.35, c.r * 0.1, c.x, c.y, c.r);
+        rock.addColorStop(0, '#9aa39b'); rock.addColorStop(1, '#4f5a52'); circle(c.x, c.y, c.r, rock, 'rgba(0,0,0,0.3)', 1);
+      });
+      // cup with flag
+      circle(g.cup.x, g.cup.y, g.cup.r + 2, 'rgba(255,255,255,0.35)');
+      circle(g.cup.x, g.cup.y, g.cup.r, '#10261a');
+      circle(g.cup.x, g.cup.y - 2, g.cup.r - 3, '#06130c');
+      ctx.strokeStyle = '#f2f2ea'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(g.cup.x, g.cup.y); ctx.lineTo(g.cup.x, g.cup.y - 46); ctx.stroke();
+      ctx.fillStyle = '#e8403a'; ctx.beginPath(); ctx.moveTo(g.cup.x + 1, g.cup.y - 46); ctx.lineTo(g.cup.x + 26, g.cup.y - 38); ctx.lineTo(g.cup.x + 1, g.cup.y - 30); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = '800 9px ' + fontFamily; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(g.hole + 1), g.cup.x + 11, g.cup.y - 38);
+      // tee marker
+      circle(g.def.tee[0] * W, g.def.tee[1] * H, 3, 'rgba(255,255,255,0.5)');
+      // ball
+      if (b.alpha > 0) drawBubble({ x: b.x, y: b.y, r: b.r, scale: b.scale, alpha: b.alpha, ox: b.ox, oy: b.oy, name: '', num: '' }, now);
+      // putter following the finger
+      if (g.putter && !g.sunk) {
+        var pt = g.putter, ang = Math.atan2(pt.vy, pt.vx);
+        ctx.save(); ctx.translate(pt.x, pt.y); ctx.rotate(ang + Math.PI / 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.25)'; roundRect(-16, -4 + 3, 32, 9, 3); ctx.fill();
+        var steel = ctx.createLinearGradient(0, -5, 0, 5); steel.addColorStop(0, '#e6e9ec'); steel.addColorStop(1, '#8e969e');
+        ctx.fillStyle = steel; roundRect(-16, -5, 32, 9, 3); ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(0, -42); ctx.stroke();   // shaft
+        ctx.restore();
+      }
+      // HUD
+      ctx.fillStyle = 'rgba(0,20,8,0.55)'; roundRect(8, 8, 150, 26, 8); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = '700 12px ' + fontFamily; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText('Hole ' + (g.hole + 1) + '/' + HOLES.length + ' · Par ' + g.def.par + ' · Strokes ' + g.strokes, 16, 21);
+      ctx.fillStyle = 'rgba(0,20,8,0.55)'; roundRect(W - 58, 8, 50, 26, 8); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText('quit', W - 33, 21);
+      if (g.hitFlash && now - g.hitFlash < 500 && Math.hypot(b.vx, b.vy) > 0) { /* could add a sound later */ }
+      if (g.msg) {
+        var k = Math.min(1, (now - g.sunk) / 300);
+        ctx.globalAlpha = 0.85 * k; ctx.fillStyle = colors.bg; ctx.fillRect(0, H / 2 - 56, W, 112); ctx.globalAlpha = k;
+        ctx.fillStyle = colors.pine[0]; ctx.font = '800 30px ' + fontFamily; ctx.textAlign = 'center';
+        ctx.fillText(g.done ? 'ROUND OVER' : g.msg, W / 2, H / 2 - 14);
+        ctx.fillStyle = colors.fg; ctx.font = '600 14px ' + fontFamily;
+        var par = HOLES.reduce(function (a, h) { return a + h.par; }, 0);
+        ctx.fillText(g.done ? g.total + ' strokes on a par ' + par + ' course' : g.strokes + (g.strokes === 1 ? ' stroke' : ' strokes') + ' · par ' + g.def.par, W / 2, H / 2 + 20);
+        ctx.globalAlpha = 1;
+      }
+      if (!g.strokes && !g.sunk && !g.putter) {
+        ctx.globalAlpha = 0.6 + 0.4 * Math.sin(now / 300); ctx.fillStyle = '#fff'; ctx.font = '600 12px ' + fontFamily; ctx.textAlign = 'center';
+        ctx.fillText('swipe through the ball to putt', b.x, b.y + 26); ctx.globalAlpha = 1;
+      }
+    }
+
     // ---- Air hockey ----
     function startGame(paddle) {
       var gw = Math.round(W * 0.42);
@@ -372,6 +519,12 @@
     function step(now) {
       if (!running) return;
       var dt = Math.min(32, now - last) / 16.67; last = now;
+      if (golf) {
+        golfPhysics(dt, now);
+        ctx.clearRect(0, 0, W, H);
+        if (golf) drawGolf(now); else { balls.forEach(function (b) { drawBubble(b, now); }); }
+        requestAnimationFrame(step); return;
+      }
       if (game) {
         gamePhysics(dt, now);
         if (game.over && now - game.over.t > 2400) { running = false; renderRoster(); return; }   // back to the bubbles
@@ -403,6 +556,12 @@
     cv.addEventListener('pointerdown', function (e) {
       if (popping) return;
       var p = pos(e);
+      if (golf) {
+        if (p.x > W - 58 && p.y < 34) { golf = null; return; }                 // quit
+        golf.putter = { x: p.x, y: p.y, vx: 0, vy: 0 }; golf.struck = false; trail = [p];
+        try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+        e.preventDefault(); return;
+      }
       if (game) {
         var me = game.me; me.gx = p.x - me.x; me.gy = p.y - me.y;
         if (Math.hypot(me.gx, me.gy) > me.r + 24) { me.gx = 0; me.gy = 0; }   // tapped far away: paddle jumps to finger
@@ -416,12 +575,24 @@
       e.preventDefault();
     });
     cv.addEventListener('pointermove', function (e) {
+      if (golf) {
+        if (!golf.putter) return;
+        var q = pos(e), old = trail[trail.length - 1];
+        var dtm = Math.max(8, q.t - old.t) / 16.67;
+        var vx = (q.x - old.x) / dtm, vy = (q.y - old.y) / dtm;
+        golf.putter.x = q.x; golf.putter.y = q.y;
+        if (Math.hypot(vx, vy) > 0.5) { golf.putter.vx = vx; golf.putter.vy = vy; }
+        trail.push(q); if (trail.length > 6) trail.shift();
+        golfStrike(q, { x: vx, y: vy });
+        return;
+      }
       if (!held) return;
       var p = pos(e);
       held.tx = p.x - held.gx; held.ty = p.y - held.gy;
       trail.push(p); if (trail.length > 6) trail.shift();
     });
     function release(e) {
+      if (golf) { golf.putter = null; return; }
       if (!held) return;
       if (game) { held = null; return; }               // paddle stays where you left it
       var b = held, p = pos(e); held = null; b.held = false;
@@ -448,9 +619,11 @@
       me = pendingPick; myParty = partyOf(me); lsSet('cabin-haul-me', me);
       showScreen();
     }
-    sim = { stop: function () { running = false; if (ro) ro.disconnect(); } };
+    box.__golf = function () { return golf; };
+    sim = { stop: function () { running = false; if (ro) ro.disconnect(); }, startGolf: startGolf };
   }
   $('switch').addEventListener('click', function () { me = null; myParty = null; lsDel('cabin-haul-me'); showScreen(); });
+  $('golfbtn').addEventListener('click', function () { if (sim && sim.startGolf) sim.startGolf(); });
 
   function showScreen() {
     var picking = !me;
