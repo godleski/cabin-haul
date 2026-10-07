@@ -220,7 +220,7 @@
       ctx.fillText(String(b.num), b.x, b.y + 10 * k);
       if (k > 0.8) {                                                                // sidestamp with alignment arrows
         ctx.fillStyle = 'rgba(17,17,17,0.85)'; ctx.font = '600 ' + Math.round(5.2 * k) + 'px ' + fontFamily;
-        ctx.fillText('\u25C0  CABIN HAUL  \u25B6', b.x, b.y + 21 * k);
+        ctx.fillText('\u25C0  PRO G1  \u25B6', b.x, b.y + 21 * k);
       }
       ctx.globalAlpha = 1;
     }
