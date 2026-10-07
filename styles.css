@@ -2,6 +2,7 @@
     --bg: #f2f4ee; --surface: #ffffff; --fg: #1b2a22; --muted: #5f6f66; --line: #d6dcd4;
     --pine: #2d6a4f; --pine-ink: #ffffff; --pine-soft: #e3efe8; --ember: #d2691e; --ember-soft: #fbe9db;
     --lake: #3f7cae; --lake-ink: #ffffff; --claude: #d97757;
+    --grass-a: #4f9a5c; --grass-b: #58a766; --fringe: #3b7a46;
     --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
     --body: "Instrument Sans", "Helvetica Neue", Arial, system-ui, sans-serif;
     color-scheme: light;
@@ -11,6 +12,7 @@
       --bg: #121a15; --surface: #1b2620; --fg: #e9efe9; --muted: #9fb0a6; --line: #2f3d35;
       --pine: #6fbf95; --pine-ink: #0f1d16; --pine-soft: #1f3a2d; --ember: #f0994f; --ember-soft: #3d2a1b;
       --lake: #7fb3e0; --lake-ink: #0f1d2a; --claude: #d97757;
+      --grass-a: #2f6b3a; --grass-b: #367843; --fringe: #244f2c;
       color-scheme: dark;
     }
   }
@@ -34,7 +36,9 @@
   /* ---- Who are you: bubbles you can fling around (drawn on a canvas) ---- */
   .bubbles {
     position: relative; margin-top: 20px; height: min(62vh, 560px); min-height: 420px;
-    border-radius: 18px; background: linear-gradient(180deg, transparent, var(--pine-soft));
+    border-radius: 18px; border: 6px solid var(--fringe);
+    background: repeating-linear-gradient(135deg, var(--grass-a) 0 40px, var(--grass-b) 40px 80px);
+    box-shadow: inset 0 0 40px rgba(0, 30, 10, 0.18);
     overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
   }
   .bubbles canvas { display: block; width: 100%; height: 100%; cursor: grab; -webkit-tap-highlight-color: transparent; }

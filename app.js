@@ -81,27 +81,25 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     resize();
-    var tones = ['pine', 'plain', 'lake'], colors = {};
+    var colors = {};
     function readColors() {
-      colors = { pine: [cssVar('--pine'), cssVar('--pine-ink')], plain: [cssVar('--surface'), cssVar('--fg')], lake: [cssVar('--lake'), cssVar('--lake-ink')],
+      colors = { pine: [cssVar('--pine'), cssVar('--pine-ink')], ball: ['#fbfbf7', '#1b2a22'],
         claude: cssVar('--claude') || '#d97757', cream: '#f5efe6',
-        line: cssVar('--line'), fg: cssVar('--fg'), bg: cssVar('--bg'), muted: cssVar('--muted'), shadow: 'rgba(27,42,34,0.14)' };
+        line: cssVar('--line'), fg: cssVar('--fg'), bg: cssVar('--bg'), muted: cssVar('--muted'), shadow: 'rgba(10,40,20,0.28)' };
     }
     readColors();
     var fontFamily = cssVar('--display'), font = '700 16px ' + fontFamily;
     if (document.fonts && document.fonts.load) document.fonts.load(font).catch(function () { /* fallback font is fine */ });
 
     var balls = NAMES.map(function (n, i) {
-      var r = [46, 41, 52, 46, 44][i % 5];
+      var r = 40;
       var cols = 3, col = i % cols, row = Math.floor(i / cols);
-      return { name: n, tone: tones[i % 3], r: r, m: r * r, scale: 1, alpha: 1,
-        x: (W / (cols + 1)) * (col + 1) + (row % 2 ? 18 : -18) + (Math.random() * 10 - 5),
-        y: 70 + row * 100 + (Math.random() * 10 - 5),
-        vx: 0, vy: 0, held: false,
-        w1: 0.7 + Math.random() * 0.35, w2: 0.45 + Math.random() * 0.25,
-        p1: Math.random() * 6.28, p2: Math.random() * 6.28, p3: Math.random() * 6.28 };
+      return { name: n, tone: 'pine', r: r, m: r * r, scale: 1, alpha: 1,
+        x: (W / (cols + 1)) * (col + 1) + (row % 2 ? 22 : -22) + (Math.random() * 10 - 5),
+        y: 64 + row * 92 + (Math.random() * 10 - 5),
+        vx: 0, vy: 0, held: false, ox: Math.random() * 12, oy: Math.random() * 12 };
     });
-    balls.forEach(function (b) { b.x = Math.max(b.r, Math.min(W - b.r, b.x)); b.y = Math.max(b.r, Math.min(H - b.r, b.y)); b.hx = b.x; b.hy = b.y; });
+    balls.forEach(function (b) { b.x = Math.max(b.r, Math.min(W - b.r, b.x)); b.y = Math.max(b.r, Math.min(H - b.r, b.y)); });
     box.__balls = balls;   // for tests
 
     var running = true, last = performance.now(), held = null, popping = null, holdStart = 0;
@@ -115,28 +113,25 @@
           var tx = Math.max(b.r, Math.min(W - b.r, b.tx)), ty = Math.max(b.r, Math.min(H - b.r, b.ty));
           b.vx = (tx - b.x) * 0.55; b.vy = (ty - b.y) * 0.55;
           b.x += b.vx * dt; b.y += b.vy * dt;
-          b.hx = b.x; b.hy = b.y;
+          b.ox += b.vx * dt; b.oy += b.vy * dt;
           return;
         }
-        var speed = Math.hypot(b.vx, b.vy);
-        if (speed > 4) {
-          b.hx = b.x; b.hy = b.y;
-          b.vx *= Math.pow(0.992, dt); b.vy *= Math.pow(0.992, dt);
-        } else if (!reduce) {
-          var tx2 = b.hx + 42 * Math.sin(t * b.w1 + b.p1) + 20 * Math.sin(t * b.w2 + b.p2);
-          var ty2 = b.hy + 42 * Math.cos(t * b.w2 + b.p1) + 20 * Math.sin(t * b.w1 + b.p3);
-          tx2 = Math.max(b.r, Math.min(W - b.r, tx2)); ty2 = Math.max(b.r, Math.min(H - b.r, ty2));
-          var blend = 1 - speed / 4;
-          b.vx += (tx2 - b.x) * 0.006 * blend * dt; b.vy += (ty2 - b.y) * 0.006 * blend * dt;
-          b.vx *= Math.pow(0.98, dt); b.vy *= Math.pow(0.98, dt);
-        } else {
-          b.vx *= Math.pow(0.975, dt); b.vy *= Math.pow(0.975, dt);
+        if (!reduce) {                   // the green has a gentle break that slowly shifts, so balls creep and settle
+          var kx = 2 * Math.PI / 260, ky = 2 * Math.PI / 220;
+          var gx = -0.035 * Math.cos(b.x * kx + t * 0.25) * Math.cos(b.y * ky - t * 0.18);
+          var gy = 0.035 * Math.sin(b.x * kx + t * 0.25) * Math.sin(b.y * ky - t * 0.18);
+          b.vx += gx * dt; b.vy += gy * dt;
         }
+        var speed = Math.hypot(b.vx, b.vy);
+        var fr = speed > 6 ? 0.992 : 0.982;   // rolling friction bites harder as the ball slows
+        b.vx *= Math.pow(fr, dt); b.vy *= Math.pow(fr, dt);
+        if (speed < 0.05) { b.vx = 0; b.vy = 0; }
         b.x += b.vx * dt; b.y += b.vy * dt;
-        if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.85; }
-        if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.85; }
-        if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.85; }
-        if (b.y > H - b.r) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 0.85; }
+        b.ox += b.vx * dt; b.oy += b.vy * dt;   // dimple texture rolls with the ball
+        if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.6; }
+        if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.6; }
+        if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.6; }
+        if (b.y > H - b.r) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 0.6; }
       });
       for (var pass = 0; pass < 2; pass++) {
         for (var i = 0; i < balls.length; i++) for (var j = i + 1; j < balls.length; j++) {
@@ -150,7 +145,7 @@
           c.x += nx * overlap * wc; c.y += ny * overlap * wc;
           var rel = (c.vx - a.vx) * nx + (c.vy - a.vy) * ny;
           if (rel > 0) continue;
-          var e = 0.9;
+          var e = 0.82;
           if (a.held || c.held) {
             var mover = a.held ? c : a, sign = a.held ? 1 : -1;
             var push = Math.max(Math.abs(rel), 1.0) * (1 + e);
@@ -169,17 +164,38 @@
       if (stroke) { ctx.lineWidth = lw || 2; ctx.strokeStyle = stroke; ctx.stroke(); }
     }
     function drawBubble(b, now) {
-      var r = b.r * b.scale, col = colors[b.tone];
+      var r = b.r * b.scale, col = colors.ball;
       ctx.globalAlpha = b.alpha;
-      circle(b.x, b.y + 3, r, colors.shadow);
-      circle(b.x, b.y, r, col[0], b.tone === 'plain' ? colors.line : null, 2);
+      // contact shadow on the grass
+      ctx.save(); ctx.translate(b.x, b.y + r * 0.92); ctx.scale(1, 0.32); circle(0, 0, r * 0.95, colors.shadow); ctx.restore();
+      // ball body with light from the top-left
+      var grad = ctx.createRadialGradient(b.x - r * 0.35, b.y - r * 0.4, r * 0.1, b.x, b.y, r);
+      grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.75, col[0]); grad.addColorStop(1, '#cfd3c9');
+      circle(b.x, b.y, r, grad);
+      // dimples: a hex grid that scrolls as the ball rolls, clipped to the ball
+      ctx.save(); ctx.beginPath(); ctx.arc(b.x, b.y, r - 1, 0, Math.PI * 2); ctx.clip();
+      var sp = r * 0.3, rowH = sp * 0.866, dr = r * 0.085;
+      var ox = ((b.ox % sp) + sp) % sp, oy = ((b.oy % (rowH * 2)) + rowH * 2) % (rowH * 2);
+      ctx.fillStyle = 'rgba(60,70,60,0.13)';
+      for (var yy = -oy - rowH * 2, ri = 0; yy < r * 2 + rowH; yy += rowH, ri++) {
+        var shift = (ri % 2) ? sp / 2 : 0;
+        for (var xx = -ox - sp + shift; xx < r * 2 + sp; xx += sp) {
+          var px = b.x - r + xx, py = b.y - r + yy;
+          ctx.beginPath(); ctx.arc(px, py, dr, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      ctx.restore();
+      // edge shading for roundness
+      var sh = ctx.createRadialGradient(b.x - r * 0.2, b.y - r * 0.25, r * 0.55, b.x, b.y, r);
+      sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(20,30,20,0.22)');
+      circle(b.x, b.y, r, sh);
       if (b.held && !game && now - holdStart >= HOLD_SHOW_MS) {   // ring appears late, fills over the last stretch
         var frac = Math.min(1, (now - holdStart - HOLD_SHOW_MS) / (HOLD_MS - HOLD_SHOW_MS));
         ctx.beginPath(); ctx.arc(b.x, b.y, r + 5, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
         ctx.lineWidth = 3; ctx.strokeStyle = colors.pine[0]; ctx.stroke();
       }
       ctx.fillStyle = col[1];
-      ctx.font = '700 ' + Math.round(16 * (b.r / 46) * b.scale) + 'px ' + fontFamily;
+      ctx.font = '700 ' + Math.round(15 * (b.r / 40) * b.scale) + 'px ' + fontFamily;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(b.name, b.x, b.y + 1);
       ctx.globalAlpha = 1;
@@ -288,7 +304,8 @@
     function drawGame(now) {
       var g = game, p = g.puck, c = g.cpu, me = g.me;
       var fade = Math.min(1, (now - g.t0) / 500);
-      // rink
+      // rink: lay ice over the green
+      ctx.globalAlpha = fade * 0.92; ctx.fillStyle = colors.bg; ctx.fillRect(0, 0, W, H);
       ctx.globalAlpha = fade;
       ctx.strokeStyle = colors.line; ctx.lineWidth = 2; ctx.setLineDash([8, 8]);
       ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke(); ctx.setLineDash([]);
@@ -316,7 +333,7 @@
       // player mallet (the bubble shrinks into it)
       var k2 = Math.min(1, (now - g.t0) / 450);
       if (k2 < 1) { me.alpha = 1; drawBubble(me, now); }
-      ctx.globalAlpha = k2; mallet(me.x, me.y, me.r, colors[me.tone][0], me.name); ctx.globalAlpha = 1;
+      ctx.globalAlpha = k2; mallet(me.x, me.y, me.r, colors.pine[0], me.name); ctx.globalAlpha = 1;
       if (g.over) {
         var k = Math.min(1, (now - g.over.t) / 300);
         ctx.globalAlpha = 0.85 * k; ctx.fillStyle = colors.bg; ctx.fillRect(0, H / 2 - 60, W, 120); ctx.globalAlpha = k;
