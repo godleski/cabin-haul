@@ -54,6 +54,36 @@
       });
     },
 
+    // Photos: the artifact's asset store holds the image, a "photos" document holds who and when.
+    photos: function (onRows) {
+      ensure().then(function () {
+        if (!db) return;
+        db.collection('photos').onSnapshot(function (qs) {
+          onRows(qs.docs.filter(function (d) { return d.exists; }).map(function (d) { var r = d.data(); r.id = d.id; return r; }));
+        }, function () { /* ignore */ });
+      });
+    },
+    photoUrl: function (row) { return '/_blob/' + row.asset_id; },
+    uploadPhoto: function (blob, uploader) {
+      return ensure().then(function () {
+        if (!db) throw new Error('not signed in');
+        return window.claude.use('assets');
+      }).then(function (assets) {
+        if (!assets) throw new Error('this view can\'t upload (you need edit access)');
+        return assets.upload(blob, { type: 'image/jpeg' });
+      }).then(function (a) {
+        var row = { asset_id: a.id, uploader: uploader, size: a.sizeBytes || 0, created_at: new Date().toISOString() };
+        return db.collection('photos').add(row).then(function (ref) { row.id = ref.id; return row; });
+      });
+    },
+    removePhoto: function (row) {
+      return ensure().then(function () {
+        if (!db) throw new Error('not signed in');
+        return db.doc('photos/' + row.id).delete();
+      }).then(function () { return window.claude.use('assets'); })
+        .then(function (assets) { if (assets) return assets.delete(row.asset_id).catch(function () { /* already gone */ }); });
+    },
+
     // Prediction chat: one document per message (future Supabase table "comments": id, question_id, author, text, created_at).
     comments: function (onRows) {
       ensure().then(function () {

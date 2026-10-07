@@ -660,6 +660,93 @@
   }
   $('nav').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) showTab(b.getAttribute('data-tab')); });
 
+  // ---- Photos tab ----
+  var photos = [], photosLoaded = false, photoSub = false, uploadingCount = 0;
+  function subscribePhotos() {
+    if (photoSub || !store || !store.photos) return;
+    photoSub = true;
+    store.photos(function (rows) {
+      photos = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? 1 : -1; });
+      photosLoaded = true; renderPhotos();
+    });
+  }
+  function renderPhotos() {
+    var grid = $('photo-grid'); if (!grid) return;
+    var by = {};
+    photos.forEach(function (ph) { by[ph.uploader] = (by[ph.uploader] || 0) + 1; });
+    var names = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; });
+    $('photo-summary').textContent = photos.length ? plural(photos.length, 'photo', 'photos') + ' · ' + names.map(function (n) { return n + ' ' + by[n]; }).join(', ') : (photosLoaded ? 'No photos yet. You go first.' : '');
+    var html = '';
+    for (var u = 0; u < uploadingCount; u++) html += '<div class="tile uploading">Uploading…</div>';
+    if (!photos.length && !uploadingCount) {
+      html += photosLoaded ? '<div class="empty">Nothing here yet. Tap Add photos and the wall starts.</div>' : '<p class="skeleton">Loading photos…</p>';
+    }
+    photos.forEach(function (ph, i) {
+      html += '<button type="button" class="tile" data-i="' + i + '"><img src="' + esc(store.photoUrl(ph)) + '" alt="Photo by ' + esc(ph.uploader) + '" loading="lazy">' +
+        '<div class="who"><b>' + esc(ph.uploader === me ? 'you' : ph.uploader) + '</b> · ' + esc(ago(ph.created_at)) + '</div>' +
+        (ph.uploader === me ? '<span class="rm" data-rm="' + esc(ph.id) + '" role="button" aria-label="Remove">×</span>' : '') + '</button>';
+    });
+    grid.innerHTML = html;
+  }
+  function shrinkImage(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        var max = 1600, w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, max / Math.max(w, h));
+        var cv = document.createElement('canvas'); cv.width = Math.round(w * k); cv.height = Math.round(h * k);
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        URL.revokeObjectURL(url);
+        cv.toBlob(function (blob) { blob ? resolve(blob) : reject(new Error('Could not read that image')); }, 'image/jpeg', 0.85);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('That file is not an image this phone can read')); };
+      img.src = url;
+    });
+  }
+  $('add-photos').addEventListener('click', function () { $('photo-input').click(); });
+  $('photo-input').addEventListener('change', function () {
+    var files = Array.prototype.slice.call($('photo-input').files || []);
+    $('photo-input').value = '';
+    if (!files.length) return;
+    if (!store.uploadPhoto) { toast('Uploads are not available here.'); return; }
+    uploadingCount += files.length; renderPhotos();
+    var done = 0, failed = 0;
+    files.reduce(function (chain, f) {
+      return chain.then(function () {
+        return shrinkImage(f).then(function (blob) { return store.uploadPhoto(blob, me); })
+          .then(function () { done++; }).catch(function (e) { failed++; toast('One photo failed: ' + ((e && e.message) || e)); })
+          .then(function () { uploadingCount--; renderPhotos(); });
+      });
+    }, Promise.resolve()).then(function () {
+      if (done) toast(done + (done === 1 ? ' photo' : ' photos') + ' added' + (failed ? ', ' + failed + ' failed' : '') + '.');
+    });
+  });
+  $('photo-grid').addEventListener('click', function (e) {
+    var rm = e.target.closest('[data-rm]');
+    if (rm) {
+      e.stopPropagation();
+      var id = rm.getAttribute('data-rm'), ph = photos.filter(function (x) { return x.id === id; })[0];
+      if (!ph) return;
+      if (rm.getAttribute('data-armed') !== '1') { rm.setAttribute('data-armed', '1'); rm.textContent = '?'; toast('Tap again to remove your photo.'); setTimeout(function () { rm.removeAttribute('data-armed'); rm.textContent = '×'; }, 2500); return; }
+      store.removePhoto(ph).then(function () { photos = photos.filter(function (x) { return x.id !== id; }); renderPhotos(); toast('Removed.'); })
+        .catch(function (err) { toast('Couldn’t remove that: ' + ((err && err.message) || err)); });
+      return;
+    }
+    var tile = e.target.closest('.tile[data-i]'); if (tile) openLightbox(+tile.getAttribute('data-i'));
+  });
+  function openLightbox(i) {
+    var lb = $('lightbox'), track = $('lb-track');
+    track.innerHTML = photos.map(function (ph) { return '<div class="lb-slide"><img src="' + esc(store.photoUrl(ph)) + '" alt=""></div>'; }).join('');
+    lb.hidden = false; document.body.style.overflow = 'hidden';
+    track.scrollLeft = track.clientWidth * i;
+    lbCaption();
+  }
+  function lbCaption() {
+    var track = $('lb-track'), i = Math.round(track.scrollLeft / Math.max(1, track.clientWidth)), ph = photos[i];
+    $('lb-cap').textContent = ph ? (ph.uploader === me ? 'You' : ph.uploader) + ' · ' + ago(ph.created_at) + ' · ' + (i + 1) + ' of ' + photos.length : '';
+  }
+  $('lb-track').addEventListener('scroll', lbCaption, { passive: true });
+  $('lb-close').addEventListener('click', function () { $('lightbox').hidden = true; $('lb-track').innerHTML = ''; document.body.style.overflow = ''; });
+
   // ---- Cabin tab ----
   var CABIN_PHOTOS = [    // published alongside the page
     { src: 'photos/cabin-01.jpg', cap: 'The house at dusk' },
@@ -858,6 +945,7 @@
   function boot() {
     booted = true;
     subscribePredictions();
+    subscribePhotos();
     if (!store) { showSetup('No data layer loaded. The page is missing its store script.'); return; }
     store.init({
       onItems: function (rows) { items = rows.slice(); itemsLoaded = true; render(); },

@@ -144,11 +144,13 @@
 
     <section class="page" id="page-photos" hidden>
       <h1>Photos</h1>
-      <p class="lede">The wall of evidence. Coming soon.</p>
-      <div class="empty photos-empty">
-        <div class="cam">📷</div>
-        Nothing here yet. Once this is wired up, anyone can drop in pics from the weekend and they'll show for everyone.
+      <p class="lede">The wall of evidence. Everyone's pics from the weekend, with names attached.</p>
+      <div class="photo-tools">
+        <button type="button" class="addbtn" id="add-photos">Add photos</button>
+        <span class="photo-summary" id="photo-summary"></span>
+        <input type="file" id="photo-input" accept="image/*" multiple hidden>
       </div>
+      <div class="photo-grid" id="photo-grid"><p class="skeleton">Loading photos…</p></div>
     </section>
   </div>
 </div>
@@ -159,6 +161,11 @@
   <button type="button" class="nav-btn" data-tab="bringing" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm1 5h8v2H8zm0 4h8v2H8zm0 4h5v2H8z"/></svg><span>Bringing</span></button>
   <button type="button" class="nav-btn" data-tab="photos" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1.5 2H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5zm3 4.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg><span>Photos</span></button>
 </nav>
+<div class="lightbox" id="lightbox" hidden>
+  <button type="button" class="lb-close" id="lb-close" aria-label="Close">×</button>
+  <div class="lb-track" id="lb-track"></div>
+  <div class="lb-cap" id="lb-cap"></div>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- app:end -->

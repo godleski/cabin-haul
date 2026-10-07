@@ -62,6 +62,30 @@
       return sb.from('predictions').upsert({ question_id: questionId, voter: voter, pick: pick, updated_at: new Date().toISOString() }).then(one);
     },
 
+    // Photos: Supabase Storage bucket "photos" (public) plus table "photos" (id, path, uploader, size, created_at).
+    // Both are created at go-live with the one-time setup.
+    photos: function (onRows) {
+      if (!ensure()) return;
+      var read = function () {
+        sb.from('photos').select('id,path,uploader,size,created_at').order('created_at', { ascending: false }).then(function (res) { onRows(res.data || []); });
+      };
+      try { sb.channel('cabin-photos').on('postgres_changes', { event: '*', schema: 'public', table: 'photos' }, read).subscribe(); } catch (e) { /* ignore */ }
+      read();
+    },
+    photoUrl: function (row) { return URL.replace(/\/$/, '') + '/storage/v1/object/public/photos/' + row.path; },
+    uploadPhoto: function (blob, uploader) {
+      if (!ensure()) return Promise.reject(new Error('not connected'));
+      var path = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8) + '.jpg';
+      return sb.storage.from('photos').upload(path, blob, { contentType: 'image/jpeg' }).then(function (res) {
+        if (res.error) throw res.error;
+        return sb.from('photos').insert({ path: path, uploader: uploader, size: blob.size }).select().single().then(one);
+      });
+    },
+    removePhoto: function (row) {
+      if (!ensure()) return Promise.reject(new Error('not connected'));
+      return sb.from('photos').delete().eq('id', row.id).then(one).then(function () { return sb.storage.from('photos').remove([row.path]); });
+    },
+
     // Prediction chat: table "comments" (id, question_id, author, text, created_at). Added at go-live with the one-time setup.
     comments: function (onRows) {
       if (!ensure()) return;
