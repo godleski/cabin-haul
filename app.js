@@ -247,13 +247,22 @@
       var key = text + '@' + Math.round(px * 4) + '@' + dpr;
       if (scriptCache[key]) return scriptCache[key];
       var w = Math.ceil(px * text.length * 0.75 + px), h = Math.ceil(px * 1.8);
-      var off = document.createElement('canvas'); off.width = Math.round(w * dpr); off.height = Math.round(h * dpr);
-      var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
-      o.font = '400 ' + px + 'px ' + scriptFamily; o.textAlign = 'center'; o.textBaseline = 'middle';
-      o.fillStyle = 'rgba(18,18,18,0.95)'; o.fillText(text, w / 2, h / 2);
-      o.globalCompositeOperation = 'destination-out';                 // shave the edges so the brush face reads as a thin pen
-      o.lineWidth = Math.max(0.35, px * 0.03); o.lineJoin = 'round'; o.strokeStyle = '#000'; o.strokeText(text, w / 2, h / 2);
-      scriptCache[key] = { canvas: off, w: w, h: h };
+      function layer() {
+        var c = document.createElement('canvas'); c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+        var o = c.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
+        o.font = '400 ' + px + 'px ' + scriptFamily; o.textAlign = 'center'; o.textBaseline = 'middle';
+        return { c: c, o: o };
+      }
+      // core: the brush glyphs with a hair shaved off every edge, so the strokes read as pen weight
+      var core = layer();
+      core.o.fillStyle = '#121212'; core.o.fillText(text, w / 2, h / 2);
+      core.o.globalCompositeOperation = 'destination-out';
+      core.o.lineWidth = Math.max(0.35, px * 0.03); core.o.lineJoin = 'round'; core.o.strokeStyle = '#000'; core.o.strokeText(text, w / 2, h / 2);
+      // halo: the untouched glyphs, faint, underneath — keeps hairlines continuous where the shave bites through
+      var out = layer();
+      out.o.fillStyle = 'rgba(18,18,18,0.42)'; out.o.fillText(text, w / 2, h / 2);
+      out.o.drawImage(core.c, 0, 0, w, h);
+      scriptCache[key] = { canvas: out.c, w: w, h: h };
       return scriptCache[key];
     }
     function drawScript(text, x, y, px) {
