@@ -67,27 +67,28 @@
       return { el: el, r: r, m: r * r,
         x: (W / (cols + 1)) * (col + 1) + (row % 2 ? 18 : -18) + (Math.random() * 10 - 5),
         y: 70 + row * 100 + (Math.random() * 10 - 5),
-        vx: 0, vy: 0, held: false, name: el.getAttribute('data-me') };
+        vx: reduce ? 0 : Math.random() * 1.6 - 0.8, vy: reduce ? 0 : Math.random() * 1.6 - 0.8,
+        ang: Math.random() * Math.PI * 2, held: false, name: el.getAttribute('data-me') };
     });
     balls.forEach(function (b) { b.x = Math.max(b.r, Math.min(W - b.r, b.x)); b.y = Math.max(b.r, Math.min(H - b.r, b.y)); });
 
-    var running = true, last = performance.now(), drift = 0;
+    var running = true, last = performance.now();
     function step(now) {
       if (!running) return;
       var dt = Math.min(32, now - last) / 16.67; last = now;
-      if (!reduce) {                      // gentle ambient drift so the pile never looks dead
-        drift += dt;
-        if (drift > 90) { drift = 0; var b = balls[Math.floor(Math.random() * balls.length)]; if (!b.held) { b.vx += Math.random() * 2 - 1; b.vy += Math.random() * 2 - 1; } }
-      }
       balls.forEach(function (b) {
         if (b.held) return;
+        if (!reduce) {                    // every bubble wanders a little, always, so it's obvious they move
+          b.ang += (Math.random() - 0.5) * 0.3 * dt;
+          var speed = Math.hypot(b.vx, b.vy);
+          if (speed < 1.2) { b.vx += Math.cos(b.ang) * 0.05 * dt; b.vy += Math.sin(b.ang) * 0.05 * dt; }
+        }
         b.x += b.vx * dt; b.y += b.vy * dt;
-        b.vx *= Math.pow(0.985, dt); b.vy *= Math.pow(0.985, dt);
-        if (Math.abs(b.vx) < 0.02) b.vx = 0; if (Math.abs(b.vy) < 0.02) b.vy = 0;
-        if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.75; }
-        if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.75; }
-        if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.75; }
-        if (b.y > H - b.r) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 0.75; }
+        b.vx *= Math.pow(0.992, dt); b.vy *= Math.pow(0.992, dt);
+        if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.85; b.ang = Math.random() * Math.PI - Math.PI / 2; }
+        if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.85; b.ang = Math.PI / 2 + Math.random() * Math.PI; }
+        if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.85; b.ang = Math.random() * Math.PI; }
+        if (b.y > H - b.r) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 0.85; b.ang = Math.PI + Math.random() * Math.PI; }
       });
       for (var pass = 0; pass < 2; pass++) {
         for (var i = 0; i < balls.length; i++) for (var j = i + 1; j < balls.length; j++) {
@@ -100,7 +101,7 @@
           c.x += nx * overlap * wc; c.y += ny * overlap * wc;
           var rel = (c.vx - a.vx) * nx + (c.vy - a.vy) * ny;   // closing speed along the normal
           if (rel > 0) continue;
-          var e = 0.85;
+          var e = 0.9;
           if (a.held || c.held) {                           // held bubble has infinite mass
             var mover = a.held ? c : a, sign = a.held ? 1 : -1;
             var push = Math.max(Math.abs(rel), 1.5) * (1 + e);
@@ -141,8 +142,8 @@
       var moved = Math.hypot(p.x - start.x, p.y - start.y), dur = p.t - start.t;
       if (moved < 8 && dur < 400) { pick(b); return; }
       var old = trail[0], dt = Math.max(16, p.t - old.t) / 16.67;
-      b.vx = Math.max(-40, Math.min(40, (p.x - old.x) / dt));
-      b.vy = Math.max(-40, Math.min(40, (p.y - old.y) / dt));
+      b.vx = Math.max(-70, Math.min(70, (p.x - old.x) / dt));
+      b.vy = Math.max(-70, Math.min(70, (p.y - old.y) / dt));
     }
     box.addEventListener('pointerup', release);
     box.addEventListener('pointercancel', release);
