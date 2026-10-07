@@ -4,7 +4,7 @@
   'use strict';
   var db = null, cb = null, ready = null;
 
-  function toRow(snap) { var d = snap.data() || {}; d.id = snap.id; return d; }
+  function toRow(snap) { var d = Object.assign({}, snap.data() || {}); d.id = snap.id; return d; }
   function ensure() {
     if (!ready) ready = (window.claude && window.claude.use ? window.claude.use('db') : Promise.resolve(null)).then(function (ns) { db = ns; return ns; });
     return ready;
@@ -42,7 +42,7 @@
       ensure().then(function () {
         if (!db) return;
         db.collection('predictions').onSnapshot(function (qs) {
-          onRows(qs.docs.filter(function (d) { return d.exists; }).map(function (d) { return d.data(); }));
+          onRows(qs.docs.filter(function (d) { return d.exists; }).map(function (d) { return Object.assign({}, d.data()); }));
         }, function () { /* ignore */ });
       });
     },
@@ -55,12 +55,15 @@
     },
 
     // Photos: the artifact's asset store holds the image, a "photos" document holds who and when.
-    photos: function (onRows) {
+    photos: function (onRows, onError) {
       ensure().then(function () {
         if (!db) return;
-        db.collection('photos').onSnapshot(function (qs) {
-          onRows(qs.docs.filter(function (d) { return d.exists; }).map(function (d) { var r = d.data(); r.id = d.id; return r; }));
-        }, function () { /* ignore */ });
+        var ref = db.collection('photos');
+        ref.onSnapshot(function (qs) {
+          onRows(qs.docs.filter(function (d) { return d.exists; }).map(toRow));
+        }, function (e) { if (onError) onError(e); });
+        // belt and braces: a one-off read in case the live stream is slow to start
+        setTimeout(function () { ref.get().then(function (qs) { onRows(qs.docs.filter(function (d) { return d.exists; }).map(toRow)); }).catch(function (e) { if (onError) onError(e); }); }, 2500);
       });
     },
     photoUrl: function (row) { return '/_blob/' + row.asset_id; },
@@ -85,12 +88,12 @@
     },
 
     // Prediction chat: one document per message (future Supabase table "comments": id, question_id, author, text, created_at).
-    comments: function (onRows) {
+    comments: function (onRows, onError) {
       ensure().then(function () {
         if (!db) return;
         db.collection('comments').onSnapshot(function (qs) {
-          onRows(qs.docs.filter(function (d) { return d.exists; }).map(function (d) { var r = d.data(); r.id = d.id; return r; }));
-        }, function () { /* ignore */ });
+          onRows(qs.docs.filter(function (d) { return d.exists; }).map(toRow));
+        }, function (e) { if (onError) onError(e); });
       });
     },
     comment: function (questionId, author, text) {

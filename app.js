@@ -668,6 +668,8 @@
     store.photos(function (rows) {
       photos = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? 1 : -1; });
       photosLoaded = true; renderPhotos();
+    }, function (e) {
+      var grid = $('photo-grid'); if (grid && !photosLoaded) grid.innerHTML = '<div class="empty">Couldn\u2019t load the photos (' + esc((e && e.message) || e) + '). Pull down to refresh.</div>';
     });
   }
   function renderPhotos() {
@@ -713,7 +715,10 @@
     files.reduce(function (chain, f) {
       return chain.then(function () {
         return shrinkImage(f).then(function (blob) { return store.uploadPhoto(blob, me); })
-          .then(function () { done++; }).catch(function (e) { failed++; toast('One photo failed: ' + ((e && e.message) || e)); })
+          .then(function (row) {
+            done++;
+            if (row && !photos.some(function (x) { return x.id === row.id; })) { photos.unshift(row); photosLoaded = true; }
+          }).catch(function (e) { failed++; toast('One photo failed: ' + ((e && e.message) || e)); })
           .then(function () { uploadingCount--; renderPhotos(); });
       });
     }, Promise.resolve()).then(function () {
