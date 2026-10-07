@@ -263,12 +263,12 @@
       }
       var k = (b.r / 40) * b.scale;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = 'rgba(30,30,30,0.88)';
-      ctx.font = '400 ' + Math.round(16 * k) + 'px ' + scriptFamily;               // the logo, in script
+      ctx.fillStyle = 'rgba(20,20,20,0.95)';
+      ctx.font = '400 ' + Math.round(21 * k) + 'px ' + scriptFamily;               // the logo, in a thin script
       if (b.name.indexOf(' & ') >= 0) {                                             // couples: two lines
         var pair = b.name.split(' & ');
-        ctx.font = '400 ' + Math.round(15 * k) + 'px ' + scriptFamily;
-        ctx.fillText(pair[0] + ' &', b.x, b.y - 12 * k); ctx.fillText(pair[1], b.x, b.y + 2 * k);
+        ctx.font = '400 ' + Math.round(19 * k) + 'px ' + scriptFamily;
+        ctx.fillText(pair[0] + ' &', b.x, b.y - 12 * k); ctx.fillText(pair[1], b.x, b.y + 3 * k);
       } else ctx.fillText(b.name, b.x, b.y - 5 * k);
       ctx.fillStyle = '#d63a1f';                                                    // play number, in red
       ctx.font = '700 ' + Math.round(11 * k) + 'px ' + fontFamily;
