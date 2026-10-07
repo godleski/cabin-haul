@@ -97,7 +97,7 @@
       return { name: n, tone: tones[i % 3], r: r, m: r * r, scale: 1, alpha: 1,
         x: (W / (cols + 1)) * (col + 1) + (row % 2 ? 18 : -18) + (Math.random() * 10 - 5),
         y: 70 + row * 100 + (Math.random() * 10 - 5),
-        vx: 0, vy: 0, held: false,
+        vx: 0, vy: 0, held: false, sq: 0, sqVel: 0, sqAng: 0,
         w1: 0.7 + Math.random() * 0.35, w2: 0.45 + Math.random() * 0.25,
         p1: Math.random() * 6.28, p2: Math.random() * 6.28, p3: Math.random() * 6.28 };
     });
@@ -133,10 +133,14 @@
           b.vx *= Math.pow(0.975, dt); b.vy *= Math.pow(0.975, dt);
         }
         b.x += b.vx * dt; b.y += b.vy * dt;
-        if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.85; }
-        if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.85; }
-        if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.85; }
-        if (b.y > H - b.r) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 0.85; }
+        if (b.x < b.r) { b.x = b.r; squash(b, Math.abs(b.vx), 0); b.vx = Math.abs(b.vx) * 0.85; }
+        if (b.x > W - b.r) { b.x = W - b.r; squash(b, Math.abs(b.vx), 0); b.vx = -Math.abs(b.vx) * 0.85; }
+        if (b.y < b.r) { b.y = b.r; squash(b, Math.abs(b.vy), Math.PI / 2); b.vy = Math.abs(b.vy) * 0.85; }
+        if (b.y > H - b.r) { b.y = H - b.r; squash(b, Math.abs(b.vy), Math.PI / 2); b.vy = -Math.abs(b.vy) * 0.85; }
+      });
+      balls.forEach(function (b) {                                 // jelly spring: squash rebounds, overshoots, settles
+        b.sqVel += (0 - b.sq) * 0.22 * dt; b.sqVel *= Math.pow(0.80, dt); b.sq += b.sqVel * dt;
+        if (b.sq > 0.45) b.sq = 0.45; if (b.sq < -0.28) b.sq = -0.28;
       });
       for (var pass = 0; pass < 2; pass++) {
         for (var i = 0; i < balls.length; i++) for (var j = i + 1; j < balls.length; j++) {
@@ -145,11 +149,16 @@
           if (d >= min) continue;
           var nx = dx / d, ny = dy / d, overlap = (min - d) * 0.35;
           if (overlap < 0.15) continue;
+          var ang = Math.atan2(ny, nx);
+          var press = Math.min(0.3, (min - d) / Math.min(a.r, c.r) * 0.9);   // pushed into each other: stay flattened
+          if (a.sq < press) { a.sq = press; a.sqAng = ang; }
+          if (c.sq < press) { c.sq = press; c.sqAng = ang; }
           var wa = a.held ? 0 : (c.held ? 1 : c.m / (a.m + c.m)), wc = c.held ? 0 : (a.held ? 1 : a.m / (a.m + c.m));
           a.x -= nx * overlap * wa; a.y -= ny * overlap * wa;
           c.x += nx * overlap * wc; c.y += ny * overlap * wc;
           var rel = (c.vx - a.vx) * nx + (c.vy - a.vy) * ny;
           if (rel > 0) continue;
+          squash(a, -rel, ang); squash(c, -rel, ang);
           var e = 0.9;
           if (a.held || c.held) {
             var mover = a.held ? c : a, sign = a.held ? 1 : -1;
@@ -163,6 +172,11 @@
         }
       }
     }
+    function squash(b, speed, ang) {                              // impact: flatten along the hit direction
+      var amt = Math.min(0.42, speed / 22);
+      if (amt < 0.03) return;
+      if (amt > b.sq) { b.sq = amt; b.sqAng = ang; b.sqVel = 0; }
+    }
     function circle(x, y, r, fill, stroke, lw) {
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
       if (fill) { ctx.fillStyle = fill; ctx.fill(); }
@@ -171,8 +185,16 @@
     function drawBubble(b, now) {
       var r = b.r * b.scale, col = colors[b.tone];
       ctx.globalAlpha = b.alpha;
-      circle(b.x, b.y + 3, r, colors.shadow);
-      circle(b.x, b.y, r, col[0], b.tone === 'plain' ? colors.line : null, 2);
+      var sq = b.sq || 0;
+      if (Math.abs(sq) > 0.004) {                                    // squash along sqAng, bulge across it (volume roughly kept)
+        ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.sqAng); ctx.scale(1 - sq, 1 + sq * 0.8);
+        circle(0, 3, r, colors.shadow);
+        circle(0, 0, r, col[0], b.tone === 'plain' ? colors.line : null, 2);
+        ctx.restore();
+      } else {
+        circle(b.x, b.y + 3, r, colors.shadow);
+        circle(b.x, b.y, r, col[0], b.tone === 'plain' ? colors.line : null, 2);
+      }
       if (b.held && !game && now - holdStart >= HOLD_SHOW_MS) {   // ring appears late, fills over the last stretch
         var frac = Math.min(1, (now - holdStart - HOLD_SHOW_MS) / (HOLD_MS - HOLD_SHOW_MS));
         ctx.beginPath(); ctx.arc(b.x, b.y, r + 5, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
