@@ -282,16 +282,17 @@
       }
       var k = (b.r / 40) * b.scale;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#111';
-      ctx.font = '400 ' + Math.round(21 * k) + 'px ' + scriptFamily;               // the logo, in script
+      ctx.fillStyle = 'rgba(30,30,30,0.88)';
+      ctx.font = '400 ' + Math.round(16 * k) + 'px ' + scriptFamily;               // the logo, in script
       if (b.name.indexOf(' & ') >= 0) {                                             // couples: two lines
         var pair = b.name.split(' & ');
-        ctx.font = '400 ' + Math.round(19 * k) + 'px ' + scriptFamily;
-        ctx.fillText(pair[0] + ' &', b.x, b.y - 12 * k); ctx.fillText(pair[1], b.x, b.y + 3 * k);
-      } else ctx.fillText(b.name, b.x, b.y - 6 * k);
-      ctx.font = '700 ' + Math.round(11 * k) + 'px ' + fontFamily;                 // play number
+        ctx.font = '400 ' + Math.round(15 * k) + 'px ' + scriptFamily;
+        ctx.fillText(pair[0] + ' &', b.x, b.y - 12 * k); ctx.fillText(pair[1], b.x, b.y + 2 * k);
+      } else ctx.fillText(b.name, b.x, b.y - 5 * k);
+      ctx.fillStyle = '#d63a1f';                                                    // play number, in red
+      ctx.font = '700 ' + Math.round(11 * k) + 'px ' + fontFamily;
       var couple = b.name.indexOf(' & ') >= 0;
-      ctx.fillText(String(b.num), b.x, b.y + (couple ? 17 : 10) * k);
+      ctx.fillText(String(b.num), b.x, b.y + (couple ? 17 : 9) * k);
       if (k > 0.8) {                                                                // sidestamp with alignment arrows
         ctx.fillStyle = 'rgba(17,17,17,0.85)'; ctx.font = '600 ' + Math.round(5.2 * k) + 'px ' + fontFamily;
         ctx.fillText('\u25C0  PRO G1  \u25B6', b.x, b.y + (couple ? 27 : 21) * k);
