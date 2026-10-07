@@ -86,7 +86,7 @@
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
       cv.style.width = W + 'px'; cv.style.height = H + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      dimpleTile = null;
+      dimpleTile = null; limbCache = {}; layerCache = {};
     }
     resize();
     var colors = {};
@@ -171,48 +171,109 @@
       if (fill) { ctx.fillStyle = fill; ctx.fill(); }
       if (stroke) { ctx.lineWidth = lw || 2; ctx.strokeStyle = stroke; ctx.stroke(); }
     }
-    // Dimple tile: concave dimples (shadow on the lit side's far wall, highlight on the near wall), tiled under each ball.
-    var dimpleTile = null, dimpleSp = 0, dimpleRowH = 0;
+    // Dimple tile: concave dimples (shadow on the far wall, highlight on the near wall), tiled under the middle of each ball.
+    var dimpleTile = null, dimpleSp = 0, dimpleRowH = 0, limbCache = {};
+    function dimpleAt(o, x, y, dr, alpha) {
+      o.globalAlpha = alpha == null ? 1 : alpha;
+      o.beginPath(); o.arc(x - 0.7, y - 0.7, dr, 0, Math.PI * 2); o.fillStyle = 'rgba(90,100,95,0.30)'; o.fill();     // shaded wall (top-left)
+      o.beginPath(); o.arc(x + 0.7, y + 0.7, dr, 0, Math.PI * 2); o.fillStyle = 'rgba(255,255,255,1)'; o.fill();      // lit wall (bottom-right)
+      o.beginPath(); o.arc(x, y, dr - 0.5, 0, Math.PI * 2); o.fillStyle = 'rgba(241,243,240,1)'; o.fill();           // dimple floor
+      o.globalAlpha = 1;
+    }
     function buildDimpleTile() {
       var sp = 8.6, rowH = sp * 0.866, dr = 2.75;
       var tw = sp, th = rowH * 2;
       var off = document.createElement('canvas'); off.width = Math.round(tw * dpr); off.height = Math.round(th * dpr);
       var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
-      function dimple(x, y) {
-        o.beginPath(); o.arc(x - 0.7, y - 0.7, dr, 0, Math.PI * 2); o.fillStyle = 'rgba(90,100,95,0.30)'; o.fill();     // shaded wall (top-left)
-        o.beginPath(); o.arc(x + 0.7, y + 0.7, dr, 0, Math.PI * 2); o.fillStyle = 'rgba(255,255,255,1)'; o.fill();      // lit wall (bottom-right)
-        o.beginPath(); o.arc(x, y, dr - 0.5, 0, Math.PI * 2); o.fillStyle = 'rgba(241,243,240,1)'; o.fill();           // dimple floor
-      }
-      // hex arrangement: centers at (0,0),(sp,0) row 0; (sp/2,rowH) row 1; wrap neighbours so the tile is seamless
-      [[0, 0], [sp, 0], [sp / 2, rowH], [-sp / 2, rowH], [0, th], [sp, th], [sp / 2, -rowH]].forEach(function (c) { dimple(c[0], c[1]); });
+      [[0, 0], [sp, 0], [sp / 2, rowH], [-sp / 2, rowH], [0, th], [sp, th], [sp / 2, -rowH]].forEach(function (c) { dimpleAt(o, c[0], c[1], dr); });
       dimpleTile = ctx.createPattern(off, 'repeat');
       try { dimpleTile.setTransform(new DOMMatrix().scale(1 / dpr)); } catch (e) { /* older browsers: slightly soft dimples */ }
       dimpleSp = sp; dimpleRowH = rowH;
     }
+    // Limb texture: dimples projected onto the sphere for the outer band, so they squash toward the edge like a real ball.
+    function limbTexture(r) {
+      var key = Math.round(r) + '@' + dpr;
+      if (limbCache[key]) return limbCache[key];
+      var size = Math.ceil(r * 2 + 4);
+      var off = document.createElement('canvas'); off.width = Math.round(size * dpr); off.height = Math.round(size * dpr);
+      var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var cx = size / 2, cy = size / 2, sp = 8.6, dr = 2.75;
+      // points spread evenly over the visible hemisphere (sunflower spiral), dimples only in the outer band
+      var n = Math.round(2 * Math.PI * r * r / (sp * sp * 0.866)), golden = Math.PI * (3 - Math.sqrt(5));
+      for (var i = 0; i < n; i++) {
+        var z = 1 - (i / n);                       // 1 at the pole facing us, 0 at the limb
+        var rad = Math.sqrt(1 - z * z), ang = i * golden;
+        var px = cx + Math.cos(ang) * rad * r, py = cy + Math.sin(ang) * rad * r;
+        var d = rad;                               // 0..1 distance from center
+        if (d < 0.48) continue;
+        var alpha = Math.min(1, (d - 0.48) / 0.14);
+        o.save(); o.translate(px, py); o.rotate(ang); o.scale(Math.max(0.12, z), 1); o.rotate(-ang);
+        dimpleAt(o, 0, 0, dr * (0.8 + 0.2 * z), alpha);
+        o.restore();
+      }
+      limbCache[key] = { canvas: off, size: size };
+      return limbCache[key];
+    }
+    // Everything that doesn't move is pre-rendered once per ball size: the body under the rolling dimples, and the
+    // limb dimples + shading + highlights over them. Per frame a ball is two image draws and one pattern fill.
+    var layerCache = {};
+    function ballLayers(r) {
+      var key = Math.round(r * 2) + '@' + dpr;
+      if (layerCache[key]) return layerCache[key];
+      var size = Math.ceil(r * 2 + 4), c = size / 2;
+      function make(draw) {
+        var off = document.createElement('canvas'); off.width = Math.round(size * dpr); off.height = Math.round(size * dpr);
+        var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0); draw(o); return off;
+      }
+      function circ(o, x, y, rr, fill) { o.beginPath(); o.arc(x, y, rr, 0, Math.PI * 2); o.fillStyle = fill; o.fill(); }
+      var under = make(function (o) {
+        var grad = o.createRadialGradient(c - r * 0.3, c - r * 0.3, r * 0.2, c, c, r * 1.05);
+        grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.65, '#fafbf9'); grad.addColorStop(1, '#c4c9c6');
+        circ(o, c, c, r, grad);
+      });
+      var over = make(function (o) {
+        var fade = o.createRadialGradient(c, c, r * 0.42, c, c, r * 0.66);
+        fade.addColorStop(0, 'rgba(250,251,249,0)'); fade.addColorStop(1, 'rgba(250,251,249,1)');
+        circ(o, c, c, r, fade);
+        var lt = limbTexture(r); o.drawImage(lt.canvas, c - lt.size / 2, c - lt.size / 2, lt.size, lt.size);
+        var sh = o.createRadialGradient(c - r * 0.28, c - r * 0.32, r * 0.3, c, c, r);
+        sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.6, 'rgba(40,50,45,0.04)'); sh.addColorStop(0.88, 'rgba(25,35,30,0.28)'); sh.addColorStop(1, 'rgba(15,25,20,0.5)');
+        circ(o, c, c, r, sh);
+        o.save(); o.beginPath(); o.arc(c, c, r, 0, Math.PI * 2); o.clip();
+        var bounce = o.createRadialGradient(c + r * 0.1, c + r * 1.05, r * 0.2, c + r * 0.1, c + r * 1.05, r * 1.1);
+        bounce.addColorStop(0, 'rgba(70,150,85,0.28)'); bounce.addColorStop(1, 'rgba(70,150,85,0)');
+        circ(o, c, c, r, bounce);
+        o.restore();
+        var hl = o.createRadialGradient(c - r * 0.4, c - r * 0.42, 0, c - r * 0.4, c - r * 0.42, r * 0.55);
+        hl.addColorStop(0, 'rgba(255,255,255,0.75)'); hl.addColorStop(0.45, 'rgba(255,255,255,0.18)'); hl.addColorStop(1, 'rgba(255,255,255,0)');
+        circ(o, c - r * 0.4, c - r * 0.42, r * 0.55, hl);
+        var hot = o.createRadialGradient(c - r * 0.45, c - r * 0.5, 0, c - r * 0.45, c - r * 0.5, r * 0.16);
+        hot.addColorStop(0, 'rgba(255,255,255,1)'); hot.addColorStop(1, 'rgba(255,255,255,0)');
+        circ(o, c - r * 0.45, c - r * 0.5, r * 0.16, hot);
+        o.beginPath(); o.arc(c, c, r - 0.5, 0, Math.PI * 2); o.lineWidth = 1; o.strokeStyle = 'rgba(60,80,65,0.25)'; o.stroke();
+      });
+      var shadow = make(function (o) {
+        o.save(); o.translate(c, c + r * 0.92); o.scale(1, 0.3);
+        var cs = o.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 1.05);
+        cs.addColorStop(0, 'rgba(5,30,12,0.45)'); cs.addColorStop(0.6, 'rgba(5,30,12,0.22)'); cs.addColorStop(1, 'rgba(5,30,12,0)');
+        circ(o, 0, 0, r * 1.05, cs); o.restore();
+      });
+      layerCache[key] = { under: under, over: over, shadow: shadow, size: size };
+      return layerCache[key];
+    }
     function drawBubble(b, now) {
       var r = b.r * b.scale, col = colors.ball;
       if (!dimpleTile) buildDimpleTile();
+      var L = ballLayers(r), half = L.size / 2;
       ctx.globalAlpha = b.alpha;
-      // contact shadow on the grass
-      ctx.save(); ctx.translate(b.x, b.y + r * 0.92); ctx.scale(1, 0.32); circle(0, 0, r * 0.95, colors.shadow); ctx.restore();
-      // ball body: white with soft darkening toward the lower-right limb
-      var grad = ctx.createRadialGradient(b.x - r * 0.3, b.y - r * 0.3, r * 0.2, b.x, b.y, r * 1.05);
-      grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.65, '#fafbf9'); grad.addColorStop(1, '#c4c9c6');
-      circle(b.x, b.y, r, grad);
-      // dimples, rolling with the ball
-      ctx.save(); ctx.beginPath(); ctx.arc(b.x, b.y, r - 0.5, 0, Math.PI * 2); ctx.clip();
+      ctx.drawImage(L.shadow, b.x - half, b.y - half, L.size, L.size);
+      ctx.drawImage(L.under, b.x - half, b.y - half, L.size, L.size);
+      // rolling dimples across the middle
+      ctx.save(); ctx.beginPath(); ctx.arc(b.x, b.y, r * 0.66, 0, Math.PI * 2); ctx.clip();
       var ox = ((b.ox % dimpleSp) + dimpleSp) % dimpleSp, oy = ((b.oy % (dimpleRowH * 2)) + dimpleRowH * 2) % (dimpleRowH * 2);
       ctx.translate(b.x - r + ox, b.y - r + oy); ctx.fillStyle = dimpleTile; ctx.fillRect(-dimpleSp * 2, -dimpleRowH * 4, r * 2 + dimpleSp * 4, r * 2 + dimpleRowH * 8);
       ctx.restore();
-      // sphere shading over the dimples: darker limb, plus a soft specular highlight
-      var sh = ctx.createRadialGradient(b.x - r * 0.25, b.y - r * 0.3, r * 0.35, b.x, b.y, r);
-      sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.72, 'rgba(40,50,45,0.05)'); sh.addColorStop(1, 'rgba(20,30,28,0.42)');
-      circle(b.x, b.y, r, sh);
-      var hl = ctx.createRadialGradient(b.x - r * 0.42, b.y - r * 0.45, 0, b.x - r * 0.42, b.y - r * 0.45, r * 0.5);
-      hl.addColorStop(0, 'rgba(255,255,255,0.9)'); hl.addColorStop(0.5, 'rgba(255,255,255,0.25)'); hl.addColorStop(1, 'rgba(255,255,255,0)');
-      circle(b.x - r * 0.42, b.y - r * 0.45, r * 0.5, hl);
-      // thin rim so the ball separates from the grass
-      circle(b.x, b.y, r - 0.5, null, 'rgba(60,80,65,0.25)', 1);
+      ctx.drawImage(L.over, b.x - half, b.y - half, L.size, L.size);
       if (opts.current && opts.current === b.name) circle(b.x, b.y, r + 4, null, colors.pine[0], 3);   // your current pick
       if (opts.games && b.held && !game && now - holdStart >= HOLD_SHOW_MS) {   // ring appears late, fills over the last stretch
         var frac = Math.min(1, (now - holdStart - HOLD_SHOW_MS) / (HOLD_MS - HOLD_SHOW_MS));
