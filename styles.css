@@ -82,7 +82,8 @@
   @media (prefers-reduced-motion: reduce) { #q-wrap.slide { animation: none; } }
 
   /* ---- Predictions tally ---- */
-  .pred { margin-top: 22px; }
+  .pred { margin-top: 18px; }
+  .pred-count { font-size: 0.8rem; color: var(--muted); }
   .pred-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
   .nudge { border: 0; background: var(--ember); color: #fff; font: 700 0.82rem var(--body); padding: 7px 12px; border-radius: 999px; cursor: pointer; }
   .pred-list { display: grid; gap: 8px; }

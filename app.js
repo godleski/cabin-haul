@@ -651,16 +651,14 @@
 
   // ---- Bottom tabs ----
   var TABS = ['home', 'bringing', 'cabin', 'photos'];
-  var tab = lsGet('cabin-haul-tab') || 'home';
-  if (TABS.indexOf(tab) < 0) tab = 'home';
+  var tab = 'cabin';
   function showTab(name) {
-    tab = name; lsSet('cabin-haul-tab', tab);
+    tab = name;
     TABS.forEach(function (t) { $('page-' + t).hidden = t !== tab; });
     Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function (b) { b.setAttribute('aria-selected', String(b.getAttribute('data-tab') === tab)); });
     window.scrollTo(0, 0);
   }
   $('nav').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) showTab(b.getAttribute('data-tab')); });
-  $('go-bringing').addEventListener('click', function () { showTab('bringing'); });
 
   // ---- Cabin tab ----
   var CABIN_PHOTOS = [    // published alongside the page
@@ -768,7 +766,7 @@
     votes.push({ question_id: q.id, voter: me, pick: pick, updated_at: new Date().toISOString() });
     setTimeout(function () {
       if (qIndex + 1 < QUESTIONS.length) { qIndex++; showQuestion(true); }
-      else { toast('Picks are in. You can change them any time from the tally.'); showScreen(); }
+      else { toast('Picks are in. You can change them any time from here.'); tab = 'home'; showScreen(); }
     }, 260);
   });
   $('q-later').addEventListener('click', function () { lsSet('cabin-haul-pred-later-' + me, '1'); showScreen(); });
@@ -785,7 +783,7 @@
     if (!store || !store.predictions) { el.hidden = true; return; }
     el.hidden = false;
     var left = QUESTIONS.length - answeredCount();
-    var html = '<div class="pred-head"><span class="eyebrow">Predictions</span>' +
+    var html = '<div class="pred-head"><span class="pred-count">' + (QUESTIONS.length - left) + ' of ' + QUESTIONS.length + ' answered</span>' +
       (left ? '<button type="button" class="nudge" id="pred-open">Make your picks (' + left + ' left)</button>' : '<button type="button" class="linkbtn" id="pred-open">Change my picks</button>') + '</div>';
     html += '<div class="pred-list">';
     QUESTIONS.forEach(function (q, i) {
@@ -942,7 +940,6 @@
     if (myParty) s += ' · you\'ve got ' + mine;
     if (needed) s += ' · <span class="warn">' + needed + ' still needed</span>';
     $('status').innerHTML = s;
-    $('home-summary').textContent = !itemsLoaded ? 'Loading the list\u2026' : plural(items.length, 'item', 'items') + ' so far · you\'ve got ' + mine + (needed ? ' · ' + needed + ' still needed' : '');
   }
 
   // ---- Actions ----
