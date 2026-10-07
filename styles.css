@@ -234,9 +234,17 @@
   .info-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
   .info-actions .btn { text-decoration: none; display: inline-block; }
   .game-card { margin-top: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
-  .game-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .game-card { padding: 0 16px; }
+  .game-head { display: flex; align-items: center; gap: 10px; padding: 14px 0; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
   .game-head h2 { font-size: 1.2rem; }
-  .game-head .k { font-size: 0.78rem; color: var(--muted); text-align: right; }
+  .game-head .k { font-size: 0.78rem; color: var(--muted); text-align: right; margin-left: auto; }
+  .game-head .chev { width: 18px; height: 18px; color: var(--muted); flex: none; transition: transform 160ms; }
+  .game-head[aria-expanded="true"] .chev { transform: rotate(180deg); }
+  .game-card > div[id$="-body"] { padding-bottom: 16px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 10px; font-size: 0.78rem; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 12px; height: 12px; border-radius: 4px; border: 1px solid; }
+  .legend .h1 i { background: var(--pine-soft); border-color: var(--pine); } .legend .h2 i { background: var(--ember-soft); border-color: var(--ember); } .legend .h3 i { background: #2a1414; border-color: #7a2a2a; }
   .name-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px; }
   .name-grid button { border: 1px solid var(--line); background: var(--bg); color: var(--muted); font: 600 0.85rem var(--body); padding: 8px 6px; border-radius: 10px; cursor: pointer; }
   .name-grid button[aria-pressed="true"] { background: var(--pine); border-color: var(--pine); color: var(--pine-ink); }

@@ -728,6 +728,19 @@
   }
   $('nav').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) showTab(b.getAttribute('data-tab')); });
 
+  // ---- Games: collapsible cards ----
+  function setCardOpen(head, open) {
+    var body = $(head.getAttribute('aria-controls'));
+    head.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (body) body.hidden = !open;
+    lsSet('cabin-haul-card-' + head.getAttribute('aria-controls'), open ? '1' : '0');
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.game-head'), function (head) {
+    setCardOpen(head, lsGet('cabin-haul-card-' + head.getAttribute('aria-controls')) === '1');
+    head.addEventListener('click', function () { setCardOpen(head, head.getAttribute('aria-expanded') !== 'true'); });
+    head.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); head.click(); } });
+  });
+
   // ---- Games: random team picker ----
   var teams = null, teamsLoaded = false, teamsSub = false, teamsDraft = null, teamsEdit = false;
   var TEAM_NAMES = ['Moose', 'Bear', 'Elk', 'Trout', 'Hawk', 'Fox'];
@@ -913,6 +926,7 @@
     var cur = liv && typeof liv.q === 'number' ? LIV_Q[liv.q] : null;
     status.textContent = seen.length ? seen.length + ' of ' + LIV_Q.length + ' asked' : LIV_Q.length + ' questions';
     var html = '<p class="info-sub">Liv wants to really get to know you. One question at a time, no repeats, nowhere to hide. Everyone’s phone shows the same one.</p>';
+    html += '<div class="legend"><span class="h1"><i></i>Deep · gets you thinking</span><span class="h2"><i></i>Uncomfortable · gets you sweating</span><span class="h3"><i></i>No mercy · gets you divorced</span></div>';
     if (cur) {
       html += '<div class="liv-q h' + cur[0] + '"><span class="heat h' + cur[0] + '">' + HEAT[cur[0]] + '</span><div class="qt">' + esc(cur[1]) + '</div>' +
         '<div class="who"><span>Ask <b>' + esc(liv.victim === me ? 'you' : liv.victim) + '</b></span><button type="button" class="linkbtn" id="liv-victim">Someone else</button></div></div>';
