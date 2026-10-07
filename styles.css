@@ -38,9 +38,18 @@
   .sr-list { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .sr-list button:focus-visible { position: fixed; left: 16px; bottom: 16px; width: auto; height: auto; padding: 10px 14px; background: var(--surface); color: var(--fg); border: 2px solid var(--ember); border-radius: 10px; z-index: 9; }
   .hint { margin: 10px 0 0; text-align: center; font-size: 0.82rem; color: var(--muted); }
-  .scores { margin: 6px 0 0; text-align: center; font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .scores b { color: var(--fg); }
-  .scores .who-won { font-size: 0.8rem; }
+  .board {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px 12px;
+    margin: 0 0 18px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .board .side { display: grid; justify-items: center; gap: 0; }
+  .board .side:first-child { justify-items: end; } .board .side:nth-child(3) { justify-items: start; }
+  .board .num { font: 800 2.4rem var(--display); line-height: 1; letter-spacing: -0.03em; color: var(--muted); }
+  .board .side.lead .num { color: var(--pine); } .board .side:nth-child(3).lead .num { color: var(--ember); }
+  .board .lbl { font: 600 0.68rem var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+  .board .vs { font: 700 0.9rem var(--display); color: var(--muted); }
+  .board .top { grid-column: 1 / -1; text-align: center; font-size: 0.8rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 6px; }
 
   /* ---- Main ---- */
   .topbar { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }

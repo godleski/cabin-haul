@@ -51,14 +51,18 @@
   // ---- Bubble physics on a canvas: grab, fling, collide. A quick tap picks the name.
   //      Hold one for 5 seconds and it turns into air hockey against the CPU. ----
   var sim = null, scores = null, scoresSub = false;
-  var HOLD_MS = 5000;
+  var HOLD_MS = 5000, HOLD_SHOW_MS = 3000;
   function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
   function renderScores() {
     var el = $('scores'); if (!el) return;
-    if (!scores) { el.textContent = ''; return; }
+    if (!scores) { el.hidden = true; return; }
     var names = Object.keys(scores.byName || {}).sort(function (a, b) { return scores.byName[b] - scores.byName[a]; }).slice(0, 3);
-    el.innerHTML = '<b>Air hockey</b> · Humans ' + (scores.humans || 0) + ' · CPU ' + (scores.cpu || 0) +
-      (names.length ? ' <span class="who-won">(' + esc(names.map(function (n) { return n + ' ' + scores.byName[n]; }).join(', ')) + ')</span>' : '');
+    var h = scores.humans || 0, c = scores.cpu || 0;
+    el.hidden = false;
+    el.innerHTML = '<div class="side' + (h > c ? ' lead' : '') + '"><span class="num">' + h + '</span><span class="lbl">Humans</span></div>' +
+      '<div class="vs">vs</div>' +
+      '<div class="side' + (c > h ? ' lead' : '') + '"><span class="num">' + c + '</span><span class="lbl">CPU</span></div>' +
+      (names.length ? '<div class="top">' + esc(names.map(function (n) { return n + ' ' + scores.byName[n]; }).join(' · ')) + '</div>' : '');
   }
   function renderRoster() {
     if (sim) sim.stop();
@@ -169,8 +173,8 @@
       ctx.globalAlpha = b.alpha;
       circle(b.x, b.y + 3, r, colors.shadow);
       circle(b.x, b.y, r, col[0], b.tone === 'plain' ? colors.line : null, 2);
-      if (b.held && !game) {                                   // hold progress ring toward hockey mode
-        var frac = Math.min(1, (now - holdStart) / HOLD_MS);
+      if (b.held && !game && now - holdStart >= HOLD_SHOW_MS) {   // ring appears late, fills over the last stretch
+        var frac = Math.min(1, (now - holdStart - HOLD_SHOW_MS) / (HOLD_MS - HOLD_SHOW_MS));
         ctx.beginPath(); ctx.arc(b.x, b.y, r + 5, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
         ctx.lineWidth = 3; ctx.strokeStyle = colors.ember[0]; ctx.stroke();
       }
@@ -205,15 +209,24 @@
       me.x += me.vx * dt; me.y += me.vy * dt;
       // cpu paddle: chase the puck in its half, otherwise hover in front of its goal
       var cx, cy;
-      if (p.y < H / 2) { cx = p.x; cy = p.y - 10; } else { cx = W / 2 + (p.x - W / 2) * 0.4; cy = 70; }
+      if (p.y < H / 2 && p.y > c.y - 6) { cx = p.x; cy = p.y - 10; }           // puck in front: go hit it
+      else if (p.y < H / 2) { cx = W / 2; cy = Math.min(H / 2 - c.r, p.y + c.r + p.r + 30); }   // puck behind: back away so it can roll out
+      else { cx = W / 2 + (p.x - W / 2) * 0.4; cy = 70; }
       cx = Math.max(c.r, Math.min(W - c.r, cx)); cy = Math.max(c.r, Math.min(H / 2 - c.r, cy));
       var maxv = 7.5;
       var nvx = (cx - c.x) * 0.12, nvy = (cy - c.y) * 0.12, nv = Math.hypot(nvx, nvy);
       if (nv > maxv) { nvx *= maxv / nv; nvy *= maxv / nv; }
       c.vx = nvx; c.vy = nvy; c.x += c.vx * dt; c.y += c.vy * dt;
-      // puck
+      // puck; if it gets pinned or dies in a corner, re-serve it from center
       p.x += p.vx * dt; p.y += p.vy * dt;
       p.vx *= Math.pow(0.996, dt); p.vy *= Math.pow(0.996, dt);
+      var ps = Math.hypot(p.vx, p.vy);
+      g.stuck = ps < 0.6 ? (g.stuck || 0) + dt : 0;
+      if (g.stuck > 75) {                                       // ~1.25 s without moving
+        p.x = W / 2; p.y = H / 2; g.stuck = 0;
+        var dir = Math.random() < 0.5 ? -1 : 1;
+        p.vx = (Math.random() - 0.5) * 4; p.vy = dir * 3.5; g.serveFlash = now;
+      }
       if (p.x < p.r) { p.x = p.r; p.vx = Math.abs(p.vx) * 0.9; }
       if (p.x > W - p.r) { p.x = W - p.r; p.vx = -Math.abs(p.vx) * 0.9; }
       var inGoal = p.x > g.goal.x1 && p.x < g.goal.x2;
@@ -232,6 +245,11 @@
         var sp = Math.hypot(p.vx, p.vy), cap = 16;
         if (sp > cap) { p.vx *= cap / sp; p.vy *= cap / sp; }
         if (sp < 2) { p.vx += nx * 2; p.vy += ny * 2; }
+        if (p.x < p.r) { p.x = p.r; p.vx = Math.abs(p.vx) + 1; }
+        if (p.x > W - p.r) { p.x = W - p.r; p.vx = -Math.abs(p.vx) - 1; }
+        var inG = p.x > g.goal.x1 && p.x < g.goal.x2;
+        if (p.y < p.r && !inG) { p.y = p.r; p.vy = Math.abs(p.vy) + 1; }
+        if (p.y > H - p.r && !inG) { p.y = H - p.r; p.vy = -Math.abs(p.vy) - 1; }
       });
     }
     function endGame(winner) {
@@ -258,6 +276,10 @@
       circle(c.x, c.y + 3, c.r, colors.shadow); circle(c.x, c.y, c.r, colors.ember[0]);
       ctx.fillStyle = '#fff'; ctx.font = '700 15px ' + fontFamily; ctx.fillText('CPU', c.x, c.y + 1);
       // puck
+      if (g.serveFlash && now - g.serveFlash < 900) {
+        ctx.globalAlpha = 1 - (now - g.serveFlash) / 900; ctx.fillStyle = colors.muted; ctx.font = '600 13px ' + fontFamily;
+        ctx.fillText('re-serve', W / 2, H / 2 + 64); ctx.globalAlpha = 1;
+      }
       circle(p.x, p.y + 2, p.r, colors.shadow); circle(p.x, p.y, p.r, colors.fg); circle(p.x, p.y, p.r * 0.45, null, colors.bg, 2);
       // player paddle
       drawBubble(me, now);
