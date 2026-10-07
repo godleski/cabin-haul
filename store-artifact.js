@@ -54,6 +54,22 @@
       });
     },
 
+    // Prediction chat: one document per message (future Supabase table "comments": id, question_id, author, text, created_at).
+    comments: function (onRows) {
+      ensure().then(function () {
+        if (!db) return;
+        db.collection('comments').onSnapshot(function (qs) {
+          onRows(qs.docs.filter(function (d) { return d.exists; }).map(function (d) { var r = d.data(); r.id = d.id; return r; }));
+        }, function () { /* ignore */ });
+      });
+    },
+    comment: function (questionId, author, text) {
+      return ensure().then(function () {
+        if (!db) throw new Error('not signed in');
+        return db.collection('comments').add({ question_id: questionId, author: author, text: text, created_at: new Date().toISOString() });
+      });
+    },
+
     // Air hockey tally: one shared document.
     scores: function (onScores) {
       ensure().then(function () {

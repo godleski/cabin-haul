@@ -101,7 +101,23 @@
   .bar-track { height: 10px; background: var(--pine-soft); border-radius: 5px; overflow: hidden; }
   .bar-fill { display: block; height: 100%; background: var(--pine); border-radius: 5px; }
   .bar-n { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .bar-row { grid-template-columns: 96px minmax(0, 1fr) 24px; }
+  .bar-who { grid-column: 1 / -1; font-size: 0.75rem; color: var(--muted); margin-top: -2px; }
+  .pred-card { position: relative; }
+  .pred-card .cc { position: absolute; top: 8px; right: 10px; font-size: 0.68rem; color: var(--muted); }
   .pred-actions { display: flex; justify-content: space-between; margin-top: 8px; }
+  .chat { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .chat-head { font: 700 0.85rem var(--display); margin-bottom: 6px; }
+  .chat-head .k { color: var(--muted); font-weight: 500; }
+  .chat-empty { font-size: 0.82rem; color: var(--muted); margin-bottom: 8px; }
+  .chat-list { display: grid; gap: 6px; max-height: 220px; overflow-y: auto; padding-right: 2px; }
+  .msg { background: var(--bg); border-radius: 10px; padding: 7px 10px; font-size: 0.88rem; min-width: 0; }
+  .msg.mine { background: var(--pine-soft); }
+  .msg .who { font-weight: 700; }
+  .msg .when { font-size: 0.72rem; color: var(--muted); margin-left: 4px; }
+  .msg .txt { overflow-wrap: anywhere; margin-top: 1px; }
+  .chat-form { display: flex; gap: 8px; margin-top: 8px; }
+  .chat-form input { flex: 1; }
   .pred-detail .empty { margin-top: 0; padding: 10px; }
 
   /* ---- Main ---- */

@@ -62,6 +62,20 @@
       return sb.from('predictions').upsert({ question_id: questionId, voter: voter, pick: pick, updated_at: new Date().toISOString() }).then(one);
     },
 
+    // Prediction chat: table "comments" (id, question_id, author, text, created_at). Added at go-live with the one-time setup.
+    comments: function (onRows) {
+      if (!ensure()) return;
+      var read = function () {
+        sb.from('comments').select('id,question_id,author,text,created_at').order('created_at', { ascending: true }).then(function (res) { onRows(res.data || []); });
+      };
+      try { sb.channel('cabin-comments').on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, read).subscribe(); } catch (e) { /* ignore */ }
+      read();
+    },
+    comment: function (questionId, author, text) {
+      if (!ensure()) return Promise.reject(new Error('not connected'));
+      return sb.from('comments').insert({ question_id: questionId, author: author, text: text }).then(one);
+    },
+
     // Air hockey tally: one row in the "kv" table, key "hockey".
     scores: function (onScores) {
       if (!ensure()) return;

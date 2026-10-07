@@ -658,7 +658,7 @@
     { id: 'cocktail', text: 'Who will make the best cocktail this weekend?', type: 'person' }
   ];
   var COUPLES = PARTIES.filter(function (p) { return p.length === 2; }).map(function (p) { return p.join(' & '); });
-  var votes = [], qsim = null, qIndex = 0, predSub = false, expanded = null;
+  var votes = [], qsim = null, qIndex = 0, predSub = false, expanded = null, comments = [], draft = '';
   function myVotes() { var m = {}; votes.forEach(function (v) { if (v.voter === me) m[v.question_id] = v.pick; }); return m; }
   function answeredCount() { return Object.keys(myVotes()).length; }
   function firstUnanswered() { var m = myVotes(); for (var i = 0; i < QUESTIONS.length; i++) if (!m[QUESTIONS[i].id]) return i; return 0; }
@@ -672,6 +672,10 @@
     predSub = true;
     store.predictions(function (rows) {
       votes = rows.slice();
+      renderPredictions();
+    });
+    if (store.comments) store.comments(function (rows) {
+      comments = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? -1 : 1; });
       renderPredictions();
     });
   }
@@ -717,9 +721,9 @@
   $('q-back').addEventListener('click', function () { if (qIndex > 0) { qIndex--; showQuestion(true); } });
 
   function tallyFor(q) {
-    var counts = {}, voters = {};
-    votes.forEach(function (v) { if (v.question_id !== q.id) return; counts[v.pick] = (counts[v.pick] || 0) + 1; voters[v.voter] = true; });
-    var rows = Object.keys(counts).map(function (k) { return { pick: k, n: counts[k] }; }).sort(function (a, b) { return b.n - a.n || a.pick.localeCompare(b.pick); });
+    var counts = {}, voters = {}, who = {};
+    votes.forEach(function (v) { if (v.question_id !== q.id) return; counts[v.pick] = (counts[v.pick] || 0) + 1; voters[v.voter] = true; (who[v.pick] = who[v.pick] || []).push(v.voter); });
+    var rows = Object.keys(counts).map(function (k) { return { pick: k, n: counts[k], who: who[k].sort() }; }).sort(function (a, b) { return b.n - a.n || a.pick.localeCompare(b.pick); });
     return { rows: rows, voted: Object.keys(voters).length };
   }
   function renderPredictions() {
@@ -732,7 +736,9 @@
     html += '<div class="pred-strip">';
     QUESTIONS.forEach(function (q, i) {
       var t = tallyFor(q), lead = t.rows[0], second = t.rows[1];
+      var cc = comments.filter(function (c) { return c.question_id === q.id; }).length;
       html += '<button type="button" class="pred-card' + (expanded === i ? ' open' : '') + '" data-q="' + i + '">' +
+        (cc ? '<span class="cc">' + cc + ' \uD83D\uDCAC</span>' : '') +
         '<div class="pq">' + esc(q.text) + '</div>' +
         '<div class="lead">' + (lead ? esc(lead.pick) : '—') + '</div>' +
         '<div class="sub">' + (second ? 'then ' + esc(second.pick) + ' · ' : '') + t.voted + ' of ' + NAMES.length + ' voted</div></button>';
@@ -743,17 +749,48 @@
       html += '<div class="pred-detail"><div class="pq-big">' + esc(q.text) + '</div>';
       if (!t.rows.length) html += '<div class="empty">No picks yet.</div>';
       t.rows.forEach(function (r) {
-        html += '<div class="bar-row"><span class="bar-name">' + esc(r.pick) + '</span><span class="bar-track"><span class="bar-fill" style="width:' + Math.round(100 * r.n / max) + '%"></span></span><span class="bar-n">' + r.n + '</span></div>';
+        html += '<div class="bar-row"><span class="bar-name">' + esc(r.pick) + '</span><span class="bar-track"><span class="bar-fill" style="width:' + Math.round(100 * r.n / max) + '%"></span></span><span class="bar-n">' + r.n + '</span>' +
+          '<span class="bar-who">' + esc(r.who.map(function (n) { return n === me ? 'you' : n; }).join(', ')) + '</span></div>';
       });
-      html += '<div class="pred-actions"><button type="button" class="linkbtn" id="pred-change" data-q="' + expanded + '">Change my pick</button><button type="button" class="linkbtn" id="pred-close">Close</button></div></div>';
+      html += '<div class="pred-actions"><button type="button" class="linkbtn" id="pred-change" data-q="' + expanded + '">Change my pick</button><button type="button" class="linkbtn" id="pred-close">Close</button></div>';
+      // the chat
+      var thread = comments.filter(function (c) { return c.question_id === q.id; });
+      html += '<div class="chat"><div class="chat-head">Talk it out' + (thread.length ? ' <span class="k">' + thread.length + '</span>' : '') + '</div>';
+      if (!thread.length) html += '<div class="chat-empty">Nobody\'s said anything yet. Be the first to stir the pot.</div>';
+      html += '<div class="chat-list" id="chat-list">' + thread.map(function (c) {
+        return '<div class="msg' + (c.author === me ? ' mine' : '') + '"><span class="who">' + esc(c.author) + '</span> <span class="when">' + esc(ago(c.created_at)) + '</span><div class="txt">' + esc(c.text) + '</div></div>';
+      }).join('') + '</div>';
+      html += '<form class="chat-form" id="chat-form"><input type="text" id="chat-input" maxlength="240" placeholder="Say something\u2026" autocomplete="off" value="' + esc(draft) + '"><button type="submit" class="btn primary">Send</button></form></div></div>';
     }
+    var hadFocus = document.activeElement && document.activeElement.id === 'chat-input';
     el.innerHTML = html;
+    if (hadFocus) { var inp = $('chat-input'); if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }
   }
+  function ago(iso) {
+    var t = Date.parse(iso || ''); if (!t) return '';
+    var m = Math.round((Date.now() - t) / 60000);
+    if (m < 1) return 'just now'; if (m < 60) return m + 'm'; var h = Math.round(m / 60); if (h < 24) return h + 'h';
+    return Math.round(h / 24) + 'd';
+  }
+  $('pred').addEventListener('input', function (e) { if (e.target.id === 'chat-input') draft = e.target.value; });
+  $('pred').addEventListener('submit', function (e) {
+    if (e.target.id !== 'chat-form') return;
+    e.preventDefault();
+    var input = $('chat-input'), text = input.value.replace(/\s+/g, ' ').trim();
+    if (!text || expanded === null) return;
+    var q = QUESTIONS[expanded];
+    input.value = ''; draft = '';
+    store.comment(q.id, me, text).catch(function (err) { toast('That didn\'t post: ' + ((err && err.message) || err)); });
+    comments.push({ question_id: q.id, author: me, text: text, created_at: new Date().toISOString() });
+    renderPredictions();
+    var list = $('chat-list'); if (list) list.scrollTop = list.scrollHeight;
+    var again = $('chat-input'); if (again) again.focus();
+  });
   $('pred').addEventListener('click', function (e) {
     var open = e.target.closest('#pred-open'); if (open) { lsDel('cabin-haul-pred-later-' + me); openQuestionnaire(firstUnanswered(), answeredCount() >= QUESTIONS.length); return; }
     var ch = e.target.closest('#pred-change'); if (ch) { openQuestionnaire(+ch.getAttribute('data-q'), true); return; }
     if (e.target.closest('#pred-close')) { expanded = null; renderPredictions(); return; }
-    var card = e.target.closest('.pred-card'); if (card) { var i = +card.getAttribute('data-q'); expanded = expanded === i ? null : i; renderPredictions(); }
+    var card = e.target.closest('.pred-card'); if (card) { var i = +card.getAttribute('data-q'); expanded = expanded === i ? null : i; draft = ''; renderPredictions(); var list = $('chat-list'); if (list) list.scrollTop = list.scrollHeight; }
   });
 
   // ---- Data ----
