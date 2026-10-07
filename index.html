@@ -51,49 +51,75 @@
     </div>
   </div>
 
-  <!-- Screen 2: who's bringing what -->
+  <!-- Screen 2: the app, with bottom tabs -->
   <div id="main" hidden>
     <div class="topbar">
       <div class="me" id="me"></div>
       <button class="linkbtn" id="switch" type="button">Not you?</button>
     </div>
-    <h1 style="margin-top:8px">Who's bringing what</h1>
-    <p class="lede">Add what you're bringing so nobody doubles up. If something's needed and you can't grab it, flag it and someone else can claim it.</p>
     <div class="notice" id="setup" hidden></div>
-    <div class="pred" id="pred" hidden></div>
 
-    <form class="adder" id="adder">
-      <div class="mode" role="group" aria-label="What kind of entry">
-        <button type="button" id="mode-bring" aria-pressed="true">I'm bringing this</button>
-        <button type="button" id="mode-need" class="need" aria-pressed="false">Someone should bring this</button>
-      </div>
-      <div class="row">
-        <input type="text" id="new-name" placeholder="What is it?" maxlength="60" aria-label="Item" autocomplete="off">
-        <select id="new-cat" aria-label="Category">
-          <option>Food</option><option>Drinks</option><option>Booze</option><option>Snacks</option><option>Supplies</option><option>Gear</option><option>Other</option>
-        </select>
-      </div>
-      <div class="row2">
-        <input type="text" id="new-note" placeholder="Optional: how much, which kind" maxlength="80" aria-label="Note" autocomplete="off">
-        <button class="addbtn" type="submit" id="addbtn">Add</button>
-      </div>
-    </form>
+    <section class="page" id="page-home">
+      <div class="eyebrow">Cabin trip</div>
+      <h1>Home</h1>
+      <p class="lede">The running score on everyone's predictions, and the quick stuff worth knowing.</p>
+      <div class="pred" id="pred" hidden></div>
+      <button type="button" class="summary-card" id="go-bringing">
+        <span class="sc-title">Who's bringing what</span>
+        <span class="sc-sub" id="home-summary">Loading the list…</span>
+        <span class="sc-arrow">→</span>
+      </button>
+    </section>
 
-    <div class="tabs" role="tablist">
-      <button role="tab" id="tab-items" aria-selected="true" type="button">By item</button>
-      <button role="tab" id="tab-people" aria-selected="false" type="button">By person</button>
-    </div>
-    <div id="groups"><p class="skeleton">Loading the list…</p></div>
+    <section class="page" id="page-bringing" hidden>
+      <h1>Who's bringing what</h1>
+      <p class="lede">Add what you're bringing so nobody doubles up. If something's needed and you can't grab it, flag it and someone else can claim it.</p>
+
+      <form class="adder" id="adder">
+        <div class="mode" role="group" aria-label="What kind of entry">
+          <button type="button" id="mode-bring" aria-pressed="true">I'm bringing this</button>
+          <button type="button" id="mode-need" class="need" aria-pressed="false">Someone should bring this</button>
+        </div>
+        <div class="row">
+          <input type="text" id="new-name" placeholder="What is it?" maxlength="60" aria-label="Item" autocomplete="off">
+          <select id="new-cat" aria-label="Category">
+            <option>Food</option><option>Drinks</option><option>Booze</option><option>Snacks</option><option>Supplies</option><option>Gear</option><option>Other</option>
+          </select>
+        </div>
+        <div class="row2">
+          <input type="text" id="new-note" placeholder="Optional: how much, which kind" maxlength="80" aria-label="Note" autocomplete="off">
+          <button class="addbtn" type="submit" id="addbtn">Add</button>
+        </div>
+      </form>
+
+      <div class="tools">
+        <div class="status" id="status"><span class="dot" id="dot"></span><b>0 items</b></div>
+        <button class="btn" id="copylink" type="button">Copy link</button>
+        <button class="btn primary" id="copylist" type="button">Copy list</button>
+      </div>
+      <div class="tabs" role="tablist">
+        <button role="tab" id="tab-items" aria-selected="true" type="button">By item</button>
+        <button role="tab" id="tab-people" aria-selected="false" type="button">By person</button>
+      </div>
+      <div id="groups"><p class="skeleton">Loading the list…</p></div>
+    </section>
+
+    <section class="page" id="page-photos" hidden>
+      <h1>Photos</h1>
+      <p class="lede">The wall of evidence. Coming soon.</p>
+      <div class="empty photos-empty">
+        <div class="cam">📷</div>
+        Nothing here yet. Once this is wired up, anyone can drop in pics from the weekend and they'll show for everyone.
+      </div>
+    </section>
   </div>
 </div>
 
-<div class="bar" id="bar" hidden>
-  <div class="bar-inner">
-    <div class="status" id="status"><span class="dot" id="dot"></span><b>0 items</b></div>
-    <button class="btn" id="copylink" type="button">Copy link</button>
-    <button class="btn primary" id="copylist" type="button">Copy list</button>
-  </div>
-</div>
+<nav class="nav" id="nav" hidden>
+  <button type="button" class="nav-btn" data-tab="home" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
+  <button type="button" class="nav-btn" data-tab="bringing" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm1 5h8v2H8zm0 4h8v2H8zm0 4h5v2H8z"/></svg><span>Bringing</span></button>
+  <button type="button" class="nav-btn" data-tab="photos" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1.5 2H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5zm3 4.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg><span>Photos</span></button>
+</nav>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- app:end -->

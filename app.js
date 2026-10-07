@@ -638,15 +638,28 @@
   function showScreen() {
     var picking = !me;
     $('predict').hidden = true;
-    $('pick').hidden = !picking; $('main').hidden = picking; $('bar').hidden = picking;
+    $('pick').hidden = !picking; $('main').hidden = picking; $('nav').hidden = picking;
     document.body.classList.toggle('picking', picking);
     if (picking) { renderRoster(); window.scrollTo(0, 0); return; }
     if (!booted) boot();
     if (shouldAsk()) { openQuestionnaire(firstUnanswered()); return; }
     var partner = PARTIES.filter(function (p) { return p.indexOf(me) >= 0; })[0].filter(function (n) { return n !== me; })[0];
     $('me').innerHTML = 'Hey <b>' + esc(me) + '</b>' + (partner ? ' · with ' + esc(partner) : '');
+    showTab(tab);
     render();
   }
+
+  // ---- Bottom tabs ----
+  var tab = lsGet('cabin-haul-tab') || 'home';
+  if (['home', 'bringing', 'photos'].indexOf(tab) < 0) tab = 'home';
+  function showTab(name) {
+    tab = name; lsSet('cabin-haul-tab', tab);
+    ['home', 'bringing', 'photos'].forEach(function (t) { $('page-' + t).hidden = t !== tab; });
+    Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function (b) { b.setAttribute('aria-selected', String(b.getAttribute('data-tab') === tab)); });
+    window.scrollTo(0, 0);
+  }
+  $('nav').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) showTab(b.getAttribute('data-tab')); });
+  $('go-bringing').addEventListener('click', function () { showTab('bringing'); });
 
   // ---- Predictions ----
   var QUESTIONS = [
@@ -681,7 +694,7 @@
   }
   function openQuestionnaire(index, skipIntro) {
     qIndex = Math.max(0, Math.min(QUESTIONS.length - 1, index || 0));
-    $('main').hidden = true; $('bar').hidden = true; $('pick').hidden = true; $('predict').hidden = false;
+    $('main').hidden = true; $('nav').hidden = true; $('pick').hidden = true; $('predict').hidden = false;
     document.body.classList.add('picking');
     window.scrollTo(0, 0);
     if (skipIntro) { $('q-intro').hidden = true; $('q-wrap').hidden = false; showQuestion(false); return; }
@@ -883,6 +896,7 @@
     if (myParty) s += ' · you\'ve got ' + mine;
     if (needed) s += ' · <span class="warn">' + needed + ' still needed</span>';
     $('status').innerHTML = s;
+    $('home-summary').textContent = !itemsLoaded ? 'Loading the list\u2026' : plural(items.length, 'item', 'items') + ' so far · you\'ve got ' + mine + (needed ? ' · ' + needed + ' still needed' : '');
   }
 
   // ---- Actions ----
