@@ -122,6 +122,12 @@
       b.rollDir += diff * Math.min(1, 0.25 + d * 0.05);     // steer the spin axis toward the new heading
       b.roll = (b.roll || 0) + d / b.r;
       b.ox = (b.ox || 0) + dx; b.oy = (b.oy || 0) + dy;
+      // the further it rolls, the more grass it picks up
+      if (b.name) {
+        b.dirt = (b.dirt || 0) + d / (b.r * 2 * Math.PI);
+        if (b.nextStain == null) b.nextStain = 0.5;
+        while (b.dirt >= b.nextStain && (!b.stain || b.stain.n < 60)) { stampStain(b); b.nextStain += 0.9 + Math.random() * 0.8; }
+      }
     }
     function physics(dt, now) {
       var t = now / 1000;
@@ -242,6 +248,52 @@
       layerCache[key] = { under: under, over: over, shadow: shadow, size: size };
       return layerCache[key];
     }
+    // Grass stains: each ball keeps its own repeating stain tile, on the same lattice as the dimples so the two roll
+    // together and the stain pools in the dimples the way it does on a real ball. A new smear is stamped every rotation or so.
+    var STAIN_COLS = [[104, 146, 58], [122, 158, 62], [88, 128, 52], [140, 160, 70], [96, 138, 48]];
+    function stainLayer(b) {
+      if (b.stain) return b.stain;
+      if (!dimpleTile) buildDimpleTile();
+      var pw = dimpleSp * 12, ph = dimpleRowH * 12;
+      var off = document.createElement('canvas'); off.width = Math.round(pw * dpr); off.height = Math.round(ph * dpr);
+      var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
+      b.stain = { c: off, o: o, pat: null, pw: pw, ph: ph, n: 0 };
+      return b.stain;
+    }
+    function stampStain(b) {
+      var s = stainLayer(b), o = s.o, sp = dimpleSp, rowH = dimpleRowH;
+      var x = Math.random() * s.pw, y = Math.random() * s.ph;
+      var ang = (b.rollDir || 0) + (Math.random() - 0.5) * 0.7;
+      var len = sp * (1.3 + Math.random() * 2.2), wid = sp * (0.55 + Math.random() * 0.6);
+      var mud = Math.random() < 0.1, col = mud ? [112, 84, 46] : STAIN_COLS[Math.floor(Math.random() * STAIN_COLS.length)];
+      var a = (mud ? 0.16 : 0.2) + Math.random() * 0.16;
+      var rgba = function (k) { return 'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',' + k.toFixed(3) + ')'; };
+      var wraps = [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+      // the smear itself: a soft streak along the direction it was rolling
+      wraps.forEach(function (w) {
+        o.save(); o.translate(x + w[0] * s.pw, y + w[1] * s.ph); o.rotate(ang); o.scale(len, wid);
+        var g = o.createRadialGradient(0, 0, 0, 0, 0, 1);
+        g.addColorStop(0, rgba(a)); g.addColorStop(0.55, rgba(a * 0.55)); g.addColorStop(1, rgba(0));
+        o.fillStyle = g; o.beginPath(); o.arc(0, 0, 1, 0, Math.PI * 2); o.fill(); o.restore();
+      });
+      // and the darker bits that stay in the dimples
+      var ca = Math.cos(ang), sa = Math.sin(ang), reach = len + sp;
+      for (var j = Math.floor((y - reach) / rowH); j <= Math.ceil((y + reach) / rowH); j++) {
+        var py = j * rowH, shift = (j & 1) ? sp / 2 : 0;
+        for (var i = Math.floor((x - reach - shift) / sp); i <= Math.ceil((x + reach - shift) / sp); i++) {
+          var px = i * sp + shift, u = (px - x) * ca + (py - y) * sa, v = -(px - x) * sa + (py - y) * ca;
+          var dist = Math.hypot(u / len, v / wid); if (dist >= 1 || Math.random() < 0.38) continue;   // not every dimple takes it
+          var da = a * 1.7 * Math.pow(1 - dist, 1.3) * (0.7 + Math.random() * 0.5);
+          var qx = ((px % s.pw) + s.pw) % s.pw, qy = ((py % s.ph) + s.ph) % s.ph;
+          o.fillStyle = rgba(Math.min(0.5, da));
+          var dr = 1.7 + Math.random() * 0.6;
+          wraps.forEach(function (w) { o.beginPath(); o.arc(qx + w[0] * s.pw, qy + w[1] * s.ph, dr, 0, Math.PI * 2); o.fill(); });
+        }
+      }
+      s.n++;
+      s.pat = ctx.createPattern(s.c, 'repeat');
+      try { s.pat.setTransform(new DOMMatrix().scale(1 / dpr)); } catch (e) { /* older browsers: slightly soft stains */ }
+    }
     var scriptCache = {};
     function scriptSprite(text, px) {
       var key = text + '@' + Math.round(px * 4) + '@' + dpr;
@@ -281,6 +333,12 @@
       var ox = ((b.ox % dimpleSp) + dimpleSp) % dimpleSp, oy = ((b.oy % (dimpleRowH * 2)) + dimpleRowH * 2) % (dimpleRowH * 2);
       ctx.translate(b.x - r + ox, b.y - r + oy); ctx.fillStyle = dimpleTile; ctx.fillRect(-dimpleSp * 2, -dimpleRowH * 4, r * 2 + dimpleSp * 4, r * 2 + dimpleRowH * 8);
       ctx.restore();
+      if (b.stain && b.stain.pat) {                                                 // grass stains ride on the same lattice
+        var s = b.stain, sx = (((b.ox || 0) % s.pw) + s.pw) % s.pw, sy = (((b.oy || 0) % s.ph) + s.ph) % s.ph;
+        ctx.save(); ctx.beginPath(); ctx.arc(b.x, b.y, r - 0.5, 0, Math.PI * 2); ctx.clip();
+        ctx.translate(b.x - r + sx, b.y - r + sy); ctx.fillStyle = s.pat; ctx.fillRect(-s.pw, -s.ph, r * 2 + s.pw * 2, r * 2 + s.ph * 2);
+        ctx.restore();
+      }
       ctx.drawImage(L.over, b.x - half, b.y - half, L.size, L.size);
       if (opts.current && opts.current === b.name) circle(b.x, b.y, r + 4, null, colors.pine[0], 3);   // your current pick
       if (opts.games && b.held && !game && now - holdStart >= HOLD_SHOW_MS) {   // ring appears late, fills over the last stretch
