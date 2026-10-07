@@ -252,7 +252,7 @@
       o.font = '400 ' + px + 'px ' + scriptFamily; o.textAlign = 'center'; o.textBaseline = 'middle';
       o.fillStyle = 'rgba(18,18,18,0.95)'; o.fillText(text, w / 2, h / 2);
       o.globalCompositeOperation = 'destination-out';                 // shave the edges so the brush face reads as a thin pen
-      o.lineWidth = Math.max(0.8, px * 0.075); o.lineJoin = 'round'; o.strokeStyle = '#000'; o.strokeText(text, w / 2, h / 2);
+      o.lineWidth = Math.max(0.35, px * 0.03); o.lineJoin = 'round'; o.strokeStyle = '#000'; o.strokeText(text, w / 2, h / 2);
       scriptCache[key] = { canvas: off, w: w, h: h };
       return scriptCache[key];
     }
