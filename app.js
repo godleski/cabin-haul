@@ -831,14 +831,33 @@
     head.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); head.click(); } });
   });
 
+  // ---- Games: little helpers ----
+  function buzz(pattern) { try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) { /* ignore */ } }
+  function sameDoc(a, b) { return JSON.stringify(a || null) === JSON.stringify(b || null); }
+  // slot-machine a name into an element: cycles through the pool, slows down, lands on the real one
+  function spinName(el, pool, final, done) {
+    if (!el) { if (done) done(); return; }
+    var steps = [50, 50, 55, 60, 70, 85, 100, 125, 160, 210, 280], i = 0;
+    el.classList.add('spinning');
+    var tick = function () {
+      if (!el.isConnected) return;
+      if (i >= steps.length) { el.textContent = final; el.classList.remove('spinning'); el.classList.add('pop'); buzz(20); if (done) done(); return; }
+      var pick = pool[Math.floor(Math.random() * pool.length)]; if (pick === el.textContent) pick = pool[(pool.indexOf(pick) + 1) % pool.length];
+      el.textContent = pick;
+      setTimeout(tick, steps[i++]);
+    };
+    tick();
+  }
+
   // ---- Games: random team picker ----
-  var teams = null, teamsLoaded = false, teamsSub = false, teamsDraft = null, teamsEdit = false;
-  var TEAM_NAMES = ['Moose', 'Bear', 'Elk', 'Trout', 'Hawk', 'Fox'];
+  var teams = null, teamsLoaded = false, teamsSub = false, teamsDraft = null, teamsEdit = false, teamsScramble = null, teamsReveal = false;
+  var TEAM_NAMES = ['Moose', 'Bear', 'Wolf', 'Trout', 'Hawk', 'Fox'];
+  var TEAM_EMOJI = ['\uD83E\uDD8C', '\uD83D\uDC3B', '\uD83D\uDC3A', '\uD83D\uDC1F', '\uD83E\uDD85', '\uD83E\uDD8A'];
   var TEAM_COLORS = ['#2d6a4f', '#d2691e', '#3f7cae', '#8e44ad', '#c0392b', '#b7950b'];
   function subscribeTeams() {
     if (teamsSub || !store || !store.game) return;
     teamsSub = true;
-    store.game('teams', function (doc) { teams = doc; teamsLoaded = true; renderTeams(); });
+    store.game('teams', function (doc) { var same = teamsLoaded && sameDoc(doc, teams); teams = doc; teamsLoaded = true; if (!same) renderTeams(); });
   }
   function teamsDefaults() { return { players: NAMES.slice(), count: 2, split: true }; }
   function partnerOf(name) {
@@ -871,6 +890,14 @@
     if (!teamsLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
     var t = teams && teams.status === 'set' ? teams : null;
     var html = '';
+    if (teamsScramble) {                                                        // names tumbling before they land
+      status.textContent = 'Shuffling…';
+      body.innerHTML = '<div class="team-list scramble">' + teamsScramble.preview.map(function (members, i) {
+        return '<div class="team" style="--tc:' + TEAM_COLORS[i % TEAM_COLORS.length] + '"><div class="tname"><span class="mascot">' + TEAM_EMOJI[i % TEAM_EMOJI.length] + '</span>Team ' + TEAM_NAMES[i % TEAM_NAMES.length] + '<small>' + members.length + '</small></div><div class="tmem">' +
+          members.map(function (m) { return '<span>' + esc(m) + '</span>'; }).join('') + '</div></div>';
+      }).join('') + '</div><div class="mafia-actions"><button type="button" class="big-btn" disabled>Shuffling…</button></div>';
+      return;
+    }
     if (!t || teamsEdit) {
       var d = teamsDraft || (teamsDraft = t ? { players: t.players.slice(), count: t.count, split: !!t.split } : teamsDefaults());
       var n = d.players.length;
@@ -884,25 +911,36 @@
         '<div class="opt-row"><span>Teams <span class="info-sub">(' + n + ' in' + (sizes ? ' → ' + sizes : '') + ')</span></span><span class="stepper"><button type="button" data-step="-1">−</button><b>' + d.count + '</b><button type="button" data-step="1">+</button></span></div>' +
         '<div class="opt-row"><span>Split up couples</span><button type="button" class="toggle" data-opt="split" aria-pressed="' + d.split + '" aria-label="Split up couples"></button></div>' +
         '</div>';
-      html += '<div class="mafia-actions"><button type="button" class="addbtn" id="teams-make"' + (n < 2 || n < d.count ? ' disabled' : '') + '>Make teams</button>' + (t ? '<button type="button" class="linkbtn" id="teams-cancel">Cancel</button>' : '') + '</div>';
+      html += '<div class="mafia-actions"><button type="button" class="big-btn" id="teams-make"' + (n < 2 || n < d.count ? ' disabled' : '') + '>\uD83C\uDFB2 Roll the teams</button>' + (t ? '<button type="button" class="linkbtn" id="teams-cancel">Cancel</button>' : '') + '</div>';
       body.innerHTML = html;
       return;
     }
     status.textContent = t.players.length + ' in · by ' + (t.by === me ? 'you' : t.by) + ' ' + agoText(t.made_at);
+    var reveal = teamsReveal, k = 0; teamsReveal = false;
     html += '<div class="team-list">' + t.teams.map(function (members, i) {
-      return '<div class="team" style="--tc:' + TEAM_COLORS[i % TEAM_COLORS.length] + '"><div class="tname">Team ' + TEAM_NAMES[i % TEAM_NAMES.length] + '<small>' + members.length + '</small></div><div class="tmem">' +
-        members.map(function (m) { return '<span' + (m === me ? ' class="me"' : '') + '>' + esc(m) + '</span>'; }).join('') + '</div></div>';
+      return '<div class="team' + (reveal ? ' dealin' : '') + '" style="--tc:' + TEAM_COLORS[i % TEAM_COLORS.length] + (reveal ? ';animation-delay:' + (i * 90) + 'ms' : '') + '"><div class="tname"><span class="mascot">' + TEAM_EMOJI[i % TEAM_EMOJI.length] + '</span>Team ' + TEAM_NAMES[i % TEAM_NAMES.length] + '<small>' + members.length + '</small></div><div class="tmem">' +
+        members.map(function (m) { k++; return '<span class="' + (m === me ? 'me' : '') + (reveal ? ' pop' : '') + '"' + (reveal ? ' style="animation-delay:' + (120 + k * 55) + 'ms"' : '') + '>' + esc(m) + '</span>'; }).join('') + '</div></div>';
     }).join('') + '</div>';
     if (t.split) html += '<p class="info-sub" style="margin-top:8px">Couples split up.</p>';
-    html += '<div class="mafia-actions"><button type="button" class="btn primary" id="teams-shuffle">Shuffle again</button><button type="button" class="btn" id="teams-edit">Change who’s in</button><button type="button" class="btn" id="teams-clear">Clear</button></div>';
+    html += '<div class="mafia-actions"><button type="button" class="big-btn" id="teams-shuffle">\uD83C\uDFB2 Roll again</button><button type="button" class="btn" id="teams-edit">Change who’s in</button><button type="button" class="btn" id="teams-clear">Clear</button></div>';
     body.innerHTML = html;
   }
   function saveTeams(players, count, split) {
     count = Math.max(2, Math.min(count, players.length));
     if (players.length < 2) { toast('Need at least two people.'); return; }
     var doc = { status: 'set', by: me, players: players, count: count, split: !!split, teams: makeTeams(players, count, split), made_at: new Date().toISOString() };
-    store.setGame('teams', doc).then(function () { teams = doc; teamsDraft = null; teamsEdit = false; renderTeams(); })
-      .catch(function (e) { toast('Couldn’t save the teams: ' + ((e && e.message) || e)); });
+    if (teamsScramble) return;
+    teamsDraft = null; teamsEdit = false;
+    var t0 = performance.now();
+    teamsScramble = { preview: makeTeams(players, count, false) };
+    buzz([15, 60, 15, 60, 15]);
+    var tick = function () {
+      if (!teamsScramble) return;
+      if (performance.now() - t0 < 950) { teamsScramble.preview = makeTeams(players, count, false); renderTeams(); setTimeout(tick, 75); return; }
+      teamsScramble = null; teams = doc; teamsReveal = true; renderTeams(); buzz(40);
+      store.setGame('teams', doc).catch(function (e) { toast('Couldn’t save the teams: ' + ((e && e.message) || e)); });
+    };
+    tick();
   }
   $('teams-body').addEventListener('click', function (e) {
     var d = teamsDraft || (teamsDraft = teamsDefaults());
@@ -1030,12 +1068,12 @@
     [3, 'What would your ex say is the real reason it ended, and are they right?'],
     [3, 'What’s the biggest thing you’ve never told anyone, and are you going to tell us tonight?']
   ];
-  var liv = null, livLoaded = false, livSub = false;
+  var liv = null, livLoaded = false, livSub = false, livAnim = null;
   var HEAT = { 1: 'Deep', 2: 'Uncomfortable', 3: 'No mercy' };
   function subscribeLiv() {
     if (livSub || !store || !store.game) return;
     livSub = true;
-    store.game('liv', function (doc) { liv = doc; livLoaded = true; renderLiv(); });
+    store.game('liv', function (doc) { var same = livLoaded && sameDoc(doc, liv); liv = doc; livLoaded = true; if (!same) renderLiv(); });
   }
   function livPickVictim(exclude) {
     var pool = NAMES.filter(function (n) { return n !== exclude; });
@@ -1047,7 +1085,8 @@
     if (!left.length) { seen = []; left = LIV_Q.map(function (_, i) { return i; }); }
     var idx = left[Math.floor(Math.random() * left.length)];
     var doc = { q: idx, victim: keepVictim && liv ? liv.victim : livPickVictim(liv && liv.victim), by: me, seen: seen.concat([idx]), at: new Date().toISOString() };
-    store.setGame('liv', doc).then(function () { liv = doc; renderLiv(); }).catch(function (e) { toast('Couldn’t draw one: ' + ((e && e.message) || e)); });
+    liv = doc; livAnim = { flip: true, spin: true }; renderLiv(); buzz(25);
+    store.setGame('liv', doc).catch(function (e) { toast('Couldn’t draw one: ' + ((e && e.message) || e)); });
   }
   function renderLiv() {
     var body = $('liv-body'), status = $('liv-status'); if (!body) return;
@@ -1058,19 +1097,22 @@
     var html = '<p class="info-sub">Liv wants to really get to know you. One question at a time, no repeats, nowhere to hide. Everyone’s phone shows the same one.</p>';
     html += '<div class="legend"><span class="h1"><i></i>Deep · gets you thinking</span><span class="h2"><i></i>Uncomfortable · gets you sweating</span><span class="h3"><i></i>No mercy · gets you divorced</span></div>';
     if (cur) {
-      html += '<div class="liv-q h' + cur[0] + '"><span class="heat h' + cur[0] + '">' + HEAT[cur[0]] + '</span><div class="qt">' + esc(cur[1]) + '</div>' +
-        '<div class="who"><span>Ask <b>' + esc(liv.victim === me ? 'you' : liv.victim) + '</b></span><button type="button" class="linkbtn" id="liv-victim">Someone else</button></div></div>';
+      var an = livAnim || {}; livAnim = null;
+      html += '<div class="liv-q h' + cur[0] + (an.flip ? ' flip' : '') + '"><span class="heat h' + cur[0] + '">' + HEAT[cur[0]] + '</span><div class="qt">' + esc(cur[1]) + '</div>' +
+        '<div class="who"><span>Ask <b id="liv-victim-name">' + esc(liv.victim === me ? 'you' : liv.victim) + '</b></span><button type="button" class="linkbtn" id="liv-victim">Someone else</button></div></div>';
+      if (an.spin) setTimeout(function () { spinName($('liv-victim-name'), NAMES, liv.victim === me ? 'you' : liv.victim); }, an.flip ? 250 : 0);
     } else {
       html += '<div class="liv-empty">Tap below and Liv will take it from there.</div>';
     }
-    html += '<div class="mafia-actions"><button type="button" class="addbtn" id="liv-next">' + (cur ? 'Next question' : 'First question') + '</button>' + (seen.length ? '<button type="button" class="linkbtn" id="liv-reset">Start over</button>' : '') + '</div>';
+    html += '<div class="mafia-actions"><button type="button" class="big-btn" id="liv-next">\uD83D\uDD25 ' + (cur ? 'Draw the next one' : 'Draw a question') + '</button>' + (seen.length ? '<button type="button" class="linkbtn" id="liv-reset">Start over</button>' : '') + '</div>';
     body.innerHTML = html;
   }
   $('liv-body').addEventListener('click', function (e) {
     if (e.target.closest('#liv-next')) { livNext(false); return; }
     if (e.target.closest('#liv-victim') && liv) {
       var doc = Object.assign({}, liv, { victim: livPickVictim(liv.victim) });
-      store.setGame('liv', doc).then(function () { liv = doc; renderLiv(); }).catch(function () { /* ignore */ });
+      liv = doc; livAnim = { spin: true }; renderLiv();
+      store.setGame('liv', doc).catch(function () { /* ignore */ });
       return;
     }
     if (e.target.closest('#liv-reset')) {
@@ -1171,7 +1213,8 @@
   });
 
   // ---- Games: Mafia dealer ----
-  var mafia = null, mafiaLoaded = false, mafiaSub = false, mafiaDraft = null, revealHold = false, modReveal = false;
+  var mafia = null, mafiaLoaded = false, mafiaSub = false, mafiaDraft = null, revealHold = false, modReveal = false, mafiaDealAnim = false;
+  var ROLE_ICON = { mafia: '\uD83D\uDD76\uFE0F', doctor: '\uD83E\uDE7A', detective: '\uD83D\uDD0D', villager: '\uD83C\uDF3E' };
   var ROLE_INFO = {
     mafia: { title: 'Mafia', side: 'mafia', desc: 'Each night, pick someone with the other Mafia to take out. By day, act innocent.' },
     doctor: { title: 'Doctor', side: 'town', desc: 'Each night, pick one person to protect. If the Mafia pick them, they survive. You can pick yourself.' },
@@ -1181,7 +1224,7 @@
   function subscribeMafia() {
     if (mafiaSub || !store || !store.game) return;
     mafiaSub = true;
-    store.game('mafia', function (doc) { mafia = doc; mafiaLoaded = true; renderMafia(); });
+    store.game('mafia', function (doc) { var same = mafiaLoaded && sameDoc(doc, mafia); mafia = doc; mafiaLoaded = true; if (!same) renderMafia(); });
   }
   function mafiaDefaults() {
     var players = NAMES.filter(function (n) { return n !== me; });
@@ -1207,7 +1250,7 @@
         '<div class="opt-row"><span>Detective</span><button type="button" class="toggle" data-opt="detective" aria-pressed="' + d.detective + '" aria-label="Detective"></button></div>' +
         '<div class="opt-row"><span>I’m playing too <span class="info-sub">(moderator sees all roles either way)</span></span><button type="button" class="toggle" data-opt="hostPlays" aria-pressed="' + d.hostPlays + '" aria-label="Host plays"></button></div>' +
         '</div>';
-      html += '<div class="mafia-actions"><button type="button" class="addbtn" id="mafia-deal"' + (n < 4 ? ' disabled' : '') + '>Deal roles</button></div>';
+      html += '<div class="mafia-actions"><button type="button" class="big-btn" id="mafia-deal"' + (n < 4 ? ' disabled' : '') + '>\uD83C\uDCCF Deal the cards</button></div>';
       if (mafia && mafia.status === 'ended') html += '<p class="info-sub" style="margin-top:10px">Last game ended ' + esc(agoText(mafia.ended_at)) + '.</p>';
       body.innerHTML = html;
       return;
@@ -1220,13 +1263,11 @@
     var myRole = g.roles[me];
     if (myRole) {
       var info = ROLE_INFO[myRole], dead = (g.dead || []).indexOf(me) >= 0;
-      if (revealHold) {
-        var mates = myRole === 'mafia' ? g.players.filter(function (p) { return p !== me && g.roles[p] === 'mafia'; }) : [];
-        html += '<div class="role-card revealed ' + info.side + '" id="role-card"><div class="sub">You are</div><div class="role">' + esc(info.title) + '</div><div class="desc">' + esc(info.desc) + '</div>' +
-          (mates.length ? '<div class="mates">Your Mafia: ' + esc(mates.join(', ')) + '</div>' : (myRole === 'mafia' ? '<div class="mates">You’re the only Mafia.</div>' : '')) + '<div class="sub">Let go to hide</div></div>';
-      } else {
-        html += '<div class="role-card" id="role-card"><div class="hold">Hold to see your role</div><div class="sub">Keep your thumb on it. Lifting hides it again.</div></div>';
-      }
+      var mates = myRole === 'mafia' ? g.players.filter(function (p) { return p !== me && g.roles[p] === 'mafia'; }) : [];
+      html += '<div class="role-card' + (revealHold ? ' revealed' : '') + (mafiaDealAnim ? ' dealin' : '') + '" id="role-card"><div class="role-inner">' +
+        '<div class="role-face back"><div class="icon">\uD83C\uDCCF</div><div class="hold">Hold to flip your card</div><div class="sub">Keep your thumb on it. Lifting hides it again.</div></div>' +
+        '<div class="role-face front ' + info.side + '"><div class="icon">' + ROLE_ICON[myRole] + '</div><div class="sub">You are</div><div class="role">' + esc(info.title) + '</div><div class="desc">' + esc(info.desc) + '</div>' +
+        (mates.length ? '<div class="mates">Your Mafia: ' + esc(mates.join(', ')) + '</div>' : (myRole === 'mafia' ? '<div class="mates">You’re the only Mafia.</div>' : '')) + '</div></div></div>';
       if (dead) html += '<p class="info-sub" style="margin-top:8px">You’re out. No talking, no hints, no faces.</p>';
     } else if (g.host !== me) {
       html += '<p class="info-sub">You’re not in this one. ' + esc(g.host) + ' is running it.</p>';
@@ -1236,9 +1277,9 @@
         (mafiaAlive === 0 ? ' · <b>Town wins.</b>' : mafiaAlive >= townAlive ? ' · <b>Mafia wins.</b>' : '') + '</div>';
       html += '<div class="mafia-actions"><button type="button" class="btn" id="mod-toggle">' + (modReveal ? 'Hide roles' : 'Show all roles') + '</button><button type="button" class="btn" id="mafia-redeal">Re-deal</button><button type="button" class="btn" id="mafia-end">End game</button></div>';
       if (modReveal) {
-        html += '<div class="mod-list">' + g.players.map(function (p) {
+        html += '<div class="mod-list">' + g.players.map(function (p, i) {
           var isDead = (g.dead || []).indexOf(p) >= 0;
-          return '<div class="mod-row' + (isDead ? ' dead' : '') + '"><span>' + esc(p) + '</span><span><span class="r ' + esc(g.roles[p]) + '">' + esc(ROLE_INFO[g.roles[p]].title) + '</span> <button type="button" class="btn" data-dead="' + esc(p) + '">' + (isDead ? 'Revive' : 'Out') + '</button></span></div>';
+          return '<div class="mod-row' + (isDead ? ' dead' : '') + (modRevealAnim ? ' dealin' : '') + '"' + (modRevealAnim ? ' style="animation-delay:' + (i * 45) + 'ms"' : '') + '><span>' + esc(p) + '</span><span><span class="r ' + esc(g.roles[p]) + '">' + ROLE_ICON[g.roles[p]] + ' ' + esc(ROLE_INFO[g.roles[p]].title) + '</span> <button type="button" class="btn" data-dead="' + esc(p) + '">' + (isDead ? 'Revive' : 'Out') + '</button></span></div>';
         }).join('') + '</div>';
       }
       html += '<div class="cheat"><b>Night:</b> everyone closes eyes → Mafia open, agree on a target, close → Doctor opens, points at a save, closes → Detective opens, points at someone, you nod or shake, closes.<br><b>Day:</b> announce who didn’t make it, argue, vote someone out. Repeat until the Mafia are gone or they outnumber the town.</div>';
@@ -1247,7 +1288,9 @@
       html += '<div class="mafia-actions"><button type="button" class="linkbtn" id="mafia-takeover">Take over as moderator</button></div>';
     }
     body.innerHTML = html;
+    mafiaDealAnim = false; modRevealAnim = false;
   }
+  var modRevealAnim = false;
   function dealMafia() {
     var d = mafiaDraft || mafiaDefaults();
     var players = d.players.slice(); if (d.hostPlays && players.indexOf(me) < 0) players.push(me);
@@ -1262,8 +1305,8 @@
     for (var j = deck.length - 1; j > 0; j--) { var k = Math.floor(Math.random() * (j + 1)); var t = deck[j]; deck[j] = deck[k]; deck[k] = t; }
     var roles = {}; players.forEach(function (p, idx) { roles[p] = deck[idx]; });
     var doc = { status: 'dealt', host: me, players: players, roles: roles, dead: [], dealt_at: new Date().toISOString(), mafia_count: mafiaCount };
-    store.setGame('mafia', doc).then(function () { mafia = doc; modReveal = false; renderMafia(); toast('Dealt. Everyone can check their phone.'); })
-      .catch(function (e) { toast('Couldn’t deal: ' + ((e && e.message) || e)); });
+    mafia = doc; modReveal = false; mafiaDealAnim = true; renderMafia(); buzz([20, 50, 20, 50, 20]); toast('Dealt. Everyone can check their phone.');
+    store.setGame('mafia', doc).catch(function (e) { toast('Couldn’t deal: ' + ((e && e.message) || e)); });
   }
   $('mafia-body').addEventListener('click', function (e) {
     var d = mafiaDraft || (mafiaDraft = mafiaDefaults());
@@ -1285,7 +1328,7 @@
       store.setGame('mafia', ended).then(function () { mafia = ended; mafiaDraft = null; renderMafia(); }).catch(function (err) { toast('Couldn’t end it: ' + ((err && err.message) || err)); });
       return;
     }
-    if (e.target.closest('#mod-toggle')) { modReveal = !modReveal; renderMafia(); return; }
+    if (e.target.closest('#mod-toggle')) { modReveal = !modReveal; modRevealAnim = modReveal; renderMafia(); return; }
     if (e.target.closest('#mafia-takeover')) {
       var took = Object.assign({}, mafia, { host: me });
       store.setGame('mafia', took).then(function () { mafia = took; renderMafia(); }).catch(function (err) { toast('Couldn’t take over: ' + ((err && err.message) || err)); });
@@ -1300,8 +1343,11 @@
     }
   });
   // hold-to-reveal for your own role
-  function holdStart(e) { if (!e.target.closest('#role-card') || revealHold) return; revealHold = true; renderMafia(); e.preventDefault(); }
-  function holdEnd() { if (!revealHold) return; revealHold = false; renderMafia(); }
+  function holdStart(e) {
+    var card = e.target.closest('#role-card'); if (!card || revealHold) return;
+    revealHold = true; card.classList.add('revealed'); buzz(15); e.preventDefault();
+  }
+  function holdEnd() { if (!revealHold) return; revealHold = false; var card = $('role-card'); if (card) card.classList.remove('revealed'); }
   $('mafia-body').addEventListener('pointerdown', holdStart);
   window.addEventListener('pointerup', holdEnd); window.addEventListener('pointercancel', holdEnd);
   $('mafia-body').addEventListener('contextmenu', function (e) { if (e.target.closest('#role-card')) e.preventDefault(); });
