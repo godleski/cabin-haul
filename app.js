@@ -195,7 +195,7 @@
       game = { me: paddle, t0: performance.now(), over: null,
         goal: { x1: (W - gw) / 2, x2: (W + gw) / 2 },
         cpu: { x: W / 2, y: 56, vx: 0, vy: 0, r: 28 },
-        puck: { x: W / 2, y: H / 2, vx: (Math.random() - 0.5) * 3, vy: (Math.random() < 0.5 ? -1 : 1) * 2.5, r: 12 } };
+        puck: { x: W / 2, y: H / 2, vx: 0, vy: 0, r: 12 }, kickoff: true, humanHits: 0, cpuHits: 0 };
       paddle.held = true; paddle.tx = paddle.x; paddle.ty = Math.max(H / 2 + paddle.r, paddle.y);
       paddle.targetR = 28; paddle.bubbleR = paddle.r;
       balls.forEach(function (b) { if (b !== paddle) b.fade = true; });
@@ -211,7 +211,8 @@
       me.x += me.vx * dt; me.y += me.vy * dt;
       // cpu paddle: chase the puck in its half, otherwise hover in front of its goal
       var cx, cy;
-      if (p.y < H / 2 && p.y > c.y - 6) { cx = p.x; cy = p.y - 10; }           // puck in front: go hit it
+      if (g.kickoff) { cx = W / 2; cy = 56; }                                   // waiting for the human to start
+      else if (p.y < H / 2 && p.y > c.y - 6) { cx = p.x; cy = p.y - 10; }      // puck in front: go hit it
       else if (p.y < H / 2) { cx = W / 2; cy = Math.min(H / 2 - c.r, p.y + c.r + p.r + 30); }   // puck behind: back away so it can roll out
       else { cx = W / 2 + (p.x - W / 2) * 0.4; cy = 56; }
       cx = Math.max(c.r, Math.min(W - c.r, cx)); cy = Math.max(c.r, Math.min(H / 2 - c.r, cy));
@@ -223,7 +224,7 @@
       p.x += p.vx * dt; p.y += p.vy * dt;
       p.vx *= Math.pow(0.996, dt); p.vy *= Math.pow(0.996, dt);
       var ps = Math.hypot(p.vx, p.vy);
-      g.stuck = ps < 0.6 ? (g.stuck || 0) + dt : 0;
+      g.stuck = (ps < 0.6 && !g.kickoff) ? (g.stuck || 0) + dt : 0;
       if (g.stuck > 75) {                                       // ~1.25 s without moving
         p.x = W / 2; p.y = H / 2; g.stuck = 0;
         var dir = Math.random() < 0.5 ? -1 : 1;
@@ -232,13 +233,15 @@
       if (p.x < p.r) { p.x = p.r; p.vx = Math.abs(p.vx) * 0.9; }
       if (p.x > W - p.r) { p.x = W - p.r; p.vx = -Math.abs(p.vx) * 0.9; }
       var inGoal = p.x > g.goal.x1 && p.x < g.goal.x2;
-      if (p.y < p.r && !inGoal) { p.y = p.r; p.vy = Math.abs(p.vy) * 0.9; }
+      var topOpen = g.cpuHits > 0 || g.humanHits > 1;        // first human hit can never be a goal
+      if (p.y < p.r && (!inGoal || !topOpen)) { p.y = p.r; p.vy = Math.abs(p.vy) * 0.9; }
       if (p.y > H - p.r && !inGoal) { p.y = H - p.r; p.vy = -Math.abs(p.vy) * 0.9; }
       if (p.y < -p.r) endGame('human');
       if (p.y > H + p.r) endGame('cpu');
       [me, c].forEach(function (pad) {
         var dx = p.x - pad.x, dy = p.y - pad.y, d = Math.hypot(dx, dy) || 0.01, min = p.r + pad.r;
-        if (d >= min) return;
+        if (d >= min) { pad.touching = false; return; }
+        if (!pad.touching) { pad.touching = true; if (pad === me) { g.humanHits++; g.kickoff = false; } else g.cpuHits++; }
         var nx = dx / d, ny = dy / d;
         p.x = pad.x + nx * min; p.y = pad.y + ny * min;
         var rvx = p.vx - pad.vx, rvy = p.vy - pad.vy, rel = rvx * nx + rvy * ny;
@@ -249,8 +252,8 @@
         if (sp < 2) { p.vx += nx * 2; p.vy += ny * 2; }
         if (p.x < p.r) { p.x = p.r; p.vx = Math.abs(p.vx) + 1; }
         if (p.x > W - p.r) { p.x = W - p.r; p.vx = -Math.abs(p.vx) - 1; }
-        var inG = p.x > g.goal.x1 && p.x < g.goal.x2;
-        if (p.y < p.r && !inG) { p.y = p.r; p.vy = Math.abs(p.vy) + 1; }
+        var inG = p.x > g.goal.x1 && p.x < g.goal.x2, open2 = g.cpuHits > 0 || g.humanHits > 1;
+        if (p.y < p.r && (!inG || !open2)) { p.y = p.r; p.vy = Math.abs(p.vy) + 1; }
         if (p.y > H - p.r && !inG) { p.y = H - p.r; p.vy = -Math.abs(p.vy) - 1; }
       });
     }
@@ -286,6 +289,10 @@
       // cpu mallet
       mallet(c.x, c.y, c.r, colors.ember[0], 'Claude');
       // puck
+      if (g.kickoff && !g.over) {
+        ctx.globalAlpha = 0.6 + 0.4 * Math.sin(now / 300); ctx.fillStyle = colors.muted; ctx.font = '600 13px ' + fontFamily;
+        ctx.fillText('hit the puck to start', W / 2, H / 2 + 64); ctx.globalAlpha = 1;
+      }
       if (g.serveFlash && now - g.serveFlash < 900) {
         ctx.globalAlpha = 1 - (now - g.serveFlash) / 900; ctx.fillStyle = colors.muted; ctx.font = '600 13px ' + fontFamily;
         ctx.fillText('re-serve', W / 2, H / 2 + 64); ctx.globalAlpha = 1;
