@@ -48,22 +48,117 @@
   var NAMES = ['Mitch', 'Katelyn', 'Drew', 'Luke', 'Kelly', 'Gabby', 'Joe', 'Liv', 'Terry', 'Jess', 'Kyle', 'Kyrsten', 'Justin'];
   PARTIES.forEach(function (p) { p.forEach(function (n) { if (NAMES.indexOf(n) < 0) NAMES.push(n); }); });
 
+  // ---- Bubble physics: grab, fling, collide. A quick tap picks the name. ----
+  var sim = null;
   function renderRoster() {
-    $('roster').innerHTML = NAMES.map(function (n) {
-      return '<button type="button" class="bub" data-me="' + esc(n) + '">' + esc(n) + '</button>';
+    if (sim) sim.stop();
+    var box = $('roster');
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var tones = ['pine', 'plain', 'ember'];
+    box.innerHTML = NAMES.map(function (n, i) {
+      var size = [92, 82, 104, 92, 88][i % 5];
+      return '<button type="button" class="bub ' + tones[i % 3] + '" data-me="' + esc(n) + '" style="width:' + size + 'px;height:' + size + 'px;font-size:' + (size / 88) + 'rem"><span class="in">' + esc(n) + '</span></button>';
     }).join('');
+    var els = Array.prototype.slice.call(box.children);
+    var W = box.clientWidth, H = box.clientHeight;
+    var balls = els.map(function (el, i) {
+      var r = el.offsetWidth / 2;
+      var cols = 3, col = i % cols, row = Math.floor(i / cols);
+      return { el: el, r: r, m: r * r,
+        x: (W / (cols + 1)) * (col + 1) + (row % 2 ? 18 : -18) + (Math.random() * 10 - 5),
+        y: 70 + row * 100 + (Math.random() * 10 - 5),
+        vx: 0, vy: 0, held: false, name: el.getAttribute('data-me') };
+    });
+    balls.forEach(function (b) { b.x = Math.max(b.r, Math.min(W - b.r, b.x)); b.y = Math.max(b.r, Math.min(H - b.r, b.y)); });
+
+    var running = true, last = performance.now(), drift = 0;
+    function step(now) {
+      if (!running) return;
+      var dt = Math.min(32, now - last) / 16.67; last = now;
+      if (!reduce) {                      // gentle ambient drift so the pile never looks dead
+        drift += dt;
+        if (drift > 90) { drift = 0; var b = balls[Math.floor(Math.random() * balls.length)]; if (!b.held) { b.vx += Math.random() * 2 - 1; b.vy += Math.random() * 2 - 1; } }
+      }
+      balls.forEach(function (b) {
+        if (b.held) return;
+        b.x += b.vx * dt; b.y += b.vy * dt;
+        b.vx *= Math.pow(0.985, dt); b.vy *= Math.pow(0.985, dt);
+        if (Math.abs(b.vx) < 0.02) b.vx = 0; if (Math.abs(b.vy) < 0.02) b.vy = 0;
+        if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.75; }
+        if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.75; }
+        if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.75; }
+        if (b.y > H - b.r) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 0.75; }
+      });
+      for (var pass = 0; pass < 2; pass++) {
+        for (var i = 0; i < balls.length; i++) for (var j = i + 1; j < balls.length; j++) {
+          var a = balls[i], c = balls[j];
+          var dx = c.x - a.x, dy = c.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 0.01, min = a.r + c.r;
+          if (d >= min) continue;
+          var nx = dx / d, ny = dy / d, overlap = min - d;
+          var wa = a.held ? 0 : (c.held ? 1 : c.m / (a.m + c.m)), wc = c.held ? 0 : (a.held ? 1 : a.m / (a.m + c.m));
+          a.x -= nx * overlap * wa; a.y -= ny * overlap * wa;
+          c.x += nx * overlap * wc; c.y += ny * overlap * wc;
+          var rel = (c.vx - a.vx) * nx + (c.vy - a.vy) * ny;   // closing speed along the normal
+          if (rel > 0) continue;
+          var e = 0.85;
+          if (a.held || c.held) {                           // held bubble has infinite mass
+            var mover = a.held ? c : a, sign = a.held ? 1 : -1;
+            var push = Math.max(Math.abs(rel), 1.5) * (1 + e);
+            mover.vx += nx * push * sign * 0.5; mover.vy += ny * push * sign * 0.5;
+          } else {
+            var jimp = -(1 + e) * rel / (1 / a.m + 1 / c.m);
+            a.vx -= jimp * nx / a.m; a.vy -= jimp * ny / a.m;
+            c.vx += jimp * nx / c.m; c.vy += jimp * ny / c.m;
+          }
+        }
+      }
+      balls.forEach(function (b) { b.el.style.transform = 'translate(' + (b.x - b.r) + 'px,' + (b.y - b.r) + 'px)'; });
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+
+    // Pointer handling: drag to fling, tap to pick.
+    var held = null, trail = [], start = null;
+    function pos(e) { var rct = box.getBoundingClientRect(); return { x: e.clientX - rct.left, y: e.clientY - rct.top, t: performance.now() }; }
+    box.addEventListener('pointerdown', function (e) {
+      var el = e.target.closest('.bub'); if (!el || popping) return;
+      var b = balls.filter(function (x) { return x.el === el; })[0];
+      held = b; b.held = true; b.vx = 0; b.vy = 0; el.classList.add('grab');
+      var p = pos(e); start = p; trail = [p]; b.gx = p.x - b.x; b.gy = p.y - b.y;
+      try { box.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      e.preventDefault();
+    });
+    box.addEventListener('pointermove', function (e) {
+      if (!held) return;
+      var p = pos(e);
+      held.x = Math.max(held.r, Math.min(W - held.r, p.x - held.gx));
+      held.y = Math.max(held.r, Math.min(H - held.r, p.y - held.gy));
+      trail.push(p); if (trail.length > 6) trail.shift();
+    });
+    function release(e) {
+      if (!held) return;
+      var b = held, p = pos(e); held = null; b.held = false; b.el.classList.remove('grab');
+      var moved = Math.hypot(p.x - start.x, p.y - start.y), dur = p.t - start.t;
+      if (moved < 8 && dur < 400) { pick(b); return; }
+      var old = trail[0], dt = Math.max(16, p.t - old.t) / 16.67;
+      b.vx = Math.max(-40, Math.min(40, (p.x - old.x) / dt));
+      b.vy = Math.max(-40, Math.min(40, (p.y - old.y) / dt));
+    }
+    box.addEventListener('pointerup', release);
+    box.addEventListener('pointercancel', release);
+    box.addEventListener('click', function (e) { e.preventDefault(); }); // selection happens on pointerup
+    function pick(b) {
+      if (popping) return;
+      popping = true; b.el.classList.add('pop');
+      setTimeout(function () {
+        popping = false; running = false;
+        me = b.name; myParty = partyOf(me); lsSet('cabin-haul-me', me);
+        showScreen();
+      }, 280);
+    }
+    sim = { stop: function () { running = false; } };
   }
   var popping = false;
-  $('roster').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-me]'); if (!b || popping) return;
-    popping = true;
-    b.classList.add('pop');
-    setTimeout(function () {
-      popping = false;
-      me = b.getAttribute('data-me'); myParty = partyOf(me); lsSet('cabin-haul-me', me);
-      showScreen();
-    }, 280);
-  });
   $('switch').addEventListener('click', function () { me = null; myParty = null; lsDel('cabin-haul-me'); showScreen(); });
 
   function showScreen() {
