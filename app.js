@@ -151,10 +151,10 @@
         if (speed < 0.05) { b.vx = 0; b.vy = 0; }
         b.x += b.vx * dt; b.y += b.vy * dt;
         rollBy(b, b.vx * dt, b.vy * dt);
-        if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.6; }
-        if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.6; }
-        if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.6; }
-        if (b.y > H - b.r) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 0.6; }
+        if (b.x < b.r) { b.x = b.r; knock(b, b.vx, now); b.vx = Math.abs(b.vx) * 0.6; }
+        if (b.x > W - b.r) { b.x = W - b.r; knock(b, b.vx, now); b.vx = -Math.abs(b.vx) * 0.6; }
+        if (b.y < b.r) { b.y = b.r; knock(b, b.vy, now); b.vy = Math.abs(b.vy) * 0.6; }
+        if (b.y > H - b.r) { b.y = H - b.r; knock(b, b.vy, now); b.vy = -Math.abs(b.vy) * 0.6; }
       });
       for (var pass = 0; pass < 2; pass++) {
         for (var i = 0; i < balls.length; i++) for (var j = i + 1; j < balls.length; j++) {
@@ -169,6 +169,7 @@
           var rel = (c.vx - a.vx) * nx + (c.vy - a.vy) * ny;
           if (rel > 0) continue;
           var e = 0.82;
+          knock(a, rel, now); knock(c, rel, now);
           if (a.held || c.held) {
             var mover = a.held ? c : a, sign = a.held ? 1 : -1;
             var push = Math.max(Math.abs(rel), 1.0) * (1 + e);
@@ -251,13 +252,44 @@
     // Grass stains: each ball keeps its own repeating stain tile, on the same lattice as the dimples so the two roll
     // together and the stain pools in the dimples the way it does on a real ball. A new smear is stamped every rotation or so.
     var STAIN_COLS = [[104, 146, 58], [122, 158, 62], [88, 128, 52], [140, 160, 70], [96, 138, 48]];
+    // a hard knock against the rail or another ball leaves a scuff: a few fine scratches and a dull patch
+    function knock(b, v, now) {
+      if (!b.name || Math.abs(v) < 7.5 || (b.lastScuff && now - b.lastScuff < 1500)) return;
+      var s = stainLayer(b); if (s.scuffs >= 10) return;
+      b.lastScuff = now; stampScuff(b, Math.min(1, (Math.abs(v) - 7.5) / 8));
+    }
+    function stampScuff(b, hard) {
+      var s = stainLayer(b), o = s.o;
+      var x = Math.random() * s.pw, y = Math.random() * s.ph;
+      var ang = (b.rollDir || 0) + Math.PI / 2 + (Math.random() - 0.5) * 0.8;   // scratches run across the roll
+      var wraps = [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+      var a = 0.1 + hard * 0.12, n = 3 + Math.floor(Math.random() * 3 + hard * 2), len = 5 + Math.random() * 5 + hard * 4;
+      wraps.forEach(function (w) {
+        o.save(); o.translate(x + w[0] * s.pw, y + w[1] * s.ph); o.rotate(ang);
+        var g = o.createRadialGradient(0, 0, 0, 0, 0, len * 0.9);                  // dull patch where the cover got roughed up
+        g.addColorStop(0, 'rgba(70,76,72,' + (a * 0.5).toFixed(3) + ')'); g.addColorStop(1, 'rgba(70,76,72,0)');
+        o.fillStyle = g; o.beginPath(); o.ellipse(0, 0, len * 0.9, len * 0.55, 0, 0, Math.PI * 2); o.fill();
+        o.lineCap = 'round';
+        for (var i = 0; i < n; i++) {                                              // the scratches
+          var off = (i - (n - 1) / 2) * (1.6 + Math.random()), l = len * (0.5 + Math.random() * 0.6), tilt = (Math.random() - 0.5) * 0.25;
+          var sx = (Math.random() - 0.5) * 3;
+          o.beginPath(); o.moveTo(sx - l / 2 * Math.cos(tilt), off - l / 2 * Math.sin(tilt)); o.lineTo(sx + l / 2 * Math.cos(tilt), off + l / 2 * Math.sin(tilt));
+          o.lineWidth = 0.6 + Math.random() * 0.5; o.strokeStyle = 'rgba(55,60,58,' + (a * (0.8 + Math.random() * 0.6)).toFixed(3) + ')'; o.stroke();
+        }
+        if (Math.random() < 0.5) { o.fillStyle = 'rgba(50,54,52,' + (a * 1.3).toFixed(3) + ')'; o.beginPath(); o.arc((Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4, 0.9, 0, Math.PI * 2); o.fill(); }  // a nick
+        o.restore();
+      });
+      s.scuffs = (s.scuffs || 0) + 1;
+      s.pat = ctx.createPattern(s.c, 'repeat');
+      try { s.pat.setTransform(new DOMMatrix().scale(1 / dpr)); } catch (e) { /* ignore */ }
+    }
     function stainLayer(b) {
       if (b.stain) return b.stain;
       if (!dimpleTile) buildDimpleTile();
       var pw = dimpleSp * 12, ph = dimpleRowH * 12;
       var off = document.createElement('canvas'); off.width = Math.round(pw * dpr); off.height = Math.round(ph * dpr);
       var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
-      b.stain = { c: off, o: o, pat: null, pw: pw, ph: ph, n: 0 };
+      b.stain = { c: off, o: o, pat: null, pw: pw, ph: ph, n: 0, scuffs: 0 };
       return b.stain;
     }
     function stampStain(b) {
