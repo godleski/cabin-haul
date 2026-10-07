@@ -691,7 +691,7 @@
       $('dots').innerHTML = ''; return;
     }
     car.innerHTML = CABIN_PHOTOS.map(function (ph, i) {
-      return '<div class="slide"><img src="' + esc(ph.src) + '" alt="' + esc(ph.cap || 'Cabin photo ' + (i + 1)) + '" loading="' + (i ? 'lazy' : 'eager') + '">' + (ph.cap ? '<div class="cap">' + esc(ph.cap) + '</div>' : '') + '</div>';
+      return '<div class="slide"><img src="' + esc(ph.src) + '" alt="' + esc(ph.cap || 'Cabin photo ' + (i + 1)) + '" loading="' + (i ? 'lazy' : 'eager') + '"></div>';
     }).join('');
     $('dots').innerHTML = CABIN_PHOTOS.map(function (_, i) { return '<span' + (i === 0 ? ' class="on"' : '') + '></span>'; }).join('');
   }
@@ -787,26 +787,33 @@
     var left = QUESTIONS.length - answeredCount();
     var html = '<div class="pred-head"><span class="eyebrow">Predictions</span>' +
       (left ? '<button type="button" class="nudge" id="pred-open">Make your picks (' + left + ' left)</button>' : '<button type="button" class="linkbtn" id="pred-open">Change my picks</button>') + '</div>';
-    html += '<div class="pred-strip">';
+    html += '<div class="pred-list">';
     QUESTIONS.forEach(function (q, i) {
       var t = tallyFor(q), lead = t.rows[0], second = t.rows[1];
       var cc = comments.filter(function (c) { return c.question_id === q.id; }).length;
       html += '<button type="button" class="pred-card' + (expanded === i ? ' open' : '') + '" data-q="' + i + '">' +
-        (cc ? '<span class="cc">' + cc + ' \uD83D\uDCAC</span>' : '') +
         '<div class="pq">' + esc(q.text) + '</div>' +
-        '<div class="lead">' + (lead ? esc(lead.pick) : '—') + '</div>' +
-        '<div class="sub">' + (second ? 'then ' + esc(second.pick) + ' · ' : '') + t.voted + ' of ' + NAMES.length + ' voted</div></button>';
+        '<div class="lead-row"><span class="lead">' + (lead ? esc(lead.pick) : '\u2014') + '</span>' + (second ? '<span class="then">then ' + esc(second.pick) + '</span>' : '') + '</div>' +
+        '<div class="sub">' + t.voted + ' of ' + NAMES.length + ' voted' + (cc ? ' \u00b7 ' + cc + ' \uD83D\uDCAC' : '') + '<span class="chev">' + (expanded === i ? '\u25B2' : '\u25BC') + '</span></div></button>';
+      if (expanded === i) html += detailFor(i);
     });
     html += '</div>';
-    if (expanded !== null) {
-      var q = QUESTIONS[expanded], t = tallyFor(q), max = t.rows.length ? t.rows[0].n : 1;
-      html += '<div class="pred-detail"><div class="pq-big">' + esc(q.text) + '</div>';
+    var hadFocus = document.activeElement && document.activeElement.id === 'chat-input';
+    el.innerHTML = html;
+    if (hadFocus) { var inp = $('chat-input'); if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }
+  }
+  function detailFor(idx) {
+    var html = '';
+    var expandedIdx = idx;
+    {
+      var q = QUESTIONS[expandedIdx], t = tallyFor(q), max = t.rows.length ? t.rows[0].n : 1;
+      html += '<div class="pred-detail">';
       if (!t.rows.length) html += '<div class="empty">No picks yet.</div>';
       t.rows.forEach(function (r) {
         html += '<div class="bar-row"><span class="bar-name">' + esc(r.pick) + '</span><span class="bar-track"><span class="bar-fill" style="width:' + Math.round(100 * r.n / max) + '%"></span></span><span class="bar-n">' + r.n + '</span>' +
           '<span class="bar-who">' + esc(r.who.map(function (n) { return n === me ? 'you' : n; }).join(', ')) + '</span></div>';
       });
-      html += '<div class="pred-actions"><button type="button" class="linkbtn" id="pred-change" data-q="' + expanded + '">Change my pick</button><button type="button" class="linkbtn" id="pred-close">Close</button></div>';
+      html += '<div class="pred-actions"><button type="button" class="linkbtn" id="pred-change" data-q="' + expandedIdx + '">Change my pick</button><button type="button" class="linkbtn" id="pred-close">Close</button></div>';
       // the chat
       var thread = comments.filter(function (c) { return c.question_id === q.id; });
       html += '<div class="chat"><div class="chat-head">Talk it out' + (thread.length ? ' <span class="k">' + thread.length + '</span>' : '') + '</div>';
@@ -816,9 +823,7 @@
       }).join('') + '</div>';
       html += '<form class="chat-form" id="chat-form"><input type="text" id="chat-input" maxlength="240" placeholder="Say something\u2026" autocomplete="off" value="' + esc(draft) + '"><button type="submit" class="btn primary">Send</button></form></div></div>';
     }
-    var hadFocus = document.activeElement && document.activeElement.id === 'chat-input';
-    el.innerHTML = html;
-    if (hadFocus) { var inp = $('chat-input'); if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }
+    return html;
   }
   function ago(iso) {
     var t = Date.parse(iso || ''); if (!t) return '';

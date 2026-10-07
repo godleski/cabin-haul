@@ -85,17 +85,19 @@
   .pred { margin-top: 22px; }
   .pred-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
   .nudge { border: 0; background: var(--ember); color: #fff; font: 700 0.82rem var(--body); padding: 7px 12px; border-radius: 999px; cursor: pointer; }
-  .pred-strip { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: none; scroll-snap-type: x proximity; }
-  .pred-strip::-webkit-scrollbar { display: none; }
+  .pred-list { display: grid; gap: 8px; }
   .pred-card {
-    flex: 0 0 168px; scroll-snap-align: start; text-align: left; cursor: pointer; min-width: 0;
-    background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; color: var(--fg); font-family: var(--body);
+    text-align: left; cursor: pointer; min-width: 0; width: 100%;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; color: var(--fg); font-family: var(--body);
   }
-  .pred-card.open { border-color: var(--pine); box-shadow: inset 0 0 0 1px var(--pine); }
-  .pred-card .pq { font-size: 0.72rem; color: var(--muted); line-height: 1.25; height: 2.5em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .pred-card .lead { font: 800 1.25rem var(--display); color: var(--ember); letter-spacing: -0.01em; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .pred-card .sub { font-size: 0.72rem; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
-  .pred-detail { margin-top: 8px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--pine); border-radius: 12px; }
+  .pred-card.open { border-color: var(--pine); box-shadow: inset 0 0 0 1px var(--pine); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .pred-card .pq { font-size: 0.85rem; color: var(--muted); line-height: 1.3; }
+  .pred-card .lead-row { display: flex; align-items: baseline; gap: 10px; margin-top: 4px; min-width: 0; }
+  .pred-card .lead { font: 800 1.45rem var(--display); color: var(--ember); letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pred-card .then { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+  .pred-card .sub { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .pred-card .chev { font-size: 0.6rem; opacity: 0.7; }
+  .pred-detail { margin-top: -8px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--pine); border-top: 0; border-radius: 0 0 12px 12px; }
   .pq-big { font: 700 0.95rem var(--display); margin-bottom: 8px; }
   .bar-row { display: grid; grid-template-columns: 96px minmax(0, 1fr) 24px; gap: 8px; align-items: center; padding: 3px 0; font-size: 0.85rem; }
   .bar-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -104,8 +106,6 @@
   .bar-n { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
   .bar-row { grid-template-columns: 96px minmax(0, 1fr) 24px; }
   .bar-who { grid-column: 1 / -1; font-size: 0.75rem; color: var(--muted); margin-top: -2px; }
-  .pred-card { position: relative; }
-  .pred-card .cc { position: absolute; top: 8px; right: 10px; font-size: 0.68rem; color: var(--muted); }
   .pred-actions { display: flex; justify-content: space-between; margin-top: 8px; }
   .chat { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
   .chat-head { font: 700 0.85rem var(--display); margin-bottom: 6px; }
@@ -213,7 +213,6 @@
   .carousel::-webkit-scrollbar { display: none; }
   .carousel .slide { flex: 0 0 100%; scroll-snap-align: start; aspect-ratio: 4 / 3; border-radius: 14px; overflow: hidden; background: var(--pine-soft); position: relative; }
   .carousel .slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .carousel .slide .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 12px; font-size: 0.78rem; color: #fff; background: linear-gradient(transparent, rgba(0,0,0,0.55)); }
   .carousel .slide.placeholder { display: grid; place-items: center; text-align: center; color: var(--muted); font-size: 0.9rem; padding: 20px; }
   .dots { display: flex; justify-content: center; gap: 6px; margin-top: 8px; min-height: 8px; }
   .dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
