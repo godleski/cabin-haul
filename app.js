@@ -100,7 +100,7 @@
   function renderArena(opts) {
     var box = opts.box, names = opts.names;
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    box.innerHTML = '<canvas class="arena" aria-hidden="true"></canvas><div class="sr-list">' +
+    box.innerHTML = (opts.games ? '<div class="wake" id="wake" hidden>Tap anywhere once to wake up the green</div>' : '') + '<canvas class="arena" aria-hidden="true"></canvas><div class="sr-list">' +
       names.map(function (n) { return '<button type="button" data-me="' + esc(n) + '">' + esc(n) + '</button>'; }).join('') + '</div>';
     var cv = box.querySelector('canvas'), ctx = cv.getContext('2d');
     var W = 0, H = 0, dpr = 1;
@@ -711,8 +711,23 @@
       }
     }
 
+    // Safari runs requestAnimationFrame at 30fps inside a cross-origin iframe (the claude.ai preview) until the frame
+    // gets a real tap, and a drag doesn't always count. If we're embedded and the cadence looks halved, say so once.
+    var frameGaps = [], wakeChecked = false, wakeEl = box.querySelector('.wake');
+    function checkWake(now) {
+      if (!wakeEl) return;
+      frameGaps.push(now - last);
+      if (frameGaps.length < 60) return;
+      var sorted = frameGaps.slice().sort(function (a, b) { return a - b; }), median = sorted[30];
+      frameGaps = [];
+      var throttled = median > 26 && window.top !== window.self && !document.hidden;
+      if (throttled && !wakeChecked) { wakeEl.hidden = false; wakeChecked = true; }
+      else if (!throttled && !wakeEl.hidden) { wakeEl.hidden = true; }
+    }
+    document.addEventListener('click', function () { if (wakeEl) wakeEl.hidden = true; }, true);
     function step(now) {
       if (!running) return;
+      checkWake(now);
       var dt = Math.min(32, now - last) / 16.67; last = now;
       if (golf) {
         golfPhysics(dt, now);
