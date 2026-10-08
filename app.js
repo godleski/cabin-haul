@@ -713,7 +713,7 @@
 
     // Safari runs requestAnimationFrame at 30fps inside a cross-origin iframe (the claude.ai preview) until the frame
     // gets a real tap, and a drag doesn't always count. If we're embedded and the cadence looks halved, say so once.
-    var frameGaps = [], wakeChecked = false, wakeEl = box.querySelector('.wake');
+    var frameGaps = [], wakeChecked = false, wakeEl = box.querySelector('.wake'), useTimer = false;
     function checkWake(now) {
       if (!wakeEl) return;
       frameGaps.push(now - last);
@@ -721,10 +721,11 @@
       var sorted = frameGaps.slice().sort(function (a, b) { return a - b; }), median = sorted[30];
       frameGaps = [];
       var throttled = median > 26 && window.top !== window.self && !document.hidden;
-      if (throttled && !wakeChecked) { wakeEl.hidden = false; wakeChecked = true; }
+      if (throttled && !wakeChecked) { wakeEl.hidden = false; wakeChecked = true; useTimer = true; }   // try driving frames off a timer instead
       else if (!throttled && !wakeEl.hidden) { wakeEl.hidden = true; }
     }
-    document.addEventListener('click', function () { if (wakeEl) wakeEl.hidden = true; }, true);
+    document.addEventListener('click', function () { if (wakeEl) wakeEl.hidden = true; useTimer = false; }, true);
+    function next() { if (useTimer) setTimeout(function () { step(performance.now()); }, 16); else requestAnimationFrame(step); }
     function step(now) {
       if (!running) return;
       checkWake(now);
@@ -733,7 +734,7 @@
         golfPhysics(dt, now);
         ctx.clearRect(0, 0, W, H);
         if (golf) drawGolf(now); else { balls.forEach(function (b) { drawBubble(b, now); }); }
-        requestAnimationFrame(step); return;
+        next(); return;
       }
       if (game) {
         gamePhysics(dt, now);
@@ -748,7 +749,7 @@
         if (t >= 1) { running = false; popping = null; draw(now); finishPick(); return; }
       }
       draw(now);
-      requestAnimationFrame(step);
+      next();
     }
     requestAnimationFrame(step);
     var ro = null;
