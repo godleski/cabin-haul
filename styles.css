@@ -328,7 +328,7 @@
   .liv-q.h3 .linkbtn { color: #ff9b9b; }
   .liv-empty { margin-top: 12px; border-radius: 14px; padding: 24px 18px; text-align: center; background: var(--bg); border: 1px dashed var(--line); color: var(--muted); }
   /* Mitch vs Luke Smash */
-  #smash-body { --p1: #d63a1f; --p2: #2f6fd1; }
+  #smash-body { --p1: #d63a1f; --p2: #2e9e44; }
   .smash { position: relative; }
   .smash-board { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; gap: 10px; margin-top: 12px; }
   .fighter { border-radius: 16px; padding: 14px 10px 12px; text-align: center; background: var(--bg); border: 2px solid var(--line); position: relative; overflow: hidden; }
