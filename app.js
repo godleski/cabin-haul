@@ -1237,6 +1237,7 @@
   // ---- Games: Drink Roulette ----
   var roulette = null, rouSub = false, wheelAngle = 0, wheelVel = 0, wheelRaf = 0, wheelImg = null, wheelIdx = -1, wheelDrag = null, rouResult = null;
   var WHEEL_COLORS = ['#2d6a4f', '#d2691e', '#3f7cae', '#8e44ad', '#b7950b'];
+  var WHEEL = ['Joe'].concat(NAMES);   // Joe's on there twice, opposite himself, in a different color so nobody notices
   var PENALTIES = [
     ['🥃', 'Take a shot', 'Your choice of poison. Within reason.'],
     ['🍺', 'Chug a beer', 'Whole thing. No air breaks.']
@@ -1263,8 +1264,8 @@
     cv.width = Math.round(size * d); cv.height = Math.round(size * d);
     var off = document.createElement('canvas'); off.width = cv.width; off.height = cv.height;
     var o = off.getContext('2d'); o.setTransform(d, 0, 0, d, 0, 0);
-    var cx = size / 2, cy = size / 2, r = size / 2, n = NAMES.length, step = Math.PI * 2 / n;
-    NAMES.forEach(function (nm, i) {
+    var cx = size / 2, cy = size / 2, r = size / 2, n = WHEEL.length, step = Math.PI * 2 / n;
+    WHEEL.forEach(function (nm, i) {
       var a0 = i * step, a1 = a0 + step;
       o.beginPath(); o.moveTo(cx, cy); o.arc(cx, cy, r, a0, a1); o.closePath();
       o.fillStyle = WHEEL_COLORS[i % WHEEL_COLORS.length]; o.fill();
@@ -1282,7 +1283,7 @@
     drawWheel();
   }
   function wheelUnderPin() {
-    var n = NAMES.length, step = Math.PI * 2 / n;
+    var n = WHEEL.length, step = Math.PI * 2 / n;
     var local = ((-Math.PI / 2 - wheelAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
     return Math.floor(local / step);
   }
@@ -1315,7 +1316,7 @@
     buzz(20);
   }
   function landWheel() {
-    var name = NAMES[wheelUnderPin()], penalty = Math.floor(Math.random() * PENALTIES.length);
+    var name = WHEEL[wheelUnderPin()], penalty = Math.floor(Math.random() * PENALTIES.length);
     rouResult = { name: name, penalty: penalty };
     renderRouletteResult(false);
     buzz([40, 60, 80]);
