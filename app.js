@@ -722,7 +722,7 @@
       frameGaps = [];
       var throttled = median > 26 && window.top !== window.self && !document.hidden;
       if (throttled && !wakeChecked) { wakeEl.hidden = false; wakeChecked = true; useTimer = true; }   // try driving frames off a timer instead
-      else if (!throttled && !wakeEl.hidden) { wakeEl.hidden = true; }
+      else if (!throttled && !wakeEl.hidden && !useTimer) { wakeEl.hidden = true; }
     }
     document.addEventListener('click', function () { if (wakeEl) wakeEl.hidden = true; useTimer = false; }, true);
     function next() { if (useTimer) setTimeout(function () { step(performance.now()); }, 16); else requestAnimationFrame(step); }
