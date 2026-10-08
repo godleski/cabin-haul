@@ -142,8 +142,52 @@
         var sc = (res.data && res.data.value) || { humans: 0, cpu: 0 };
         if (winner === 'human') sc.humans = (sc.humans || 0) + 1;
         else sc.cpu = (sc.cpu || 0) + 1;
+        if (name) {
+          sc.by = sc.by || {};
+          var p = sc.by[name] || { w: 0, l: 0 };
+          if (winner === 'human') p.w++; else p.l++;
+          p.last = new Date().toISOString(); sc.by[name] = p;
+        }
         return sb.from('kv').upsert({ key: 'hockey', value: sc }).then(one);
       });
+    },
+
+    // Mini golf: kv key "golf".
+    golfScores: function (onDoc) {
+      if (!ensure()) return;
+      var read = function () { sb.from('kv').select('value').eq('key', 'golf').maybeSingle().then(function (res) { onDoc((res.data && res.data.value) || { by: {} }); }); };
+      try { sb.channel('cabin-golf').on('postgres_changes', { event: '*', schema: 'public', table: 'kv' }, read).subscribe(); } catch (e) { /* ignore */ }
+      read();
+    },
+    recordGolf: function (name, strokes) {
+      if (!ensure()) return Promise.reject(new Error('not connected'));
+      return sb.from('kv').select('value').eq('key', 'golf').maybeSingle().then(function (res) {
+        var sc = (res.data && res.data.value) || { by: {} };
+        sc.by = sc.by || {};
+        var p = sc.by[name] || { best: null, rounds: 0 };
+        p.rounds++; p.last = strokes; p.last_at = new Date().toISOString();
+        if (p.best == null || strokes < p.best) p.best = strokes;
+        sc.by[name] = p;
+        return sb.from('kv').upsert({ key: 'golf', value: sc }).then(one);
+      });
+    },
+
+    // Shared expenses: table "expenses" (id, title, amount integer cents, paid_by, split jsonb, created_at). Added at go-live.
+    expenses: function (onRows) {
+      if (!ensure()) return;
+      var read = function () {
+        sb.from('expenses').select('id,title,amount,paid_by,split,created_at').order('created_at', { ascending: true }).then(function (res) { onRows(res.data || []); });
+      };
+      try { sb.channel('cabin-expenses').on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, read).subscribe(); } catch (e) { /* ignore */ }
+      read();
+    },
+    addExpense: function (row) {
+      if (!ensure()) return Promise.reject(new Error('not connected'));
+      return sb.from('expenses').insert(row).select().single().then(one);
+    },
+    removeExpense: function (id) {
+      if (!ensure()) return Promise.reject(new Error('not connected'));
+      return sb.from('expenses').delete().eq('id', id).then(one);
     }
   };
 })();

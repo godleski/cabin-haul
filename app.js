@@ -65,13 +65,34 @@
   function renderRoster() {
     if (sim) sim.stop();
     boardShown = false;
-    if (store && store.scores && !scoresSub) { scoresSub = true; store.scores(function (sc) { scores = sc; renderScores(); }); }
+    subscribeBoards();
     renderScores();
     sim = renderArena({ box: $('roster'), names: NAMES, games: true, onPick: function (name) {
       me = name; myParty = partyOf(me); lsSet('cabin-haul-me', me);
       showScreen();
-    } });
+    }, onGolfDone: function (total) { pendingGolf = total; renderGolfPost(); } });
   }
+  // after a round of mini golf: who was that?
+  var pendingGolf = null;
+  function renderGolfPost() {
+    var el = $('golf-post'); if (!el) return;
+    if (pendingGolf == null) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    el.innerHTML = '<div class="gp-title">' + pendingGolf + ' strokes. Put it on the board as\u2026</div><div class="info-sub">Tap your name. Best round per person counts.</div>' +
+      '<div class="name-grid">' + NAMES.map(function (n) { return '<button type="button" data-golfer="' + esc(n) + '" aria-pressed="false">' + esc(n) + '</button>'; }).join('') + '</div>' +
+      '<div class="mafia-actions"><button type="button" class="linkbtn" id="golf-skip">Don\u2019t post it</button></div>';
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  $('golf-post').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-golfer]');
+    if (b && pendingGolf != null && store && store.recordGolf) {
+      var who = b.getAttribute('data-golfer'), n = pendingGolf;
+      pendingGolf = null; renderGolfPost();
+      store.recordGolf(who, n).then(function () { toast(who + ': ' + n + ' strokes, on the board.'); }).catch(function (err) { toast('Couldn\u2019t post that: ' + ((err && err.message) || err)); });
+      return;
+    }
+    if (e.target.closest('#golf-skip')) { pendingGolf = null; renderGolfPost(); }
+  });
   // A physics arena of name balls. opts: box, names, onPick(name), games (hockey/golf easter eggs), current (ring this name).
   function renderArena(opts) {
     var box = opts.box, names = opts.names;
@@ -428,7 +449,7 @@
         b.scale = Math.max(0, 1 - t * 0.9); b.alpha = Math.max(0, 1 - t);
         if (now - g.sunk > 1700) {
           if (g.hole + 1 < HOLES.length) { g.hole++; loadHole(); }
-          else { g.done = g.done || now; }
+          else if (!g.done) { g.done = now; if (opts.onGolfDone) opts.onGolfDone(g.total); }
         }
         if (g.done && now - g.done > 2600) { golf = null; }
         return;
@@ -808,11 +829,12 @@
   }
 
   // ---- Bottom tabs ----
-  var TABS = ['home', 'bringing', 'cabin', 'games', 'photos'];
+  var TABS = ['home', 'bringing', 'cabin', 'games', 'money', 'photos'];
   var tab = 'cabin';
   function showTab(name) {
     tab = name;
     TABS.forEach(function (t) { $('page-' + t).hidden = t !== tab; });
+    if (tab === 'money') { renderSplitGrid(); renderMoney(); }
     Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function (b) { b.setAttribute('aria-selected', String(b.getAttribute('data-tab') === tab)); });
     window.scrollTo(0, 0);
   }
@@ -1335,6 +1357,141 @@
     window.addEventListener('resize', function () { buildWheel(); });
   })();
 
+  // ---- Games: leaderboards (air hockey vs Claude, mini golf) ----
+  var golfScores = null, golfSub = false;
+  function subscribeBoards() {
+    if (store && store.scores && !scoresSub) { scoresSub = true; store.scores(function (sc) { scores = sc; renderScores(); renderHockeyBoard(); }); }
+    if (store && store.golfScores && !golfSub) { golfSub = true; store.golfScores(function (doc) { golfScores = doc; renderGolfBoard(); }); }
+  }
+  function renderHockeyBoard() {
+    var body = $('hockeyboard-body'), st = $('hockeyboard-status'); if (!body) return;
+    var sc = scores || { humans: 0, cpu: 0 }, by = sc.by || {};
+    var h = sc.humans || 0, c = sc.cpu || 0;
+    st.textContent = 'Humans ' + h + ' – ' + c + ' Claude';
+    var rows = Object.keys(by).map(function (n) { return { name: n, w: by[n].w || 0, l: by[n].l || 0 }; })
+      .sort(function (a, b) { return b.w - a.w || a.l - b.l || a.name.localeCompare(b.name); });
+    var html = '<p class="info-sub">Hold a ball on the name screen for five seconds to challenge Claude. Every match counts here.</p>';
+    html += '<div class="board-top"><div><span>' + h + '</span><small>Humans</small></div><span class="vs">vs</span><div><span style="color:var(--claude)">' + c + '</span><small>Claude</small></div></div>';
+    if (!rows.length) html += '<div class="lb-empty">Nobody has taken Claude on yet. Go hold a ball.</div>';
+    else html += '<div class="lb">' + rows.map(function (r, i) {
+      return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span>' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat">' + r.w + '–' + r.l + '<small>' + (r.w + r.l) + ' played</small></span></div>';
+    }).join('') + '</div>';
+    body.innerHTML = html;
+  }
+  function renderGolfBoard() {
+    var body = $('golfboard-body'), st = $('golfboard-status'); if (!body) return;
+    var by = (golfScores && golfScores.by) || {}, par = 8;
+    var rows = Object.keys(by).map(function (n) { return { name: n, best: by[n].best, rounds: by[n].rounds || 0 }; })
+      .sort(function (a, b) { return a.best - b.best || b.rounds - a.rounds || a.name.localeCompare(b.name); });
+    st.textContent = rows.length ? rows[0].name + ' leads at ' + rows[0].best : 'No rounds yet';
+    var html = '<p class="info-sub">Tap the word “putt” on the name screen to play three holes. Par is ' + par + '. Best round per person.</p>';
+    if (!rows.length) html += '<div class="lb-empty">No rounds posted. The course is open.</div>';
+    else html += '<div class="lb">' + rows.map(function (r, i) {
+      var d = r.best - par, dtxt = d === 0 ? 'E' : d > 0 ? '+' + d : String(d);
+      return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span>' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat">' + r.best + ' <small>' + dtxt + ' · ' + r.rounds + (r.rounds === 1 ? ' round' : ' rounds') + '</small></span></div>';
+    }).join('') + '</div>';
+    body.innerHTML = html;
+  }
+
+  // ---- Money: shared expenses ----
+  var expenses = [], expLoaded = false, expSub = false, expSplit = null;
+  function subscribeExpenses() {
+    if (expSub || !store || !store.expenses) return;
+    expSub = true;
+    store.expenses(function (rows) {
+      expenses = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? 1 : -1; });
+      expLoaded = true; renderMoney();
+    }, function (e) { $('expenses').innerHTML = '<p class="empty">Couldn’t load expenses (' + esc((e && e.message) || e) + ').</p>'; });
+  }
+  function dollars(cents) { var n = Math.round(cents) / 100; return (n < 0 ? '−' : '') + '$' + Math.abs(n).toFixed(2); }
+  function expSplitOf(e) { return e.split && e.split.length ? e.split : NAMES; }
+  function balances() {
+    var net = {}; NAMES.forEach(function (n) { net[n] = 0; });
+    expenses.forEach(function (e) {
+      var amt = +e.amount || 0, sp = expSplitOf(e);
+      if (net[e.paid_by] == null) net[e.paid_by] = 0;
+      net[e.paid_by] += amt;
+      sp.forEach(function (n) { if (net[n] == null) net[n] = 0; net[n] -= amt / sp.length; });
+    });
+    return net;
+  }
+  function settleUp(net) {
+    var debt = [], cred = [];
+    Object.keys(net).forEach(function (n) { var v = Math.round(net[n]); if (v < -0.5) debt.push({ n: n, v: -v }); else if (v > 0.5) cred.push({ n: n, v: v }); });
+    debt.sort(function (a, b) { return b.v - a.v; }); cred.sort(function (a, b) { return b.v - a.v; });
+    var out = [], i = 0, k = 0;
+    while (i < debt.length && k < cred.length) {
+      var pay = Math.min(debt[i].v, cred[k].v);
+      if (pay >= 1) out.push({ from: debt[i].n, to: cred[k].n, amount: pay });
+      debt[i].v -= pay; cred[k].v -= pay;
+      if (debt[i].v < 1) i++; if (cred[k].v < 1) k++;
+    }
+    return out;
+  }
+  function renderSplitGrid() {
+    var grid = $('exp-split'); if (!grid) return;
+    if (!expSplit) expSplit = NAMES.slice();
+    grid.innerHTML = NAMES.map(function (n) { return '<button type="button" data-split="' + esc(n) + '" aria-pressed="' + (expSplit.indexOf(n) >= 0) + '">' + esc(n === me ? 'You' : n) + '</button>'; }).join('');
+    $('exp-split-n').textContent = expSplit.length === NAMES.length ? 'everyone' : expSplit.length + (expSplit.length === 1 ? ' person' : ' people');
+    renderExpPreview();
+  }
+  function parseAmount() { var v = parseFloat(String($('exp-amount').value).replace(/[^0-9.]/g, '')); return isNaN(v) || v <= 0 ? 0 : Math.round(v * 100); }
+  function renderExpPreview() {
+    var el = $('exp-preview'); if (!el) return;
+    var cents = parseAmount();
+    el.textContent = cents && expSplit.length ? dollars(cents / expSplit.length) + ' each' : '';
+  }
+  function renderMoney() {
+    var list = $('expenses'), sum = $('money-summary'); if (!list || !me) return;
+    if (!expLoaded) { list.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
+    var net = balances(), mine = Math.round(net[me] || 0), total = expenses.reduce(function (a, e) { return a + (+e.amount || 0); }, 0);
+    var html = '';
+    if (!expenses.length) { sum.innerHTML = ''; list.innerHTML = '<p class="empty">Nothing in yet. First round of groceries goes here.</p>'; return; }
+    html += '<div class="money-you' + (mine < -50 ? ' owe' : '') + '"><div class="big">' + (Math.abs(mine) < 50 ? 'You’re square' : mine > 0 ? 'You’re owed ' + dollars(mine) : 'You owe ' + dollars(-mine)) + '</div><div class="sub">' + dollars(total) + ' spent so far across ' + expenses.length + (expenses.length === 1 ? ' expense' : ' expenses') + '.</div></div>';
+    var pays = settleUp(net);
+    html += '<div class="settle"><h3>Settle up <small>' + (pays.length ? pays.length + (pays.length === 1 ? ' payment' : ' payments') + ' and everyone’s even' : 'all even') + '</small></h3>';
+    html += pays.length ? pays.map(function (p) {
+      var inv = p.from === me || p.to === me;
+      return '<div class="pay' + (inv ? ' me' : '') + '"><span><b>' + esc(p.from === me ? 'You' : p.from) + '</b><span class="arrow">→</span><b>' + esc(p.to === me ? 'you' : p.to) + '</b></span><span class="amt">' + dollars(p.amount) + '</span></div>';
+    }).join('') : '<div class="info-sub">Nobody owes anybody.</div>';
+    html += '</div>';
+    sum.innerHTML = html;
+    list.innerHTML = '<div class="exp-head">Everything so far <small>' + dollars(total) + '</small></div><div class="exp-list">' + expenses.map(function (e) {
+      var sp = expSplitOf(e);
+      return '<div class="exp"><span class="t">' + esc(e.title) + '</span><span class="amt">' + dollars(+e.amount || 0) + '</span>' +
+        '<span class="sub"><span>' + esc(e.paid_by === me ? 'You' : e.paid_by) + ' paid · split ' + (sp.length === NAMES.length ? 'with everyone' : sp.length + ' ways') + ' · ' + esc(agoText(e.created_at)) + '</span>' +
+        (e.paid_by === me ? '<button type="button" class="linkbtn" data-del-exp="' + esc(e.id) + '">Remove</button>' : '') + '</span></div>';
+    }).join('') + '</div>';
+  }
+  $('exp-split').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-split]'); if (!b) return;
+    var n = b.getAttribute('data-split');
+    if (expSplit.indexOf(n) >= 0) { if (expSplit.length > 1) expSplit = expSplit.filter(function (x) { return x !== n; }); } else expSplit.push(n);
+    renderSplitGrid();
+  });
+  $('exp-split-all').addEventListener('click', function () { expSplit = NAMES.slice(); renderSplitGrid(); });
+  $('exp-amount').addEventListener('input', renderExpPreview);
+  $('money-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var title = $('exp-title').value.replace(/\s+/g, ' ').trim(), cents = parseAmount();
+    if (!title) { $('exp-title').focus(); return; }
+    if (!cents) { $('exp-amount').focus(); toast('How much was it?'); return; }
+    var row = { title: title, amount: cents, paid_by: me, split: expSplit.slice() };
+    $('exp-add').disabled = true;
+    store.addExpense(row).then(function (saved) {
+      $('exp-title').value = ''; $('exp-amount').value = ''; expSplit = NAMES.slice(); renderSplitGrid();
+      if (!expenses.some(function (x) { return x.id === saved.id; })) { expenses.unshift(saved); renderMoney(); }
+      toast('In. ' + dollars(cents) + ' for ' + title + '.');
+    }).catch(function (err) { toast('Didn’t save: ' + ((err && err.message) || err)); })
+      .then(function () { $('exp-add').disabled = false; });
+  });
+  $('expenses').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-del-exp]'); if (!b) return;
+    var id = b.getAttribute('data-del-exp');
+    expenses = expenses.filter(function (x) { return x.id !== id; }); renderMoney();
+    store.removeExpense(id).catch(function (err) { toast('Couldn’t remove it: ' + ((err && err.message) || err)); });
+  });
+
   // ---- Games: Mafia dealer ----
   var mafia = null, mafiaLoaded = false, mafiaSub = false, mafiaDraft = null, revealHold = false, modReveal = false, mafiaDealAnim = false;
   var ROLE_ICON = { mafia: '\uD83D\uDD76\uFE0F', doctor: '\uD83E\uDE7A', detective: '\uD83D\uDD0D', villager: '\uD83C\uDF3E' };
@@ -1824,6 +1981,9 @@
     subscribeLiv();
     subscribeSmash();
     subscribeRoulette();
+    subscribeBoards();
+    subscribeExpenses();
+    renderSplitGrid();
     if (!store) { showSetup('No data layer loaded. The page is missing its store script.'); return; }
     store.init({
       onItems: function (rows) { items = rows.slice(); itemsLoaded = true; render(); },

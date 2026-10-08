@@ -145,11 +145,60 @@
         var ref = db.doc('meta/hockey');
         return ref.get().then(function (snap) {
           var sc = snap.exists ? JSON.parse(JSON.stringify(snap.data())) : { humans: 0, cpu: 0 };
-            if (winner === 'human') sc.humans = (sc.humans || 0) + 1;
+          if (winner === 'human') sc.humans = (sc.humans || 0) + 1;
           else sc.cpu = (sc.cpu || 0) + 1;
+          if (name) {
+            sc.by = sc.by || {};
+            var p = sc.by[name] || { w: 0, l: 0 };
+            if (winner === 'human') p.w++; else p.l++;
+            p.last = new Date().toISOString(); sc.by[name] = p;
+          }
           return ref.set(sc);
         });
       });
+    },
+
+    // Mini golf: best round per person, one document (future Supabase kv key "golf").
+    golfScores: function (onDoc) {
+      ensure().then(function () {
+        if (!db) return;
+        db.doc('meta/golf').onSnapshot(function (snap) { onDoc(snap.exists ? Object.assign({}, snap.data()) : { by: {} }); }, function () { /* ignore */ });
+      });
+    },
+    recordGolf: function (name, strokes) {
+      return ensure().then(function () {
+        if (!db) throw new Error('not signed in');
+        var ref = db.doc('meta/golf');
+        return ref.get().then(function (snap) {
+          var sc = snap.exists ? JSON.parse(JSON.stringify(snap.data())) : { by: {} };
+          sc.by = sc.by || {};
+          var p = sc.by[name] || { best: null, rounds: 0 };
+          p.rounds++; p.last = strokes; p.last_at = new Date().toISOString();
+          if (p.best == null || strokes < p.best) p.best = strokes;
+          sc.by[name] = p;
+          return ref.set(sc);
+        });
+      });
+    },
+
+    // Shared expenses: one document per expense (future Supabase table "expenses": id, title, amount (cents), paid_by, split, created_at).
+    expenses: function (onRows, onError) {
+      ensure().then(function () {
+        if (!db) return;
+        db.collection('expenses').onSnapshot(function (qs) {
+          onRows(qs.docs.filter(function (d) { return d.exists; }).map(toRow));
+        }, function (e) { if (onError) onError(e); });
+      });
+    },
+    addExpense: function (row) {
+      return ensure().then(function () {
+        if (!db) throw new Error('not signed in');
+        var body = Object.assign({}, row, { created_at: new Date().toISOString() });
+        return db.collection('expenses').add(body).then(function (ref) { body.id = ref.id; return body; });
+      });
+    },
+    removeExpense: function (id) {
+      return ensure().then(function () { if (!db) throw new Error('not signed in'); return db.doc('expenses/' + id).delete(); });
     }
   };
 })();
