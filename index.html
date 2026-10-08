@@ -20,7 +20,7 @@
     <h1>Who are you?</h1>
     <p class="lede">Tap your ball. Or <span class="secret" id="golfword">putt</span> a few around first, we won't judge.</p>
     <div class="bubbles" id="roster"></div>
-    <p class="hint">Drag a ball and let go to roll it.</p>
+    <p class="hint">Drag a ball and let go to roll it. There are two hidden games on this screen.</p>
     <div class="golf-post" id="golf-post" hidden></div>
   </div>
 
@@ -153,6 +153,10 @@
     <section class="page" id="page-games" hidden>
       <h1>Games</h1>
       <p class="lede">Stuff to play once the drinks are poured.</p>
+      <div class="boards">
+        <div class="board-card" id="hockeyboard"><div class="bc-title">🏒 Air hockey</div><div class="bc-sub" id="hockeyboard-status"></div><div id="hockeyboard-body"></div></div>
+        <div class="board-card" id="golfboard"><div class="bc-title">⛳ Mini golf</div><div class="bc-sub" id="golfboard-status"></div><div id="golfboard-body"></div></div>
+      </div>
       <div class="game-card" id="teams">
         <div class="game-head" role="button" tabindex="0" aria-expanded="false" aria-controls="teams-body"><span class="gi" aria-hidden="true">🎲</span><h2>Team picker</h2><span class="k" id="teams-status"></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
         <div id="teams-body" hidden><p class="skeleton">Loading…</p></div>
@@ -175,14 +179,6 @@
           <p class="info-sub" id="rou-last" style="margin-top:8px"></p>
         </div>
       </div>
-      <div class="game-card" id="hockeyboard">
-        <div class="game-head" role="button" tabindex="0" aria-expanded="false" aria-controls="hockeyboard-body"><span class="gi" aria-hidden="true">🏒</span><h2>Air Hockey vs Claude</h2><span class="k" id="hockeyboard-status"></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div id="hockeyboard-body" hidden><p class="skeleton">Loading…</p></div>
-      </div>
-      <div class="game-card" id="golfboard">
-        <div class="game-head" role="button" tabindex="0" aria-expanded="false" aria-controls="golfboard-body"><span class="gi" aria-hidden="true">⛳</span><h2>Mini Golf</h2><span class="k" id="golfboard-status"></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div id="golfboard-body" hidden><p class="skeleton">Loading…</p></div>
-      </div>
       <div class="game-card" id="mafia">
         <div class="game-head" role="button" tabindex="0" aria-expanded="false" aria-controls="mafia-body"><span class="gi" aria-hidden="true">🕵️</span><h2>Mafia</h2><span class="k" id="mafia-status"></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
         <div id="mafia-body" hidden><p class="skeleton">Loading…</p></div>
@@ -192,6 +188,11 @@
     <section class="page" id="page-money" hidden>
       <h1>Money</h1>
       <p class="lede">Paid for something for the group? Put it in. At the end it squares everyone up with the fewest payments possible.</p>
+      <form class="venmo" id="venmo-form">
+        <label for="venmo-input">Your Venmo</label>
+        <input type="text" id="venmo-input" placeholder="@your-handle" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button type="submit" class="btn primary" id="venmo-save">Save</button>
+      </form>
       <form class="adder money-form" id="money-form">
         <div class="row">
           <input type="text" id="exp-title" placeholder="What was it?" maxlength="60" aria-label="What" autocomplete="off">

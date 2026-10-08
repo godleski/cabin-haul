@@ -281,18 +281,21 @@
   #smash { --ac: #d63a1f; --ac-soft: rgba(214, 58, 31, 0.12); }
   #mafia { --ac: #8e2f44; --ac-soft: rgba(142, 47, 68, 0.14); }
   #roulette { --ac: #b7950b; --ac-soft: rgba(183, 149, 11, 0.16); }
-  #hockeyboard { --ac: #d97757; --ac-soft: rgba(217, 119, 87, 0.14); }
-  #golfboard { --ac: #2d6a4f; --ac-soft: rgba(45, 106, 79, 0.14); }
-  .board-top { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 4px 0 12px; font: 800 1.6rem var(--display); letter-spacing: -0.02em; }
-  .board-top small { font: 600 0.7rem var(--body); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); display: block; text-align: center; }
-  .board-top .vs { font: 700 0.85rem var(--body); color: var(--muted); }
-  .lb { display: grid; gap: 4px; }
-  .lb-row { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--bg); font-size: 0.92rem; }
+  .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+  .board-card { padding: 12px 12px 10px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); min-width: 0; }
+  #hockeyboard { --ac: #d97757; } #golfboard { --ac: #2d6a4f; }
+  .bc-title { font: 700 0.95rem var(--display); }
+  .bc-sub { font-size: 0.74rem; color: var(--muted); margin: 2px 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bc-sub b { color: var(--ac); }
+  .lb { display: grid; gap: 3px; }
+  .lb-row { display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 6px; padding: 5px 7px; border-radius: 8px; background: var(--bg); font-size: 0.82rem; min-width: 0; }
   .lb-row.me { box-shadow: inset 0 0 0 1.5px var(--ac); }
-  .lb-row .rank { font: 800 0.95rem var(--display); color: var(--muted); text-align: center; }
+  .lb-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lb-row .rank { font: 800 0.8rem var(--display); color: var(--muted); text-align: center; }
   .lb-row:nth-child(1) .rank { color: #d4a017; } .lb-row:nth-child(2) .rank { color: #9aa0a6; } .lb-row:nth-child(3) .rank { color: #b87333; }
-  .lb-row .stat { font-variant-numeric: tabular-nums; font-weight: 700; } .lb-row .stat small { font-weight: 500; color: var(--muted); margin-left: 6px; }
-  .lb-empty { padding: 16px; text-align: center; color: var(--muted); font-size: 0.9rem; border: 1px dashed var(--line); border-radius: 12px; }
+  .lb-row .stat { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; } .lb-row .stat small { font-weight: 500; color: var(--muted); margin-left: 3px; }
+  .lb-more { font-size: 0.72rem; color: var(--muted); margin-top: 6px; }
+  .lb-empty { padding: 10px 6px; text-align: center; color: var(--muted); font-size: 0.78rem; border: 1px dashed var(--line); border-radius: 10px; }
   .golf-post { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1.5px solid var(--pine); animation: pop 360ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
   .golf-post .gp-title { font: 700 0.95rem var(--display); margin-bottom: 2px; }
   .golf-post .name-grid { margin-top: 8px; }
@@ -427,6 +430,13 @@
   .note-card { background: var(--ember-soft); border-color: var(--ember); }
   .note-card .info-title { color: var(--ember); }
   /* ---- Money ---- */
+  .venmo { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; margin-top: 14px; padding: 10px 12px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+  .venmo label { font: 700 0.85rem var(--display); white-space: nowrap; }
+  .venmo input { min-width: 0; }
+  .venmo.missing { border-color: var(--ember); background: var(--ember-soft); }
+  .venmo .btn { padding: 8px 12px; }
+  .pay .vm { font-size: 0.76rem; color: var(--muted); font-weight: 500; margin-left: 6px; }
+  .pay a.vm { color: var(--lake); text-decoration: none; font-weight: 600; }
   .money-form .row input[type="text"] { min-width: 0; }
   .money-form #exp-amount { flex: 0 0 110px; font-variant-numeric: tabular-nums; }
   .split-head { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 0.85rem; color: var(--muted); }

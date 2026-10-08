@@ -834,7 +834,7 @@
   function showTab(name) {
     tab = name;
     TABS.forEach(function (t) { $('page-' + t).hidden = t !== tab; });
-    if (tab === 'money') { renderSplitGrid(); renderMoney(); }
+    if (tab === 'money') { renderSplitGrid(); renderVenmo(); renderMoney(); }
     Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function (b) { b.setAttribute('aria-selected', String(b.getAttribute('data-tab') === tab)); });
     window.scrollTo(0, 0);
   }
@@ -1364,38 +1364,56 @@
     if (store && store.scores && !scoresSub) { scoresSub = true; store.scores(function (sc) { scores = sc; renderScores(); renderHockeyBoard(); }); }
     if (store && store.golfScores && !golfSub) { golfSub = true; store.golfScores(function (doc) { golfScores = doc; renderGolfBoard(); }); }
   }
+  var BOARD_MAX = 5;
   function renderHockeyBoard() {
     var body = $('hockeyboard-body'), st = $('hockeyboard-status'); if (!body) return;
     var sc = scores || { humans: 0, cpu: 0 }, by = sc.by || {};
     var h = sc.humans || 0, c = sc.cpu || 0;
-    st.textContent = 'Humans ' + h + ' – ' + c + ' Claude';
+    st.innerHTML = 'Humans <b>' + h + '</b> – <b>' + c + '</b> Claude';
     var rows = Object.keys(by).map(function (n) { return { name: n, w: by[n].w || 0, l: by[n].l || 0 }; })
       .sort(function (a, b) { return b.w - a.w || a.l - b.l || a.name.localeCompare(b.name); });
-    var html = '<p class="info-sub">Hold a ball on the name screen for five seconds to challenge Claude. Every match counts here.</p>';
-    html += '<div class="board-top"><div><span>' + h + '</span><small>Humans</small></div><span class="vs">vs</span><div><span style="color:var(--claude)">' + c + '</span><small>Claude</small></div></div>';
-    if (!rows.length) html += '<div class="lb-empty">Nobody has taken Claude on yet. Go hold a ball.</div>';
-    else html += '<div class="lb">' + rows.map(function (r, i) {
-      return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span>' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat">' + r.w + '–' + r.l + '<small>' + (r.w + r.l) + ' played</small></span></div>';
-    }).join('') + '</div>';
-    body.innerHTML = html;
+    if (!rows.length) { body.innerHTML = '<div class="lb-empty">Nobody yet</div>'; return; }
+    body.innerHTML = '<div class="lb">' + rows.slice(0, BOARD_MAX).map(function (r, i) {
+      return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat">' + r.w + '–' + r.l + '</span></div>';
+    }).join('') + '</div>' + (rows.length > BOARD_MAX ? '<div class="lb-more">+' + (rows.length - BOARD_MAX) + ' more</div>' : '');
   }
   function renderGolfBoard() {
     var body = $('golfboard-body'), st = $('golfboard-status'); if (!body) return;
     var by = (golfScores && golfScores.by) || {}, par = 8;
     var rows = Object.keys(by).map(function (n) { return { name: n, best: by[n].best, rounds: by[n].rounds || 0 }; })
       .sort(function (a, b) { return a.best - b.best || b.rounds - a.rounds || a.name.localeCompare(b.name); });
-    st.textContent = rows.length ? rows[0].name + ' leads at ' + rows[0].best : 'No rounds yet';
-    var html = '<p class="info-sub">Tap the word “putt” on the name screen to play three holes. Par is ' + par + '. Best round per person.</p>';
-    if (!rows.length) html += '<div class="lb-empty">No rounds posted. The course is open.</div>';
-    else html += '<div class="lb">' + rows.map(function (r, i) {
+    st.innerHTML = 'Par ' + par + (rows.length ? ' · <b>' + esc(rows[0].name === me ? 'you lead' : rows[0].name + ' leads') + '</b>' : ' · best round');
+    if (!rows.length) { body.innerHTML = '<div class="lb-empty">Nobody yet</div>'; return; }
+    body.innerHTML = '<div class="lb">' + rows.slice(0, BOARD_MAX).map(function (r, i) {
       var d = r.best - par, dtxt = d === 0 ? 'E' : d > 0 ? '+' + d : String(d);
-      return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span>' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat">' + r.best + ' <small>' + dtxt + ' · ' + r.rounds + (r.rounds === 1 ? ' round' : ' rounds') + '</small></span></div>';
-    }).join('') + '</div>';
-    body.innerHTML = html;
+      return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat">' + r.best + '<small>' + dtxt + '</small></span></div>';
+    }).join('') + '</div>' + (rows.length > BOARD_MAX ? '<div class="lb-more">+' + (rows.length - BOARD_MAX) + ' more</div>' : '');
   }
 
   // ---- Money: shared expenses ----
-  var expenses = [], expLoaded = false, expSub = false, expSplit = null;
+  var expenses = [], expLoaded = false, expSub = false, expSplit = null, venmo = {}, venmoSub = false;
+  function subscribeVenmo() {
+    if (venmoSub || !store || !store.game) return;
+    venmoSub = true;
+    store.game('venmo', function (doc) { venmo = doc || {}; renderVenmo(); renderMoney(); });
+  }
+  function cleanHandle(v) { v = String(v || '').trim().replace(/^https?:\/\/(www\.)?venmo\.com\/(u\/)?/i, '').replace(/^@+/, ''); return v ? '@' + v : ''; }
+  function venmoLink(name) { var h = venmo[name]; return h ? '<a class="vm" href="https://venmo.com/u/' + encodeURIComponent(h.replace(/^@/, '')) + '" target="_blank" rel="noopener">' + esc(h) + '</a>' : ''; }
+  function renderVenmo() {
+    var form = $('venmo-form'), inp = $('venmo-input'); if (!form || !me) return;
+    var mine = venmo[me] || '';
+    if (document.activeElement !== inp) inp.value = mine;
+    form.classList.toggle('missing', !mine);
+    inp.placeholder = mine ? mine : '@your-handle';
+  }
+  $('venmo-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var h = cleanHandle($('venmo-input').value);
+    var doc = Object.assign({}, venmo); if (h) doc[me] = h; else delete doc[me];
+    venmo = doc; renderVenmo(); renderMoney();
+    store.setGame('venmo', doc).then(function () { toast(h ? 'Saved. People can pay ' + h + '.' : 'Venmo cleared.'); $('venmo-input').blur(); })
+      .catch(function (err) { toast('Couldn’t save that: ' + ((err && err.message) || err)); });
+  });
   function subscribeExpenses() {
     if (expSub || !store || !store.expenses) return;
     expSub = true;
@@ -1453,7 +1471,7 @@
     html += '<div class="settle"><h3>Settle up <small>' + (pays.length ? pays.length + (pays.length === 1 ? ' payment' : ' payments') + ' and everyone’s even' : 'all even') + '</small></h3>';
     html += pays.length ? pays.map(function (p) {
       var inv = p.from === me || p.to === me;
-      return '<div class="pay' + (inv ? ' me' : '') + '"><span><b>' + esc(p.from === me ? 'You' : p.from) + '</b><span class="arrow">→</span><b>' + esc(p.to === me ? 'you' : p.to) + '</b></span><span class="amt">' + dollars(p.amount) + '</span></div>';
+      return '<div class="pay' + (inv ? ' me' : '') + '"><span><b>' + esc(p.from === me ? 'You' : p.from) + '</b><span class="arrow">→</span><b>' + esc(p.to === me ? 'you' : p.to) + '</b>' + (venmoLink(p.to) || '<span class="vm">no Venmo yet</span>') + '</span><span class="amt">' + dollars(p.amount) + '</span></div>';
     }).join('') : '<div class="info-sub">Nobody owes anybody.</div>';
     html += '</div>';
     sum.innerHTML = html;
@@ -1984,6 +2002,7 @@
     subscribeRoulette();
     subscribeBoards();
     subscribeExpenses();
+    subscribeVenmo();
     renderSplitGrid();
     if (!store) { showSetup('No data layer loaded. The page is missing its store script.'); return; }
     store.init({
