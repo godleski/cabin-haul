@@ -384,6 +384,8 @@
   .mod-row .btn { padding: 5px 9px; font-size: 0.75rem; }
   .cheat { margin-top: 12px; font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
   .cheat b { color: var(--fg); }
+  .note-card { background: var(--ember-soft); border-color: var(--ember); }
+  .note-card .info-title { color: var(--ember); }
   .photo-tools { display: flex; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
   .photo-tools .addbtn { background: var(--pine); color: var(--pine-ink); }
   .photo-summary { font-size: 0.85rem; color: var(--muted); min-width: 0; }
