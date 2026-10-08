@@ -164,6 +164,16 @@
         <div class="game-head" role="button" tabindex="0" aria-expanded="false" aria-controls="smash-body"><span class="gi" aria-hidden="true">🎮</span><h2>Mitch vs Luke Smash</h2><span class="k" id="smash-status"></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
         <div id="smash-body" hidden><p class="skeleton">Loading…</p></div>
       </div>
+      <div class="game-card" id="roulette">
+        <div class="game-head" role="button" tabindex="0" aria-expanded="false" aria-controls="roulette-body"><span class="gi" aria-hidden="true">🍺</span><h2>Drink Roulette</h2><span class="k" id="roulette-status"></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div id="roulette-body" hidden>
+          <p class="info-sub">Somebody has to. Flick the wheel or hit spin, and whoever it lands on takes a shot or chugs a beer. No appeals.</p>
+          <div class="wheel-wrap"><div class="wheel-pin" id="wheel-pin"></div><canvas id="wheel" width="280" height="280" aria-label="Roulette wheel of names"></canvas></div>
+          <div id="rou-result"></div>
+          <div class="mafia-actions"><button type="button" class="big-btn" id="rou-spin">🍺 Spin it</button></div>
+          <p class="info-sub" id="rou-last" style="margin-top:8px"></p>
+        </div>
+      </div>
       <div class="game-card" id="mafia">
         <div class="game-head" role="button" tabindex="0" aria-expanded="false" aria-controls="mafia-body"><span class="gi" aria-hidden="true">🕵️</span><h2>Mafia</h2><span class="k" id="mafia-status"></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
         <div id="mafia-body" hidden><p class="skeleton">Loading…</p></div>

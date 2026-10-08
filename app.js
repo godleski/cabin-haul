@@ -1212,6 +1212,129 @@
     }
   });
 
+  // ---- Games: Drink Roulette ----
+  var roulette = null, rouSub = false, wheelAngle = 0, wheelVel = 0, wheelRaf = 0, wheelImg = null, wheelIdx = -1, wheelDrag = null, rouResult = null;
+  var WHEEL_COLORS = ['#2d6a4f', '#d2691e', '#3f7cae', '#8e44ad', '#b7950b'];
+  var PENALTIES = [
+    ['🥃', 'Take a shot', 'Your choice of poison. Within reason.'],
+    ['🍺', 'Chug a beer', 'Whole thing. No air breaks.']
+  ];
+  function subscribeRoulette() {
+    if (rouSub || !store || !store.game) return;
+    rouSub = true;
+    store.game('roulette', function (doc) { roulette = doc; renderRouletteStatus(); });
+  }
+  function renderRouletteStatus() {
+    var st = $('roulette-status'), last = $('rou-last'); if (!st) return;
+    if (roulette && roulette.name) {
+      var pen = PENALTIES[roulette.penalty] || PENALTIES[0];
+      st.textContent = 'Last: ' + roulette.name + ' ' + pen[0];
+      if (last) last.textContent = 'Last spin landed on ' + roulette.name + ' (' + pen[1].toLowerCase() + '), spun by ' + (roulette.by === me ? 'you' : roulette.by) + ' ' + agoText(roulette.at) + '.';
+    } else {
+      st.textContent = 'Nobody yet';
+      if (last) last.textContent = '';
+    }
+  }
+  function buildWheel() {
+    var cv = $('wheel'); if (!cv) return;
+    var size = 280, d = window.devicePixelRatio || 1;
+    cv.width = Math.round(size * d); cv.height = Math.round(size * d);
+    var off = document.createElement('canvas'); off.width = cv.width; off.height = cv.height;
+    var o = off.getContext('2d'); o.setTransform(d, 0, 0, d, 0, 0);
+    var cx = size / 2, cy = size / 2, r = size / 2, n = NAMES.length, step = Math.PI * 2 / n;
+    NAMES.forEach(function (nm, i) {
+      var a0 = i * step, a1 = a0 + step;
+      o.beginPath(); o.moveTo(cx, cy); o.arc(cx, cy, r, a0, a1); o.closePath();
+      o.fillStyle = WHEEL_COLORS[i % WHEEL_COLORS.length]; o.fill();
+      o.strokeStyle = 'rgba(255,255,255,0.35)'; o.lineWidth = 1.5; o.stroke();
+      o.save(); o.translate(cx, cy); o.rotate(a0 + step / 2);
+      o.textAlign = 'right'; o.textBaseline = 'middle'; o.fillStyle = '#fff';
+      o.font = '800 14px ' + cssVar('--display'); o.shadowColor = 'rgba(0,0,0,0.35)'; o.shadowBlur = 3;
+      o.fillText(nm, r - 14, 0); o.restore();
+    });
+    var hub = o.createRadialGradient(cx, cy, 2, cx, cy, 24);
+    hub.addColorStop(0, '#fff'); hub.addColorStop(1, '#d9ded8');
+    o.beginPath(); o.arc(cx, cy, 24, 0, Math.PI * 2); o.fillStyle = hub; o.fill(); o.strokeStyle = 'rgba(0,0,0,0.15)'; o.lineWidth = 2; o.stroke();
+    o.font = '20px ' + cssVar('--display'); o.textAlign = 'center'; o.textBaseline = 'middle'; o.fillText('🍻', cx, cy + 1);
+    wheelImg = off;
+    drawWheel();
+  }
+  function wheelUnderPin() {
+    var n = NAMES.length, step = Math.PI * 2 / n;
+    var local = ((-Math.PI / 2 - wheelAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    return Math.floor(local / step);
+  }
+  function drawWheel() {
+    var cv = $('wheel'); if (!cv || !wheelImg) return;
+    var ctx2 = cv.getContext('2d'), d = window.devicePixelRatio || 1, size = 280;
+    ctx2.setTransform(d, 0, 0, d, 0, 0);
+    ctx2.clearRect(0, 0, size, size);
+    ctx2.save(); ctx2.translate(size / 2, size / 2); ctx2.rotate(wheelAngle);
+    ctx2.drawImage(wheelImg, -size / 2, -size / 2, size, size); ctx2.restore();
+    var idx = wheelUnderPin();
+    if (idx !== wheelIdx) {
+      wheelIdx = idx;
+      var pin = $('wheel-pin'); if (pin && wheelVel) { pin.classList.remove('tick'); void pin.offsetWidth; pin.classList.add('tick'); buzz(6); }
+    }
+  }
+  var wheelLast = 0;
+  function wheelFrame(now) {
+    var dt = Math.min(0.05, (now - wheelLast) / 1000) || 0.016; wheelLast = now;
+    wheelAngle += wheelVel * dt;
+    wheelVel *= Math.exp(-0.85 * dt);
+    if (Math.abs(wheelVel) < 0.12) { wheelVel = 0; drawWheel(); wheelRaf = 0; landWheel(); return; }
+    drawWheel();
+    wheelRaf = requestAnimationFrame(wheelFrame);
+  }
+  function spinWheel(v) {
+    if (wheelRaf) return;
+    rouResult = null; renderRouletteResult(true);
+    wheelVel = v; wheelLast = performance.now(); wheelRaf = requestAnimationFrame(wheelFrame);
+    buzz(20);
+  }
+  function landWheel() {
+    var name = NAMES[wheelUnderPin()], penalty = Math.floor(Math.random() * PENALTIES.length);
+    rouResult = { name: name, penalty: penalty };
+    renderRouletteResult(false);
+    buzz([40, 60, 80]);
+    var doc = { name: name, penalty: penalty, by: me, at: new Date().toISOString() };
+    roulette = doc; renderRouletteStatus();
+    store.setGame('roulette', doc).catch(function () { /* local result still shows */ });
+  }
+  function renderRouletteResult(spinning) {
+    var el = $('rou-result'), btn = $('rou-spin'); if (!el) return;
+    if (spinning) { el.innerHTML = '<div class="rou-spinning">Round and round…</div>'; if (btn) btn.disabled = true; return; }
+    if (btn) btn.disabled = false;
+    if (!rouResult) { el.innerHTML = ''; return; }
+    var pen = PENALTIES[rouResult.penalty];
+    el.innerHTML = '<div class="rou-result"><div class="nm">' + esc(rouResult.name === me ? 'You' : rouResult.name) + '</div><div class="pen">' + pen[0] + ' ' + esc(pen[1]) + '<small>' + esc(pen[2]) + '</small></div></div>';
+    if (btn) btn.textContent = '🍺 Spin again';
+  }
+  (function () {
+    var cv = $('wheel'); if (!cv) return;
+    buildWheel();
+    $('rou-spin').addEventListener('click', function () { spinWheel(16 + Math.random() * 12); });
+    function angleAt(e) { var r = cv.getBoundingClientRect(); return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)); }
+    cv.addEventListener('pointerdown', function (e) {
+      if (wheelRaf) return;
+      e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      wheelDrag = { a: angleAt(e), t: performance.now(), v: 0 };
+    });
+    cv.addEventListener('pointermove', function (e) {
+      if (!wheelDrag) return;
+      var a = angleAt(e), now = performance.now(), da = Math.atan2(Math.sin(a - wheelDrag.a), Math.cos(a - wheelDrag.a)), dt = Math.max(1, now - wheelDrag.t) / 1000;
+      wheelAngle += da; wheelDrag.v = wheelDrag.v * 0.5 + (da / dt) * 0.5; wheelDrag.a = a; wheelDrag.t = now;
+      drawWheel();
+    });
+    function release() {
+      if (!wheelDrag) return;
+      var v = wheelDrag.v; wheelDrag = null;
+      if (Math.abs(v) > 2.5) spinWheel(Math.max(-30, Math.min(30, v)));
+    }
+    cv.addEventListener('pointerup', release); cv.addEventListener('pointercancel', release);
+    window.addEventListener('resize', function () { buildWheel(); });
+  })();
+
   // ---- Games: Mafia dealer ----
   var mafia = null, mafiaLoaded = false, mafiaSub = false, mafiaDraft = null, revealHold = false, modReveal = false, mafiaDealAnim = false;
   var ROLE_ICON = { mafia: '\uD83D\uDD76\uFE0F', doctor: '\uD83E\uDE7A', detective: '\uD83D\uDD0D', villager: '\uD83C\uDF3E' };
@@ -1700,6 +1823,7 @@
     subscribeTeams();
     subscribeLiv();
     subscribeSmash();
+    subscribeRoulette();
     if (!store) { showSetup('No data layer loaded. The page is missing its store script.'); return; }
     store.init({
       onItems: function (rows) { items = rows.slice(); itemsLoaded = true; render(); },

@@ -280,6 +280,17 @@
   #liv { --ac: #d2691e; --ac-soft: rgba(210, 105, 30, 0.14); }
   #smash { --ac: #d63a1f; --ac-soft: rgba(214, 58, 31, 0.12); }
   #mafia { --ac: #8e2f44; --ac-soft: rgba(142, 47, 68, 0.14); }
+  #roulette { --ac: #b7950b; --ac-soft: rgba(183, 149, 11, 0.16); }
+  .wheel-wrap { position: relative; width: 280px; height: 280px; margin: 14px auto 0; }
+  .wheel-wrap canvas { display: block; width: 280px; height: 280px; border-radius: 50%; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22), 0 0 0 6px var(--surface), 0 0 0 8px var(--line); touch-action: none; cursor: grab; -webkit-tap-highlight-color: transparent; }
+  .wheel-pin { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 13px solid transparent; border-right: 13px solid transparent; border-top: 26px solid var(--fg); z-index: 2; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3)); transform-origin: 50% 0; }
+  .wheel-pin.tick { animation: pintick 90ms ease-out; }
+  @keyframes pintick { 0% { transform: translateX(-50%) rotate(0); } 40% { transform: translateX(-50%) rotate(-14deg); } 100% { transform: translateX(-50%) rotate(0); } }
+  .rou-result { margin-top: 14px; text-align: center; padding: 14px 16px; border-radius: 14px; background: var(--ember-soft); border: 1.5px solid var(--ember); animation: pop 420ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both; }
+  .rou-result .nm { font: 800 2rem/1.1 var(--display); letter-spacing: -0.02em; color: var(--ember); }
+  .rou-result .pen { font: 700 1.05rem var(--display); margin-top: 4px; }
+  .rou-result .pen small { display: block; font: 500 0.8rem var(--body); color: var(--muted); margin-top: 2px; }
+  .rou-spinning { margin-top: 14px; text-align: center; font: 700 0.95rem var(--display); color: var(--muted); min-height: 1.4em; }
   .game-head { display: flex; align-items: center; gap: 10px; padding: 12px 0; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
   .game-head .gi { width: 40px; height: 40px; border-radius: 12px; background: var(--ac-soft); display: grid; place-items: center; font-size: 1.3rem; flex: none; transition: transform 120ms; }
   .game-head:active .gi { transform: scale(0.9); }
