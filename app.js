@@ -70,28 +70,31 @@
     sim = renderArena({ box: $('roster'), names: NAMES, games: true, onPick: function (name) {
       me = name; myParty = partyOf(me); lsSet('cabin-haul-me', me);
       showScreen();
-    }, onGolfDone: function (total) { pendingGolf = total; renderGolfPost(); } });
+    }, onGolfDone: function (total) {
+      var who = golfer; golfer = null;
+      if (!who || !store || !store.recordGolf) return;
+      store.recordGolf(who, total).then(function () { toast(who + ': ' + total + ' strokes, on the board.'); }).catch(function (err) { toast('Couldn\u2019t post that: ' + ((err && err.message) || err)); });
+    } });
   }
-  // after a round of mini golf: who was that?
-  var pendingGolf = null;
-  function renderGolfPost() {
+  // mini golf: say who's putting before the round so the board can keep score
+  var golfer = null;
+  function renderGolfPost(show) {
     var el = $('golf-post'); if (!el) return;
-    if (pendingGolf == null) { el.hidden = true; el.innerHTML = ''; return; }
+    if (!show) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false;
-    el.innerHTML = '<div class="gp-title">' + pendingGolf + ' strokes. Put it on the board as\u2026</div><div class="info-sub">Tap your name. Best round per person counts.</div>' +
+    el.innerHTML = '<div class="gp-title">Who\u2019s putting?</div><div class="info-sub">Three holes, par 8. Your best round goes on the board.</div>' +
       '<div class="name-grid">' + NAMES.map(function (n) { return '<button type="button" data-golfer="' + esc(n) + '" aria-pressed="false">' + esc(n) + '</button>'; }).join('') + '</div>' +
-      '<div class="mafia-actions"><button type="button" class="linkbtn" id="golf-skip">Don\u2019t post it</button></div>';
+      '<div class="mafia-actions"><button type="button" class="linkbtn" id="golf-skip">Never mind</button></div>';
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
   $('golf-post').addEventListener('click', function (e) {
     var b = e.target.closest('[data-golfer]');
-    if (b && pendingGolf != null && store && store.recordGolf) {
-      var who = b.getAttribute('data-golfer'), n = pendingGolf;
-      pendingGolf = null; renderGolfPost();
-      store.recordGolf(who, n).then(function () { toast(who + ': ' + n + ' strokes, on the board.'); }).catch(function (err) { toast('Couldn\u2019t post that: ' + ((err && err.message) || err)); });
+    if (b) {
+      golfer = b.getAttribute('data-golfer'); renderGolfPost(false);
+      if (sim && sim.startGolf) { sim.startGolf(); window.scrollTo({ top: $('roster').offsetTop - 12, behavior: 'smooth' }); toast(golfer + ' is on the tee.'); }
       return;
     }
-    if (e.target.closest('#golf-skip')) { pendingGolf = null; renderGolfPost(); }
+    if (e.target.closest('#golf-skip')) renderGolfPost(false);
   });
   // A physics arena of name balls. opts: box, names, onPick(name), games (hockey/golf easter eggs), current (ring this name).
   function renderArena(opts) {
@@ -812,7 +815,7 @@
     return { stop: function () { running = false; if (ro) ro.disconnect(); }, startGolf: startGolf, setCurrent: function (n) { opts.current = n; } };
   }
   $('switch').addEventListener('click', function () { me = null; myParty = null; lsDel('cabin-haul-me'); showScreen(); });
-  $('golfword').addEventListener('click', function () { if (sim && sim.startGolf && !me) { sim.startGolf(); window.scrollTo({ top: $('roster').offsetTop - 12, behavior: 'smooth' }); } });
+  $('golfword').addEventListener('click', function () { if (sim && sim.startGolf && !me) renderGolfPost(true); });
 
   function showScreen() {
     var picking = !me;
