@@ -100,6 +100,19 @@
       return sb.from('comments').insert({ question_id: questionId, author: author, text: text }).then(one);
     },
 
+    // Reactions: table "reactions" (comment_id, reactor, emoji, created_at), primary key (comment_id, reactor, emoji). Added at go-live.
+    reactions: function (onRows) {
+      if (!ensure()) return;
+      var read = function () { sb.from('reactions').select('comment_id,reactor,emoji').then(function (res) { onRows(res.data || []); }); };
+      try { sb.channel('cabin-reactions').on('postgres_changes', { event: '*', schema: 'public', table: 'reactions' }, read).subscribe(); } catch (e) { /* ignore */ }
+      read();
+    },
+    react: function (commentId, reactor, emoji, on) {
+      if (!ensure()) return Promise.reject(new Error('not connected'));
+      return on ? sb.from('reactions').upsert({ comment_id: commentId, reactor: reactor, emoji: emoji }).then(one)
+        : sb.from('reactions').delete().match({ comment_id: commentId, reactor: reactor, emoji: emoji }).then(one);
+    },
+
     // Shared game state: a row in "kv" per game.
     game: function (name, onDoc) {
       if (!ensure()) return;

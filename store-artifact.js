@@ -103,6 +103,24 @@
       });
     },
 
+    // Reactions to chat messages: one document per (comment, person, emoji) (future Supabase table "reactions").
+    reactions: function (onRows) {
+      ensure().then(function () {
+        if (!db) return;
+        db.collection('reactions').onSnapshot(function (qs) {
+          onRows(qs.docs.filter(function (d) { return d.exists; }).map(toRow));
+        }, function () { /* ignore */ });
+      });
+    },
+    react: function (commentId, reactor, emoji, on) {
+      return ensure().then(function () {
+        if (!db) throw new Error('not signed in');
+        var id = (commentId + '__' + reactor + '__' + emoji).replace(/[^A-Za-z0-9_-]/g, function (ch) { return '_' + ch.charCodeAt(0).toString(16); });
+        var ref = db.doc('reactions/' + id);
+        return on ? ref.set({ comment_id: commentId, reactor: reactor, emoji: emoji, created_at: new Date().toISOString() }) : ref.delete();
+      });
+    },
+
     // Shared game state (Mafia and friends): one document per game under meta/.
     game: function (name, onDoc) {
       ensure().then(function () {

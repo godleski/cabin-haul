@@ -110,6 +110,20 @@
   .pred-card .sub .you { margin-left: auto; font-weight: 600; color: var(--pine); } .pred-card .sub .you.no { color: var(--ember); }
   .pred-card .sub .dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 4px; vertical-align: -0.5px; }
   .pred-card .sub .k { display: inline-flex; align-items: center; }
+  .pred-chat { margin-top: 10px; background: var(--bg); border-radius: 10px; padding: 7px 10px; display: grid; gap: 3px; font-size: 0.8rem; color: var(--fg); }
+  .pred-chat .line { display: flex; gap: 6px; min-width: 0; align-items: baseline; }
+  .pred-chat .line b { flex: none; font-weight: 700; }
+  .pred-chat .line .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pred-chat .line .rx { flex: none; font-size: 0.72rem; color: var(--muted); }
+  .pred-chat .more { font-size: 0.72rem; color: var(--pine); font-weight: 600; }
+  .pred-chat.none .t { color: var(--muted); }
+  .msg .rxs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; align-items: center; }
+  .rx-chip, .rx-add { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 2px 8px; font: 500 0.76rem var(--body); cursor: pointer; line-height: 1.4; -webkit-tap-highlight-color: transparent; }
+  .rx-chip.mine { border-color: var(--pine); background: var(--pine-soft); font-weight: 700; }
+  .rx-add { color: var(--muted); }
+  .rx-picker { display: flex; gap: 6px; margin-top: 6px; animation: pop 200ms ease-out both; }
+  .rx-picker button { width: 40px; height: 36px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); font-size: 1.2rem; cursor: pointer; }
+  .rx-picker button.mine { border-color: var(--pine); background: var(--pine-soft); }
   /* bottom sheet: the breakdown and chat for one question */
   .sheet-wrap { position: fixed; inset: 0; z-index: 40; }
   .sheet-back { position: absolute; inset: 0; background: rgba(8, 18, 12, 0.5); animation: fadein 180ms both; }

@@ -1494,7 +1494,8 @@
     { id: 'cocktail', text: 'Who will make the best cocktail this weekend?', type: 'person' }
   ];
   var COUPLES = PARTIES.filter(function (p) { return p.length === 2; }).map(function (p) { return p.join(' & '); });
-  var votes = [], qsim = null, qIndex = 0, predSub = false, expanded = null, comments = [], draft = '';
+  var votes = [], qsim = null, qIndex = 0, predSub = false, expanded = null, comments = [], draft = '', reactions = [], pickerFor = null;
+  var EMOJI = ['\uD83D\uDE02', '\uD83D\uDD25', '\uD83D\uDC80', '\uD83D\uDC40', '\uD83E\uDD21'];
   function myVotes() { var m = {}; votes.forEach(function (v) { if (v.voter === me) m[v.question_id] = v.pick; }); return m; }
   function answeredCount() { return Object.keys(myVotes()).length; }
   function firstUnanswered() { var m = myVotes(); for (var i = 0; i < QUESTIONS.length; i++) if (!m[QUESTIONS[i].id]) return i; return 0; }
@@ -1514,6 +1515,7 @@
       comments = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? -1 : 1; });
       renderPredictions();
     });
+    if (store.reactions) store.reactions(function (rows) { reactions = rows.slice(); renderPredictions(); });
   }
   function openQuestionnaire(index, skipIntro) {
     qIndex = Math.max(0, Math.min(QUESTIONS.length - 1, index || 0));
@@ -1562,6 +1564,15 @@
     var rows = Object.keys(counts).map(function (k) { return { pick: k, n: counts[k], who: who[k].sort() }; }).sort(function (a, b) { return b.n - a.n || a.pick.localeCompare(b.pick); });
     return { rows: rows, voted: Object.keys(voters).length };
   }
+  function reactionsFor(cid) {
+    var out = {}; if (!cid) return out;
+    reactions.forEach(function (r) { if (r.comment_id === cid) (out[r.emoji] = out[r.emoji] || []).push(r.reactor); });
+    return out;
+  }
+  function rxSummary(cid) {
+    var g = reactionsFor(cid);
+    return Object.keys(g).sort(function (a, b) { return g[b].length - g[a].length; }).map(function (e) { return e + (g[e].length > 1 ? g[e].length : ''); }).join(' ');
+  }
   var SEG_COLORS = ['#d2691e', '#2d6a4f', '#3f7cae', '#8e44ad', '#b7950b', '#c0392b', '#7f8c8d'];
   function renderPredictions() {
     var el = $('pred'); if (!el || !me) return;
@@ -1586,6 +1597,12 @@
       } else {
         html += '<div class="sub">' + t.voted + ' voted' + (mine[q.id] ? '<span class="you">you: ' + esc(mine[q.id]) + '</span>' : '<span class="you no">no pick yet</span>') + '</div>';
       }
+      var thread = comments.filter(function (c) { return c.question_id === q.id; }), last2 = thread.slice(-2);
+      if (!thread.length) html += '<div class="pred-chat none"><span class="line"><span class="t">No trash talk yet. Start it.</span></span></div>';
+      else html += '<div class="pred-chat">' + last2.map(function (c) {
+        var rx = rxSummary(c.id);
+        return '<span class="line"><b>' + esc(c.author === me ? 'You' : c.author) + '</b><span class="t">' + esc(c.text) + '</span>' + (rx ? '<span class="rx">' + rx + '</span>' : '') + '</span>';
+      }).join('') + (thread.length > 2 ? '<span class="more">+' + (thread.length - 2) + ' more</span>' : '') + '</div>';
       html += '</button>';
     });
     html += '</div>';
@@ -1610,7 +1627,16 @@
     html += '<div class="chat"><div class="chat-head">Trash talk' + (thread.length ? ' <span class="k">' + thread.length + '</span>' : '') + '</div>';
     if (!thread.length) html += '<div class="chat-empty">Nobody’s said anything yet. Stir the pot.</div>';
     html += '<div class="chat-list" id="chat-list">' + thread.map(function (c) {
-      return '<div class="msg' + (c.author === me ? ' mine' : '') + '"><span class="who">' + esc(c.author === me ? 'You' : c.author) + '</span><span class="when">' + esc(ago(c.created_at)) + '</span><div class="txt">' + esc(c.text) + '</div></div>';
+      var g = reactionsFor(c.id), keys = Object.keys(g).sort(function (a, b) { return g[b].length - g[a].length; });
+      var rx = '';
+      if (c.id) {
+        rx += '<div class="rxs">' + keys.map(function (e) {
+          var mine = g[e].indexOf(me) >= 0;
+          return '<button type="button" class="rx-chip' + (mine ? ' mine' : '') + '" data-react="' + esc(e) + '" data-cid="' + esc(c.id) + '" title="' + esc(g[e].join(', ')) + '">' + e + ' ' + g[e].length + '</button>';
+        }).join('') + '<button type="button" class="rx-add" data-picker="' + esc(c.id) + '" aria-label="React">' + (pickerFor === c.id ? '\u00d7' : '+\uD83D\uDE42') + '</button></div>';
+        if (pickerFor === c.id) rx += '<div class="rx-picker">' + EMOJI.map(function (e) { return '<button type="button" data-react="' + e + '" data-cid="' + esc(c.id) + '"' + (g[e] && g[e].indexOf(me) >= 0 ? ' class="mine"' : '') + '>' + e + '</button>'; }).join('') + '</div>';
+      }
+      return '<div class="msg' + (c.author === me ? ' mine' : '') + '"><span class="who">' + esc(c.author === me ? 'You' : c.author) + '</span><span class="when">' + esc(ago(c.created_at)) + '</span><div class="txt">' + esc(c.text) + '</div>' + rx + '</div>';
     }).join('') + '</div></div>';
     var body = $('sheet-body'), atBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 40 || wrap.hidden;
     body.innerHTML = html;
@@ -1618,7 +1644,7 @@
     wrap.hidden = false;
     if (atBottom) body.scrollTop = body.scrollHeight;
   }
-  function openSheet(i) { expanded = i; draft = ''; renderSheet(); var body = $('sheet-body'); if (body) body.scrollTop = body.scrollHeight; }
+  function openSheet(i) { expanded = i; draft = ''; pickerFor = null; renderSheet(); var body = $('sheet-body'); if (body) body.scrollTop = body.scrollHeight; }
   function closeSheet() { expanded = null; draft = ''; $('pred-sheet').hidden = true; }
   function agoText(iso) { var a = ago(iso); return a === 'just now' ? a : a + ' ago'; }
   function ago(iso) {
@@ -1641,7 +1667,18 @@
     var body = $('sheet-body'); if (body) body.scrollTop = body.scrollHeight;
     input.focus();
   });
+  function toggleReaction(cid, emoji) {
+    var on = !reactions.some(function (r) { return r.comment_id === cid && r.reactor === me && r.emoji === emoji; });
+    reactions = reactions.filter(function (r) { return !(r.comment_id === cid && r.reactor === me && r.emoji === emoji); });
+    if (on) reactions.push({ comment_id: cid, reactor: me, emoji: emoji });
+    pickerFor = null;
+    renderPredictions();
+    if (on) buzz(12);
+    store.react(cid, me, emoji, on).catch(function (err) { toast('That reaction didn’t stick: ' + ((err && err.message) || err)); });
+  }
   function predClick(e) {
+    var rx = e.target.closest('[data-react]'); if (rx) { toggleReaction(rx.getAttribute('data-cid'), rx.getAttribute('data-react')); return; }
+    var pk = e.target.closest('[data-picker]'); if (pk) { var cid = pk.getAttribute('data-picker'); pickerFor = pickerFor === cid ? null : cid; renderSheet(); return; }
     var open = e.target.closest('#pred-open'); if (open) { lsDel('cabin-haul-pred-later-' + me); openQuestionnaire(firstUnanswered(), answeredCount() >= QUESTIONS.length); return; }
     var ch = e.target.closest('#pred-change'); if (ch) { var qi = +ch.getAttribute('data-q'); closeSheet(); openQuestionnaire(qi, true); return; }
     if (e.target.closest('#pred-close') || e.target.id === 'sheet-back') { closeSheet(); return; }
