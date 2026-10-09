@@ -581,7 +581,7 @@
       g.cup = { x: def.cup[0] * W, y: def.cup[1] * H, r: 13 };
       g.rects = def.rects.map(function (r) { return { x: r[0] * W, y: r[1] * H, w: r[2] * W, h: r[3] * H }; });
       g.circles = def.circles.map(function (c) { return { x: c[0] * W, y: c[1] * H, r: c[2] * W }; });
-      g.putter = null; g.struck = false;
+      g.aim = null; g.swing = null;
     }
     function golfPhysics(dt, now) {
       var g = golf, b = g.ball;
@@ -674,20 +674,19 @@
       if (Math.hypot(x - b.x, y - b.y) < 1) return;
       g.relief = { x0: b.x, y0: b.y, x: x, y: y, t0: now }; g.reliefFlash = now;
     }
-    function golfStrike(p, vel, from) {
-      var g = golf, b = g.ball;
-      if (!g || g.sunk || g.struck || g.relief) return;
-      if (Math.hypot(b.vx, b.vy) > 1) return;                        // wait for the ball to (nearly) stop
-      var sp = Math.hypot(vel.x, vel.y);
-      if (sp < 1.2) return;
-      // the putter has to pass through the ball: test the whole finger segment, not just where it landed
-      var fx = from ? from.x : p.x, fy = from ? from.y : p.y, sx = p.x - fx, sy = p.y - fy, sl = sx * sx + sy * sy;
-      var t = sl ? Math.max(0, Math.min(1, ((b.x - fx) * sx + (b.y - fy) * sy) / sl)) : 0;
-      if (Math.hypot(fx + sx * t - b.x, fy + sy * t - b.y) > b.r + 16) return;
-      b.vx = 0; b.vy = 0;
-      var cap = 24, k = Math.min(1, cap / sp);
-      b.vx = vel.x * k * 0.95; b.vy = vel.y * k * 0.95;
-      g.strokes++; g.struck = true; g.hitFlash = performance.now();
+    function golfCanPutt(g) { return g && !g.sunk && !g.relief && Math.hypot(g.ball.vx, g.ball.vy) < 1; }
+    function golfAim(g, p) {   // pull back from where the finger landed; the ball goes the other way
+      var dx = p.x - g.drag.x, dy = p.y - g.drag.y, d = Math.hypot(dx, dy);
+      if (d < 6) { g.aim = null; return; }
+      g.aim = { angle: Math.atan2(-dy, -dx), power: Math.min(1, (d - 6) / 130) };
+    }
+    function golfPutt(g, now) {
+      var a = g.aim, b = g.ball; g.aim = null; g.drag = null;
+      if (!a || a.power < 0.04 || !golfCanPutt(g)) return;
+      var v = 3 + a.power * 21;
+      b.vx = Math.cos(a.angle) * v; b.vy = Math.sin(a.angle) * v;
+      g.strokes++; g.swing = { t0: now, angle: a.angle, power: a.power, x: b.x, y: b.y }; g.hitFlash = now;
+      buzz(8);
     }
     function roundRect(x, y, w, h, r) {
       ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
@@ -717,10 +716,25 @@
       circle(g.def.tee[0] * W, g.def.tee[1] * H, 3, 'rgba(255,255,255,0.5)');
       // ball
       if (b.alpha > 0) drawBubble({ x: b.x, y: b.y, r: b.r, scale: b.scale, alpha: b.alpha, ox: b.ox || 0, oy: b.oy || 0, name: '', num: '' }, now);
-      // putter following the finger
-      if (g.putter && !g.sunk) {
-        var pt = g.putter, ang = Math.atan2(pt.vy, pt.vx);
-        ctx.save(); ctx.translate(pt.x, pt.y); ctx.rotate(ang + Math.PI / 2);
+      // aim line and the putter, pulled back behind the ball; on release it swings through
+      var sw = g.swing && now - g.swing.t0 < 320 ? g.swing : null;
+      if (sw && now - sw.t0 >= 320) g.swing = null;
+      if ((g.aim || sw) && !g.sunk) {
+        var A = g.aim || sw, ux = Math.cos(A.angle), uy = Math.sin(A.angle);
+        if (g.aim) {
+          var len = 36 + A.power * 150, hot = A.power;
+          ctx.save(); ctx.setLineDash([5, 7]); ctx.lineWidth = 2; ctx.lineCap = 'round';
+          ctx.strokeStyle = 'rgba(255,255,255,' + (0.45 + hot * 0.4) + ')';
+          ctx.beginPath(); ctx.moveTo(b.x + ux * (b.r + 4), b.y + uy * (b.r + 4)); ctx.lineTo(b.x + ux * len, b.y + uy * len); ctx.stroke();
+          ctx.restore();
+          ctx.fillStyle = hot > 0.75 ? '#ff6b57' : hot > 0.4 ? '#ffd34d' : '#fff';
+          circle(b.x + ux * len, b.y + uy * len, 3.5, ctx.fillStyle);
+        }
+        // the head sits behind the ball, farther back the harder the putt; after release it swings through and fades
+        var back = 14 + A.power * 44, k = 0, fade = 1;
+        if (sw) { var st = (now - sw.t0) / 320; k = Math.min(1, st / 0.4); fade = st < 0.4 ? 1 : 1 - (st - 0.4) / 0.6; }
+        var ox = sw ? sw.x : b.x, oy = sw ? sw.y : b.y, dist = back - (back + 6) * k, px = ox - ux * dist, py = oy - uy * dist;   // the swing plays out where the ball was struck
+        ctx.save(); ctx.globalAlpha = Math.max(0, fade); ctx.translate(px, py); ctx.rotate(A.angle + Math.PI / 2);
         ctx.fillStyle = 'rgba(0,0,0,0.25)'; roundRect(-16, -4 + 3, 32, 9, 3); ctx.fill();
         var steel = ctx.createLinearGradient(0, -5, 0, 5); steel.addColorStop(0, '#e6e9ec'); steel.addColorStop(1, '#8e969e');
         ctx.fillStyle = steel; roundRect(-16, -5, 32, 9, 3); ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1; ctx.stroke();
@@ -748,9 +762,9 @@
         ctx.globalAlpha = Math.min(1, (1100 - (now - g.reliefFlash)) / 400); ctx.fillStyle = '#fff'; ctx.font = '600 11px ' + fontFamily; ctx.textAlign = 'center';
         ctx.fillText('free relief', b.x, b.y - 18); ctx.globalAlpha = 1;
       }
-      if (!g.strokes && !g.sunk && !g.putter) {
+      if (!g.strokes && !g.sunk && !g.aim) {
         ctx.globalAlpha = 0.6 + 0.4 * Math.sin(now / 300); ctx.fillStyle = '#fff'; ctx.font = '600 12px ' + fontFamily; ctx.textAlign = 'center';
-        ctx.fillText('swipe through the ball to putt', b.x, b.y + 26); ctx.globalAlpha = 1;
+        ctx.fillText('pull back anywhere, let go to putt', b.x, b.y + 26); ctx.globalAlpha = 1;
       }
     }
 
@@ -1284,8 +1298,7 @@
       if (pool) { poolPointerDown(p, e); e.preventDefault(); return; }
       if (golf) {
         if (p.x > W - 58 && p.y < 34) { golf = null; return; }                 // quit
-        golf.putter = { x: p.x, y: p.y, vx: 0, vy: 0 }; golf.struck = false; trail = [p];
-        try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+        if (golfCanPutt(golf)) { golf.drag = { x: p.x, y: p.y }; golf.aim = null; try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ } }
         e.preventDefault(); return;
       }
       if (game) {
@@ -1303,15 +1316,7 @@
     cv.addEventListener('pointermove', function (e) {
       if (pool) { poolPointerMove(pos(e)); return; }
       if (golf) {
-        if (!golf.putter) return;
-        var q = pos(e), old = trail[trail.length - 1];
-        var dtm = Math.max(8, q.t - old.t) / 16.67;
-        var vx = (q.x - old.x) / dtm, vy = (q.y - old.y) / dtm;
-        golf.putter.x = q.x; golf.putter.y = q.y;
-        if (Math.hypot(vx, vy) > 0.5) { golf.putter.vx = vx; golf.putter.vy = vy; }
-        trail.push(q); if (trail.length > 6) trail.shift();
-        var ref = trail[Math.max(0, trail.length - 4)], rdt = Math.max(8, q.t - ref.t) / 16.67;   // swing speed and line averaged over the last few samples
-        golfStrike(q, { x: (q.x - ref.x) / rdt, y: (q.y - ref.y) / rdt }, old);
+        if (golf.drag) golfAim(golf, pos(e));
         return;
       }
       if (!held) return;
@@ -1321,7 +1326,7 @@
     });
     function release(e) {
       if (pool) { poolPointerUp(); return; }
-      if (golf) { golf.putter = null; return; }
+      if (golf) { if (golf.drag) golfPutt(golf, performance.now()); return; }
       if (!held) return;
       if (game) { held = null; return; }               // paddle stays where you left it
       var b = held, p = pos(e); held = null; b.held = false;
