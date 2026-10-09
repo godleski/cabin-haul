@@ -53,12 +53,15 @@
     </div>
   </div>
 
-  <!-- Screen 2: the app, with bottom tabs -->
+  <!-- Screen 2: the app, pages behind a slide-out menu -->
   <div id="main" hidden>
-    <div class="topbar">
-      <div class="me" id="me"></div>
-      <button class="linkbtn" id="switch" type="button">Not you?</button>
-    </div>
+    <header class="topbar" id="topbar">
+      <button type="button" class="menu-btn" id="menu-btn" aria-label="Open menu" aria-controls="nav" aria-expanded="false">
+        <span class="burger" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="badge" id="menu-badge" hidden></span>
+      </button>
+      <div class="topbar-title" id="topbar-title" aria-hidden="true"></div>
+    </header>
     <div class="notice" id="setup" hidden></div>
 
     <section class="page" id="page-home">
@@ -213,13 +216,24 @@
   </div>
 </div>
 
-<nav class="nav" id="nav" hidden>
-  <button type="button" class="nav-btn" data-tab="cabin" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 11h3v9h5v-6h4v6h5v-9h3zm6 3V4h-2v1z"/></svg><span>Cabin</span></button>
-  <button type="button" class="nav-btn" data-tab="home" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.7 1.5 6.8L12 17l-6.1 3.5 1.5-6.8L2.2 9l6.9-.7z"/></svg><span>Predictions</span></button>
-  <button type="button" class="nav-btn" data-tab="bringing" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm1 5h8v2H8zm0 4h8v2H8zm0 4h5v2H8z"/></svg><span>Bringing</span></button>
-  <button type="button" class="nav-btn" data-tab="games" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm3 3.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg><span>Games</span></button>
-  <button type="button" class="nav-btn" data-tab="money" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm.9 15.2v1.3h-1.8v-1.3c-1.7-.3-2.8-1.3-2.9-2.9h1.9c.1.8.7 1.3 1.9 1.3 1.1 0 1.7-.5 1.7-1.2 0-.6-.4-1-1.6-1.3l-1.3-.3c-1.7-.4-2.5-1.3-2.5-2.7 0-1.5 1.1-2.5 2.8-2.8V5.9h1.8v1.4c1.6.3 2.6 1.3 2.7 2.8h-1.9c-.1-.8-.6-1.2-1.6-1.2s-1.6.5-1.6 1.1c0 .6.4.9 1.5 1.2l1.3.3c1.9.5 2.7 1.3 2.7 2.8 0 1.6-1.2 2.6-3.1 2.9z"/></svg><span>Money</span></button>
-  <button type="button" class="nav-btn" data-tab="chat" aria-selected="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg><span class="badge" id="chat-badge" hidden></span></span><span>Chat</span></button>
+<nav class="drawer" id="nav" hidden aria-label="Pages">
+  <div class="drawer-back" id="drawer-back"></div>
+  <div class="drawer-panel" id="drawer-panel">
+    <div class="drawer-head">
+      <div class="eyebrow">Cabin Haul</div>
+      <div class="drawer-trip">Winter Park <span id="drawer-days"></span></div>
+      <div class="drawer-me"><span class="me" id="me"></span><button class="linkbtn" id="switch" type="button">Not you?</button></div>
+    </div>
+    <div class="drawer-list">
+      <button type="button" class="nav-btn" data-tab="cabin" aria-current="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 11h3v9h5v-6h4v6h5v-9h3zm6 3V4h-2v1z"/></svg></span><span class="nav-txt"><b>Cabin</b><small>Check-in, photos, notes</small></span></button>
+      <button type="button" class="nav-btn" data-tab="home" aria-current="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.7 1.5 6.8L12 17l-6.1 3.5 1.5-6.8L2.2 9l6.9-.7z"/></svg></span><span class="nav-txt"><b>Predictions</b><small>Call your shots</small></span></button>
+      <button type="button" class="nav-btn" data-tab="bringing" aria-current="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M7 4h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm1 5h8v2H8zm0 4h8v2H8zm0 4h5v2H8z"/></svg></span><span class="nav-txt"><b>Bringing</b><small>Who’s bringing what</small></span></button>
+      <button type="button" class="nav-btn" data-tab="games" aria-current="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm3 3.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg></span><span class="nav-txt"><b>Games</b><small>Boards and party games</small></span></button>
+      <button type="button" class="nav-btn" data-tab="money" aria-current="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm.9 15.2v1.3h-1.8v-1.3c-1.7-.3-2.8-1.3-2.9-2.9h1.9c.1.8.7 1.3 1.9 1.3 1.1 0 1.7-.5 1.7-1.2 0-.6-.4-1-1.6-1.3l-1.3-.3c-1.7-.4-2.5-1.3-2.5-2.7 0-1.5 1.1-2.5 2.8-2.8V5.9h1.8v1.4c1.6.3 2.6 1.3 2.7 2.8h-1.9c-.1-.8-.6-1.2-1.6-1.2s-1.6.5-1.6 1.1c0 .6.4.9 1.5 1.2l1.3.3c1.9.5 2.7 1.3 2.7 2.8 0 1.6-1.2 2.6-3.1 2.9z"/></svg></span><span class="nav-txt"><b>Money</b><small>Split costs, settle up</small></span></button>
+      <button type="button" class="nav-btn" data-tab="chat" aria-current="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg></span><span class="nav-txt"><b>Chat</b><small>The wall</small></span><span class="badge" id="chat-badge" hidden></span></button>
+    </div>
+    <div class="drawer-foot">Oct 23 to 25 · 13 people · one hot tub</div>
+  </div>
 </nav>
 <div class="sheet-wrap" id="pred-sheet" hidden>
   <div class="sheet-back" id="sheet-back"></div>
