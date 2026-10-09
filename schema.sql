@@ -5,11 +5,12 @@ create table if not exists items (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   note text,                            -- optional: "2 cases", "the spicy kind"
-  category text not null,               -- Food, Drinks, Booze, Snacks, Supplies, Gear, Other
+  category text not null,               -- Food, Drinks, Booze, Snacks, Supplies, Gear, Weed, Other
   party text,                           -- who's bringing it, e.g. "Mitch & Jess"; null = still needed
   claimed_by text,                      -- which person in that party tapped it
   added_by text,                        -- who added the entry
   adder_id text,                        -- random id kept in the adder's browser
+  meta jsonb,                           -- extra details for some categories (weed: form, type, weight, grade, vibe)
   created_at timestamptz not null default now()
 );
 create unique index if not exists items_unique_name on items (lower(name));

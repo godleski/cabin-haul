@@ -69,33 +69,30 @@
 
     <section class="page" id="page-bringing" hidden>
       <h1>Who's bringing what</h1>
-      <p class="lede">Add what you're bringing so nobody doubles up. If something's needed and you can't grab it, flag it and someone else can claim it.</p>
+      <p class="lede">Call what you've got so nobody doubles up. Flag what's missing and someone will grab it.</p>
 
-      <form class="adder" id="adder">
-        <div class="mode" role="group" aria-label="What kind of entry">
-          <button type="button" id="mode-bring" aria-pressed="true">I'm bringing this</button>
-          <button type="button" id="mode-need" class="need" aria-pressed="false">Someone should bring this</button>
+      <div class="haul-stats" id="haul-stats"></div>
+
+      <form class="haul-add" id="adder">
+        <div class="segc" role="group" aria-label="What kind of entry">
+          <button type="button" id="mode-bring" aria-pressed="true">I've got it</button>
+          <button type="button" id="mode-need" class="need" aria-pressed="false">We still need</button>
         </div>
-        <div class="row">
-          <input type="text" id="new-name" placeholder="What is it?" maxlength="60" aria-label="Item" autocomplete="off">
-          <select id="new-cat" aria-label="Category">
-            <option>Food</option><option>Drinks</option><option>Booze</option><option>Snacks</option><option>Supplies</option><option>Gear</option><option>Other</option>
-          </select>
-        </div>
-        <div class="row2">
-          <input type="text" id="new-note" placeholder="Optional: how much, which kind" maxlength="80" aria-label="Note" autocomplete="off">
-          <button class="addbtn" type="submit" id="addbtn">Add</button>
+        <input type="text" id="new-name" placeholder="What are you bringing?" maxlength="60" aria-label="Item" autocomplete="off">
+        <div class="cat-row" id="cat-row" role="group" aria-label="Category"></div>
+        <div class="weed" id="weed-panel" hidden></div>
+        <div class="haul-foot">
+          <input type="text" id="new-note" placeholder="How much, which kind (optional)" maxlength="80" aria-label="Note" autocomplete="off">
+          <button class="big-btn" type="submit" id="addbtn">Add it</button>
         </div>
       </form>
 
-      <div class="tools">
-        <div class="status" id="status"><span class="dot" id="dot"></span><b>0 items</b></div>
-        <button class="btn" id="copylink" type="button">Copy link</button>
-        <button class="btn primary" id="copylist" type="button">Copy list</button>
-      </div>
-      <div class="tabs" role="tablist">
-        <button role="tab" id="tab-items" aria-selected="true" type="button">By item</button>
-        <button role="tab" id="tab-people" aria-selected="false" type="button">By person</button>
+      <div class="haul-tools">
+        <div class="segc view" role="tablist">
+          <button role="tab" id="tab-items" aria-selected="true" type="button">By item</button>
+          <button role="tab" id="tab-people" aria-selected="false" type="button">By person</button>
+        </div>
+        <button class="btn" id="copylist" type="button">Copy list</button>
       </div>
       <div id="groups"><p class="skeleton">Loading the list…</p></div>
     </section>

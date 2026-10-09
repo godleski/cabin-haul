@@ -14,7 +14,18 @@
     ['Terry', 'Kyrsten'],
     ['Drew']
   ];
-  var CATEGORIES = ['Food', 'Drinks', 'Booze', 'Snacks', 'Supplies', 'Gear', 'Other'];
+  var CATEGORIES = ['Food', 'Drinks', 'Booze', 'Snacks', 'Supplies', 'Gear', 'Weed', 'Other'];
+  var CAT_ICON = { Food: '\uD83C\uDF56', Drinks: '\uD83E\uDD64', Booze: '\uD83C\uDF7A', Snacks: '\uD83C\uDF7F', Supplies: '\uD83E\uDDFB', Gear: '\uD83C\uDFBF', Weed: '\uD83C\uDF3F', Other: '\uD83D\uDCE6' };
+  // the weed questionnaire
+  var WEED = {
+    form: { label: 'Form', opts: [['flower', '\uD83C\uDF38 Flower'], ['prerolls', '\uD83D\uDEAC Pre-rolls'], ['edibles', '\uD83C\uDF6A Edibles'], ['cart', '\uD83D\uDD0B Cart'], ['dabs', '\uD83D\uDC8E Dabs']] },
+    type: { label: 'Type', opts: [['sativa', '\u2600\uFE0F Sativa'], ['indica', '\uD83C\uDF19 Indica'], ['hybrid', '\uD83C\uDF17 Hybrid']] },
+    weight: { label: 'How much', opts: [['1g', '1g'], ['3.5g', '\u215B (3.5g)'], ['7g', '\u00BC (7g)'], ['14g', '\u00BD (14g)'], ['28g', 'oz (28g)']] },
+    dose: { label: 'How strong', opts: [['10mg', '10mg'], ['25mg', '25mg'], ['50mg', '50mg'], ['100mg', '100mg'], ['??', 'no idea']] },
+    grade: { label: 'Be honest', required: true, opts: [['gas', '\uD83D\uDD25 Gas'], ['mid', '\uD83E\uDD74 Crumbly mid']] },
+    vibe: { label: 'The vibe', opts: [['couch', '\uD83D\uDECB\uFE0F Couch-lock'], ['giggles', '\uD83D\uDE02 Giggles'], ['creative', '\uD83C\uDFA8 Creative'], ['munchies', '\uD83C\uDF55 Munchies'], ['paranoid', '\uD83D\uDC40 Paranoid']] }
+  };
+  function weedLabel(key, val) { var o = (WEED[key] || { opts: [] }).opts.filter(function (x) { return x[0] === val; })[0]; return o ? o[1] : val; }
 
   function partyOf(name) {
     for (var i = 0; i < PARTIES.length; i++) if (PARTIES[i].indexOf(name) >= 0) return PARTIES[i].join(' & ');
@@ -2045,6 +2056,17 @@
   function showSetup(html) { $('setup').hidden = false; $('setup').innerHTML = html; $('groups').innerHTML = ''; }
 
   // ---- Render ----
+  function weedTags(it) {
+    var m = it.meta; if (!m || it.category !== 'Weed') return '';
+    var tags = [];
+    if (m.form) tags.push('<span class="tag">' + weedLabel('form', m.form) + '</span>');
+    if (m.type) tags.push('<span class="tag">' + weedLabel('type', m.type) + '</span>');
+    if (m.weight) tags.push('<span class="tag">' + weedLabel('weight', m.weight) + '</span>');
+    if (m.dose) tags.push('<span class="tag">' + weedLabel('dose', m.dose) + '</span>');
+    if (m.grade) tags.push('<span class="tag ' + esc(m.grade) + '">' + weedLabel('grade', m.grade) + '</span>');
+    if (m.vibe) tags.push('<span class="tag">' + weedLabel('vibe', m.vibe) + '</span>');
+    return tags.length ? '<div class="tags">' + tags.join('') + '</div>' : '';
+  }
   function itemRow(it, showCat) {
     var mine = it.party && it.party === myParty;
     var cls = 'item' + (!it.party ? ' need' : '') + (mine ? ' mine' : '');
@@ -2056,26 +2078,29 @@
       meta = '<span class="by">' + esc(it.party) + '</span>' + (mine ? ' (you)' : '');
       if (mine) act = '<button type="button" class="act unclaim" data-unclaim="' + esc(it.id) + '">Not bringing</button>';
     }
+    if (showCat) meta += ' · ' + esc(it.category);
     var canRemove = (it.adder_id && it.adder_id === myId()) || mine;
     if (canRemove) meta += '<button type="button" class="rm" data-rm="' + esc(it.id) + '">remove</button>';
     return '<div class="' + cls + '" data-id="' + esc(it.id) + '">' +
-      '<div class="title">' + esc(it.name) + (it.note ? ' <span class="note">· ' + esc(it.note) + '</span>' : '') + (showCat ? '<span class="cat">' + esc(it.category) + '</span>' : '') + '</div>' +
-      act + '<div class="meta">' + meta + '</div></div>';
+      '<span class="ico">' + (CAT_ICON[it.category] || CAT_ICON.Other) + '</span>' +
+      '<div class="title">' + esc(it.name) + (it.note ? ' <span class="note">· ' + esc(it.note) + '</span>' : '') + '</div>' +
+      act + '<div class="meta">' + meta + '</div>' + weedTags(it) + '</div>';
   }
-
+  function groupHead(icon, title, k, cls) {
+    return '<section class="group' + (cls ? ' ' + cls : '') + '"><div class="group-head"><span class="gico">' + icon + '</span><h2>' + esc(title) + '</h2><span class="k">' + k + '</span></div>';
+  }
   function render() {
     if (!me) return;
     $('tab-items').setAttribute('aria-selected', String(view === 'items'));
     $('tab-people').setAttribute('aria-selected', String(view === 'people'));
     var needed = items.filter(function (it) { return !it.party; });
-    $('tab-items').innerHTML = 'By item<span class="k">' + items.length + '</span>';
-    $('tab-people').innerHTML = 'By person' + (needed.length ? '<span class="k">' + needed.length + ' needed</span>' : '');
+    $('tab-items').textContent = 'By item'; $('tab-people').textContent = 'By person';
     var html = '';
     if (!items.length) {
       html = itemsLoaded ? '<div class="empty">Nothing on the list yet. Add the first thing above.</div>' : '<p class="skeleton">Loading the list\u2026</p>';
     } else if (view === 'items') {
       if (needed.length) {
-        html += '<section class="group needed"><div class="group-head"><h2>Still needed</h2><span class="k">' + plural(needed.length, 'item', 'items') + '</span></div><div class="list">';
+        html += groupHead('\uD83D\uDEA9', 'Still needed', plural(needed.length, 'item', 'items'), 'needed') + '<div class="list">';
         needed.forEach(function (it) { html += itemRow(it, true); });
         html += '</div></section>';
       }
@@ -2084,7 +2109,7 @@
       cats.forEach(function (cat) {
         var rows = items.filter(function (it) { return it.party && it.category === cat; });
         if (!rows.length) return;
-        html += '<section class="group"><div class="group-head"><h2>' + esc(cat) + '</h2><span class="k">' + plural(rows.length, 'item', 'items') + '</span></div><div class="list">';
+        html += groupHead(CAT_ICON[cat] || CAT_ICON.Other, cat, plural(rows.length, 'item', 'items')) + '<div class="list">';
         rows.forEach(function (it) { html += itemRow(it, false); });
         html += '</div></section>';
       });
@@ -2094,13 +2119,13 @@
       parties.sort(function (a, b) { return (b === myParty) - (a === myParty); });
       parties.forEach(function (party) {
         var rows = items.filter(function (it) { return it.party === party; });
-        html += '<section class="group"><div class="group-head"><h2>' + esc(party) + (party === myParty ? ' <span class="k">(you)</span>' : '') + '</h2><span class="k">' + plural(rows.length, 'item', 'items') + '</span></div>';
+        html += groupHead(party === myParty ? '\uD83D\uDC4B' : '\uD83C\uDFE0', party + (party === myParty ? ' (you)' : ''), plural(rows.length, 'item', 'items'));
         if (rows.length) { html += '<div class="list">'; rows.forEach(function (it) { html += itemRow(it, true); }); html += '</div>'; }
         else html += '<div class="empty">Nothing yet</div>';
         html += '</section>';
       });
       if (needed.length) {
-        html += '<section class="group needed"><div class="group-head"><h2>Still needed</h2><span class="k">' + plural(needed.length, 'item', 'items') + '</span></div><div class="list">';
+        html += groupHead('\uD83D\uDEA9', 'Still needed', plural(needed.length, 'item', 'items'), 'needed') + '<div class="list">';
         needed.forEach(function (it) { html += itemRow(it, true); });
         html += '</div></section>';
       }
@@ -2110,12 +2135,12 @@
   }
 
   function updateStatus() {
+    var el = $('haul-stats'); if (!el) return;
     var needed = items.filter(function (it) { return !it.party; }).length;
     var mine = items.filter(function (it) { return it.party === myParty; }).length;
-    var s = '<span class="dot' + (live ? ' live' : '') + '" id="dot"></span><b>' + plural(items.length, 'item', 'items') + '</b>';
-    if (myParty) s += ' · you\'ve got ' + mine;
-    if (needed) s += ' · <span class="warn">' + needed + ' still needed</span>';
-    $('status').innerHTML = s;
+    el.innerHTML = '<div class="stat"><div class="n">' + items.length + '</div><div class="l"><span class="dot' + (live ? ' live' : '') + '"></span>on the list</div></div>' +
+      '<div class="stat' + (needed ? ' need' : '') + '"><div class="n">' + needed + '</div><div class="l">still needed</div></div>' +
+      '<div class="stat mine"><div class="n">' + mine + '</div><div class="l">yours</div></div>';
   }
 
   // ---- Actions ----
@@ -2136,10 +2161,17 @@
   function patchLocal(row) { items = items.map(function (it) { return it.id === row.id ? row : it; }); render(); }
 
   function addItem() {
-    var nameEl = $('new-name'), noteEl = $('new-note'), catEl = $('new-cat');
+    var nameEl = $('new-name'), noteEl = $('new-note');
     var name = nameEl.value.replace(/\s+/g, ' ').trim();
     var note = noteEl.value.replace(/\s+/g, ' ').trim();
     if (!name) { nameEl.focus(); return; }
+    var meta = null;
+    if (newCat === 'Weed') {
+      if (!weed.grade) { toast('Gas or crumbly mid? Be honest.'); return; }
+      meta = {}; Object.keys(weed).forEach(function (k) { if (weed[k]) meta[k] = weed[k]; });
+      if (meta.form !== 'flower' && meta.form !== 'prerolls') delete meta.weight;
+      if (meta.form !== 'edibles') delete meta.dose;
+    }
     var dup = items.filter(function (it) { return norm(it.name) === norm(name); })[0];
     if (dup) {
       if (!dup.party && mode === 'bring') { toast('"' + dup.name + '" was already needed. It\'s yours now.'); claim(dup.id); }
@@ -2148,14 +2180,14 @@
       nameEl.value = ''; noteEl.value = '';
       return;
     }
-    var row = { name: name, note: note || null, category: catEl.value, added_by: me, adder_id: myId(),
+    var row = { name: name, note: note || null, category: newCat, added_by: me, adder_id: myId(), meta: meta,
       party: mode === 'bring' ? myParty : null, claimed_by: mode === 'bring' ? me : null };
     $('addbtn').disabled = true;
     store.add(row).then(function (saved) {
       if (!items.some(function (it) { return it.id === saved.id; })) items.push(saved);
-      nameEl.value = ''; noteEl.value = '';
+      nameEl.value = ''; noteEl.value = ''; weed = {}; renderWeedPanel();
       render();
-      nameEl.focus();
+      toast((mode === 'bring' ? 'On the list: ' : 'Flagged: ') + name + '.');
     }).catch(fail('Couldn\'t add that')).then(function () { $('addbtn').disabled = false; });
   }
 
@@ -2188,9 +2220,43 @@
   function syncMode() {
     $('mode-bring').setAttribute('aria-pressed', String(mode === 'bring'));
     $('mode-need').setAttribute('aria-pressed', String(mode === 'need'));
-    $('addbtn').textContent = mode === 'bring' ? 'Add' : 'Flag it';
-    $('new-name').placeholder = mode === 'bring' ? 'What are you bringing?' : 'What do we still need?';
+    $('addbtn').textContent = mode === 'bring' ? 'Add it' : 'Flag it';
+    $('new-name').placeholder = newCat === 'Weed' ? 'Strain name (e.g. Blue Dream)' : mode === 'bring' ? 'What are you bringing?' : 'What do we still need?';
   }
+  var newCat = 'Food', weed = {};
+  function renderCatRow() {
+    $('cat-row').innerHTML = CATEGORIES.map(function (c) {
+      return '<button type="button" data-cat="' + esc(c) + '" class="' + (c === 'Weed' ? 'weed' : '') + '" aria-pressed="' + (c === newCat) + '">' + CAT_ICON[c] + ' ' + esc(c) + '</button>';
+    }).join('');
+  }
+  function renderWeedPanel() {
+    var el = $('weed-panel'); if (!el) return;
+    if (newCat !== 'Weed') { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    var rows = ['form', 'type'];
+    if (weed.form === 'flower' || weed.form === 'prerolls') rows.push('weight');
+    if (weed.form === 'edibles') rows.push('dose');
+    rows.push('grade', 'vibe');
+    el.innerHTML = '<div class="w-title">The paperwork <small>so nobody gets surprised</small></div>' + rows.map(function (k) {
+      var g = WEED[k];
+      return '<div class="w-row"><div class="w-l">' + esc(g.label) + (g.required && !weed[k] ? '<em>required</em>' : '') + '</div><div class="chips">' + g.opts.map(function (o) {
+        return '<button type="button" data-weed="' + k + '" data-val="' + esc(o[0]) + '" class="' + (k === 'grade' ? o[0] : '') + '" aria-pressed="' + (weed[k] === o[0]) + '">' + o[1] + '</button>';
+      }).join('') + '</div></div>';
+    }).join('');
+  }
+  $('cat-row').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-cat]'); if (!b) return;
+    newCat = b.getAttribute('data-cat'); if (newCat !== 'Weed') weed = {};
+    renderCatRow(); renderWeedPanel(); syncMode();
+    if (newCat === 'Weed') buzz(15);
+  });
+  $('weed-panel').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-weed]'); if (!b) return;
+    var k = b.getAttribute('data-weed'), v = b.getAttribute('data-val');
+    weed[k] = weed[k] === v ? null : v;
+    renderWeedPanel();
+  });
+  renderCatRow(); syncMode();
   $('groups').addEventListener('click', function (e) {
     var c = e.target.closest('[data-claim]'); if (c) { claim(c.getAttribute('data-claim')); return; }
     var u = e.target.closest('[data-unclaim]'); if (u) { unclaim(u.getAttribute('data-unclaim')); return; }
@@ -2198,7 +2264,6 @@
   });
   $('tab-items').addEventListener('click', function () { view = 'items'; lsSet('cabin-haul-view', view); render(); });
   $('tab-people').addEventListener('click', function () { view = 'people'; lsSet('cabin-haul-view', view); render(); });
-  $('copylink').addEventListener('click', function () { copyText(location.href.split('#')[0], 'Link copied. Paste it into the group chat.'); });
 
   function listText() {
     var lines = ['Cabin haul · ' + new Date().toLocaleDateString()];
@@ -2211,7 +2276,10 @@
       var rows = items.filter(function (it) { return it.party === party; });
       if (!rows.length) return;
       lines.push('', party.toUpperCase());
-      rows.forEach(function (it) { lines.push('• ' + it.name + (it.note ? ' (' + it.note + ')' : '') + ' · ' + it.category); });
+      rows.forEach(function (it) {
+        var m = it.meta && it.category === 'Weed' ? ['form', 'type', 'weight', 'dose', 'grade', 'vibe'].filter(function (k) { return it.meta[k]; }).map(function (k) { return weedLabel(k, it.meta[k]); }).join(', ') : '';
+        lines.push('• ' + it.name + (it.note ? ' (' + it.note + ')' : '') + ' · ' + it.category + (m ? ' · ' + m : ''));
+      });
     });
     return lines.join('\n');
   }

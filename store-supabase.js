@@ -4,7 +4,7 @@
   'use strict';
   var CFG = window.CABIN_CONFIG || {};
   var URL = String(CFG.supabaseUrl || ''), KEY = String(CFG.supabaseAnonKey || '');
-  var COLS = 'id,name,note,category,party,claimed_by,added_by,adder_id,created_at';
+  var COLS = 'id,name,note,category,party,claimed_by,added_by,adder_id,meta,created_at';
   var sb = null, cb = null;
   function ensure() {
     if (sb) return sb;
