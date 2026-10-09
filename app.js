@@ -841,7 +841,7 @@
     if (picking) { renderRoster(); window.scrollTo(0, 0); return; }
     if (!booted) boot();
     if (me !== renderedFor) refreshForUser();
-    if (shouldAsk()) { openQuestionnaire(firstUnanswered()); return; }
+    if (shouldAsk()) { askedThisVisit = true; openQuestionnaire(firstUnanswered()); return; }
     var partner = PARTIES.filter(function (p) { return p.indexOf(me) >= 0; })[0].filter(function (n) { return n !== me; })[0];
     $('me').innerHTML = 'Hey <b>' + esc(me) + '</b>' + (partner ? ' · with ' + esc(partner) : '');
     showTab(tab);
@@ -1823,9 +1823,12 @@
   function myVotes() { var m = {}; votes.forEach(function (v) { if (v.voter === me) m[v.question_id] = v.pick; }); return m; }
   function answeredCount() { var m = myVotes(); return QUESTIONS.filter(function (q) { return !!m[q.id]; }).length; }   // ignore votes for questions that no longer exist
   function firstUnanswered() { var m = myVotes(); for (var i = 0; i < QUESTIONS.length; i++) if (!m[QUESTIONS[i].id]) return i; return 0; }
+  // Only ever prompt someone who has made no picks at all, and only once their votes have actually loaded.
+  // Anyone with picks (even partial) changes them from the Predictions tab instead.
+  var predLoaded = false, askedThisVisit = false;
   function shouldAsk() {
-    if (!me || !store || !store.predictions) return false;
-    if (answeredCount() >= QUESTIONS.length) return false;
+    if (!me || !store || !store.predictions || !predLoaded || askedThisVisit) return false;
+    if (answeredCount() > 0) return false;
     return lsGet('cabin-haul-pred-later-' + me) !== '1';
   }
   function subscribePredictions() {
@@ -1833,7 +1836,9 @@
     predSub = true;
     store.predictions(function (rows) {
       votes = rows.slice();
+      var first = !predLoaded; predLoaded = true;
       renderPredictions();
+      if (first && !$('main').hidden && shouldAsk()) { askedThisVisit = true; openQuestionnaire(0); }
     });
     if (store.comments) store.comments(function (rows) {
       comments = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? -1 : 1; });
