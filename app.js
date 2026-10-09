@@ -716,7 +716,7 @@
     var RACK = [1, 9, 2, 10, 8, 3, 11, 7, 14, 4, 5, 13, 15, 6, 12];
     function startPool() {
       golf = null; setPlaying(true); document.body.classList.add('pool-on');
-      var rail = 18, tw = Math.round(W * 0.88), tx0 = Math.round((W - tw) / 2), x0 = tx0 + rail, x1 = tx0 + tw - rail, cx = (x0 + x1) / 2;
+      var rail = 26, tw = Math.round(W * 0.92), tx0 = Math.round((W - tw) / 2), x0 = tx0 + rail, x1 = tx0 + tw - rail, cx = (x0 + x1) / 2;
       var th = Math.min(H - 40, (x1 - x0) * 1.6 + rail * 2), ty0 = Math.max(32, Math.round((H - th) / 2) + 8);   // a bar box: shorter than a real table, chunky balls
       var y0 = ty0 + rail, y1 = ty0 + th - rail;
       var R = Math.max(7, Math.min(11, (x1 - x0) * 0.034)), pr = R * 1.5;   // balls about 7% of the cloth width, pockets about two balls wide
@@ -877,6 +877,72 @@
       pick.angle += (Math.random() - 0.5) * 0.02;   // Claude is good, not perfect
       return pick;
     }
+    // the table never moves, so it's painted once into an offscreen canvas and blitted each frame
+    function buildTableImage(g) {
+      var off = document.createElement('canvas'); off.width = Math.round(W * dpr); off.height = Math.round(H * dpr);
+      var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var X0 = g.tx0, X1 = g.tx1, T0 = g.ty0, T1 = g.ty1, TW = X1 - X0, TH = T1 - T0, rail = g.x0 - X0;
+      function rr(x, y, w, h, r) { o.beginPath(); o.moveTo(x + r, y); o.arcTo(x + w, y, x + w, y + h, r); o.arcTo(x + w, y + h, x, y + h, r); o.arcTo(x, y + h, x, y, r); o.arcTo(x, y, x + w, y, r); o.closePath(); }
+      function circ(x, y, r, fill, stroke, lw) { o.beginPath(); o.arc(x, y, r, 0, Math.PI * 2); if (fill) { o.fillStyle = fill; o.fill(); } if (stroke) { o.lineWidth = lw || 1; o.strokeStyle = stroke; o.stroke(); } }
+      // carpet
+      if (!carpetTile) buildCarpetTile();
+      o.fillStyle = carpetTile; o.fillRect(0, 0, W, H);
+      var vig = o.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.75); vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.35)');
+      o.fillStyle = vig; o.fillRect(0, 0, W, H);
+      // shadow, then the apron (outer, darker) and the rail top (inner, lighter) as two stepped pieces of wood
+      o.fillStyle = 'rgba(0,0,0,0.38)'; rr(X0 + 4, T0 + 9, TW - 2, TH, 18); o.fill();
+      var apron = o.createLinearGradient(X0, T0, X1, T1); apron.addColorStop(0, '#4a2a12'); apron.addColorStop(0.5, '#2e1808'); apron.addColorStop(1, '#3f2410');
+      o.fillStyle = apron; rr(X0, T0, TW, TH, 18); o.fill();
+      var top = o.createLinearGradient(X0, T0, X1, T1); top.addColorStop(0, '#8a5a30'); top.addColorStop(0.45, '#5c3717'); top.addColorStop(1, '#7a4c27');
+      o.fillStyle = top; rr(X0 + 7, T0 + 7, TW - 14, TH - 14, 13); o.fill();
+      // grain on the rail top
+      o.save(); rr(X0 + 7, T0 + 7, TW - 14, TH - 14, 13); o.clip();
+      o.strokeStyle = 'rgba(0,0,0,0.14)'; o.lineWidth = 1;
+      for (var gi = 0; gi < 12; gi++) {
+        var gx = X0 + 9 + gi * 1.5, gx2 = X1 - 9 - gi * 1.5, wob = Math.sin(gi * 1.7) * 3;
+        o.beginPath(); o.moveTo(gx, T0); o.bezierCurveTo(gx + wob, T0 + TH * 0.35, gx - wob, T0 + TH * 0.7, gx, T1); o.stroke();
+        o.beginPath(); o.moveTo(gx2, T0); o.bezierCurveTo(gx2 - wob, T0 + TH * 0.35, gx2 + wob, T0 + TH * 0.7, gx2, T1); o.stroke();
+        var gy = T0 + 9 + gi * 1.5; o.beginPath(); o.moveTo(X0, gy); o.bezierCurveTo(X0 + TW * 0.3, gy + wob, X0 + TW * 0.7, gy - wob, X1, gy); o.stroke();
+        gy = T1 - 9 - gi * 1.5; o.beginPath(); o.moveTo(X0, gy); o.bezierCurveTo(X0 + TW * 0.3, gy - wob, X0 + TW * 0.7, gy + wob, X1, gy); o.stroke();
+      }
+      // lacquer sheen across the rails
+      var sheen = o.createLinearGradient(X0, T0, X1, T1); sheen.addColorStop(0, 'rgba(255,255,255,0)'); sheen.addColorStop(0.35, 'rgba(255,255,255,0.12)'); sheen.addColorStop(0.5, 'rgba(255,255,255,0)'); sheen.addColorStop(0.8, 'rgba(255,255,255,0.07)'); sheen.addColorStop(1, 'rgba(255,255,255,0)');
+      o.fillStyle = sheen; o.fillRect(X0, T0, TW, TH);
+      o.restore();
+      // bevels: light edge on the apron and rail top, brass inlay line between them
+      o.lineWidth = 1.5; o.strokeStyle = 'rgba(255,255,255,0.12)'; rr(X0 + 2, T0 + 2, TW - 4, TH - 4, 16); o.stroke();
+      o.lineWidth = 1; o.strokeStyle = 'rgba(0,0,0,0.5)'; rr(X0 + 7, T0 + 7, TW - 14, TH - 14, 13); o.stroke();
+      o.lineWidth = 1.2; o.strokeStyle = 'rgba(224,186,110,0.55)'; rr(X0 + 5, T0 + 5, TW - 10, TH - 10, 14); o.stroke();
+      o.lineWidth = 1; o.strokeStyle = 'rgba(255,255,255,0.14)'; rr(X0 + 8.5, T0 + 8.5, TW - 17, TH - 17, 12); o.stroke();
+      // cushion band, then the cloth
+      o.fillStyle = '#8f7a55'; o.fillRect(g.x0 - 8, g.y0 - 8, g.x1 - g.x0 + 16, g.y1 - g.y0 + 16);
+      o.fillStyle = 'rgba(0,0,0,0.18)'; o.fillRect(g.x0 - 8, g.y0 - 8, g.x1 - g.x0 + 16, 2); o.fillRect(g.x0 - 8, g.y0 - 8, 2, g.y1 - g.y0 + 16);
+      o.fillStyle = 'rgba(255,255,255,0.10)'; o.fillRect(g.x0 - 8, g.y1 + 6, g.x1 - g.x0 + 16, 2); o.fillRect(g.x1 + 6, g.y0 - 8, 2, g.y1 - g.y0 + 16);
+      o.strokeStyle = 'rgba(0,0,0,0.35)'; o.lineWidth = 1; o.strokeRect(g.x0 - 8.5, g.y0 - 8.5, g.x1 - g.x0 + 17, g.y1 - g.y0 + 17);
+      var felt = o.createRadialGradient(W / 2, (g.y0 + g.y1) / 2, 20, W / 2, (g.y0 + g.y1) / 2, TH * 0.7);
+      felt.addColorStop(0, '#c9a97a'); felt.addColorStop(1, '#ad8d5f');
+      o.fillStyle = felt; o.fillRect(g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
+      o.strokeStyle = 'rgba(0,0,0,0.12)'; o.lineWidth = 1; o.beginPath(); o.moveTo(g.x0, g.kitchen.y); o.lineTo(g.x1, g.kitchen.y); o.stroke();
+      circ(W / 2, g.y0 + (g.y1 - g.y0) * 0.27, 1.6, 'rgba(0,0,0,0.25)');
+      // pockets: leather boot, brass rim, dark hole
+      g.pockets.forEach(function (pk) {
+        circ(pk.x, pk.y, pk.r + 7, '#1e1208'); circ(pk.x, pk.y, pk.r + 5.5, '#3a2412');
+        var brass = o.createRadialGradient(pk.x - 2, pk.y - 2, pk.r, pk.x, pk.y, pk.r + 4); brass.addColorStop(0, '#e2c27a'); brass.addColorStop(1, '#8a6a30');
+        circ(pk.x, pk.y, pk.r + 3.2, brass); circ(pk.x, pk.y, pk.r, '#050505');
+        var inner = o.createRadialGradient(pk.x, pk.y, pk.r * 0.3, pk.x, pk.y, pk.r); inner.addColorStop(0, 'rgba(0,0,0,0)'); inner.addColorStop(1, 'rgba(40,30,20,0.6)'); circ(pk.x, pk.y, pk.r, inner);
+      });
+      // mother-of-pearl diamond sights, with a tiny brass screw beside each corner
+      function diamond(x, y) {
+        o.save(); o.translate(x, y); o.rotate(Math.PI / 4);
+        var mop = o.createLinearGradient(-3, -3, 3, 3); mop.addColorStop(0, '#fff8e6'); mop.addColorStop(0.5, '#d9c9b0'); mop.addColorStop(1, '#f6ecd8');
+        o.fillStyle = mop; o.fillRect(-2.8, -2.8, 5.6, 5.6); o.strokeStyle = 'rgba(0,0,0,0.35)'; o.lineWidth = 0.6; o.strokeRect(-2.8, -2.8, 5.6, 5.6); o.restore();
+      }
+      var railMid = rail / 2 + 2;
+      [0.125, 0.25, 0.375, 0.625, 0.75, 0.875].forEach(function (f) { diamond(X0 + railMid, g.y0 + (g.y1 - g.y0) * f); diamond(X1 - railMid, g.y0 + (g.y1 - g.y0) * f); });
+      [0.25, 0.5, 0.75].forEach(function (f) { diamond(g.x0 + (g.x1 - g.x0) * f, T0 + railMid); diamond(g.x0 + (g.x1 - g.x0) * f, T1 - railMid); });
+      [[X0 + 11, T0 + 11], [X1 - 11, T0 + 11], [X0 + 11, T1 - 11], [X1 - 11, T1 - 11]].forEach(function (s) { circ(s[0], s[1], 1.6, '#c9a85c', 'rgba(0,0,0,0.5)', 0.6); });
+      g.tableImg = { c: off, w: W, h: H, dpr: dpr };
+    }
     var carpetTile = null;
     function buildCarpetTile() {
       var size = 64, off = document.createElement('canvas'); off.width = Math.round(size * dpr); off.height = Math.round(size * dpr);
@@ -891,37 +957,8 @@
     }
     function drawPool(now) {
       var g = pool, R = g.R;
-      if (!carpetTile) buildCarpetTile();
-      ctx.fillStyle = carpetTile; ctx.fillRect(0, 0, W, H);                                                    // basement carpet, no green
-      var vig = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.75); vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.35)');
-      ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
-      // rails: wood with grain, then the cushions, then the cloth
-      var wood = ctx.createLinearGradient(0, 30, W, H); wood.addColorStop(0, '#7a4a27'); wood.addColorStop(0.45, '#4e2d14'); wood.addColorStop(1, '#6b3f1f');
-      ctx.fillStyle = 'rgba(0,0,0,0.3)'; roundRect(g.tx0 + 3, g.ty0 + 7, g.tx1 - g.tx0 - 2, g.ty1 - g.ty0, 16); ctx.fill();   // drop shadow on the carpet
-      ctx.fillStyle = wood; roundRect(g.tx0, g.ty0, g.tx1 - g.tx0, g.ty1 - g.ty0, 16); ctx.fill();
-      ctx.save(); ctx.beginPath(); roundRect(g.tx0, g.ty0, g.tx1 - g.tx0, g.ty1 - g.ty0, 16); ctx.clip();
-      ctx.strokeStyle = 'rgba(0,0,0,0.16)'; ctx.lineWidth = 1;
-      for (var gi = 0; gi < 9; gi++) {   // grain: long soft curves down the side rails and across the ends
-        var gx = g.tx0 + 4 + gi * 1.9, gx2 = g.tx1 - 4 - gi * 1.9, wob = Math.sin(gi * 1.7) * 3, T0 = g.ty0, T1 = g.ty1, TH = T1 - T0, X0 = g.tx0, X1 = g.tx1;
-        ctx.beginPath(); ctx.moveTo(gx, T0); ctx.bezierCurveTo(gx + wob, T0 + TH * 0.35, gx - wob, T0 + TH * 0.7, gx, T1); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(gx2, T0); ctx.bezierCurveTo(gx2 - wob, T0 + TH * 0.35, gx2 + wob, T0 + TH * 0.7, gx2, T1); ctx.stroke();
-        var gy = T0 + 3 + gi * 1.9; ctx.beginPath(); ctx.moveTo(X0, gy); ctx.bezierCurveTo(X0 + (X1 - X0) * 0.3, gy + wob, X0 + (X1 - X0) * 0.7, gy - wob, X1, gy); ctx.stroke();
-        gy = T1 - 3 - gi * 1.9; ctx.beginPath(); ctx.moveTo(X0, gy); ctx.bezierCurveTo(X0 + (X1 - X0) * 0.3, gy - wob, X0 + (X1 - X0) * 0.7, gy + wob, X1, gy); ctx.stroke();
-      }
-      ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 1.5; ctx.beginPath(); roundRect(g.tx0 + 3, g.ty0 + 3, g.tx1 - g.tx0 - 6, g.ty1 - g.ty0 - 6, 12); ctx.stroke();   // rail edge highlight
-      ctx.restore();
-      ctx.fillStyle = '#8f7a55'; ctx.fillRect(g.x0 - 7, g.y0 - 7, g.x1 - g.x0 + 14, g.y1 - g.y0 + 14);                                      // cushion (darker cloth)
-      ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1; ctx.strokeRect(g.x0 - 7.5, g.y0 - 7.5, g.x1 - g.x0 + 15, g.y1 - g.y0 + 15);
-      var felt = ctx.createRadialGradient(W / 2, (g.y0 + g.y1) / 2, 20, W / 2, (g.y0 + g.y1) / 2, H * 0.7);                              // tan cloth
-      felt.addColorStop(0, '#c9a97a'); felt.addColorStop(1, '#ad8d5f');
-      ctx.fillStyle = felt; ctx.fillRect(g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
-      ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(g.x0, g.kitchen.y); ctx.lineTo(g.x1, g.kitchen.y); ctx.stroke();   // head string
-      circle(W / 2, g.y0 + (g.y1 - g.y0) * 0.27, 1.6, 'rgba(0,0,0,0.25)');                                                                     // foot spot
-      g.pockets.forEach(function (pk) { circle(pk.x, pk.y, pk.r + 3.5, '#2b1a0c'); circle(pk.x, pk.y, pk.r + 2, '#8a6a44'); circle(pk.x, pk.y, pk.r, '#050505'); });
-      ctx.fillStyle = '#f1e6c8';                                                                                                                // diamond sights
-      function diamond(x, y) { ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4); ctx.fillRect(-2.2, -2.2, 4.4, 4.4); ctx.restore(); }
-      [0.125, 0.25, 0.375, 0.625, 0.75, 0.875].forEach(function (f) { diamond(g.tx0 + 9, g.y0 + (g.y1 - g.y0) * f); diamond(g.tx1 - 9, g.y0 + (g.y1 - g.y0) * f); });
-      [0.25, 0.5, 0.75].forEach(function (f) { diamond(g.x0 + (g.x1 - g.x0) * f, g.ty0 + 10); diamond(g.x0 + (g.x1 - g.x0) * f, g.ty1 - 10); });
+      if (!g.tableImg || g.tableImg.w !== W || g.tableImg.h !== H || g.tableImg.dpr !== dpr) buildTableImage(g);
+      ctx.drawImage(g.tableImg.c, 0, 0, W, H);
       // aiming guide
       var aiming = (g.phase === 'aim') || (g.phase === 'cpu' && g.cpuPlan);
       if (aiming && g.cue.alive) {
