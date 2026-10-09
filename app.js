@@ -716,14 +716,14 @@
     var RACK = [1, 9, 2, 10, 8, 3, 11, 7, 14, 4, 5, 13, 15, 6, 12];
     function startPool() {
       golf = null; setPlaying(true); document.body.classList.add('pool-on');
-      var rail = 20, x0 = rail, x1 = W - rail, cx = (x0 + x1) / 2;
-      var th = Math.min(H - 40, (x1 - x0) * 1.6 + rail * 2), ty0 = Math.max(32, Math.round((H - th) / 2) + 8);   // a shade shorter than a real 2:1 table so it fits a phone
+      var rail = 18, tw = Math.round(W * 0.88), tx0 = Math.round((W - tw) / 2), x0 = tx0 + rail, x1 = tx0 + tw - rail, cx = (x0 + x1) / 2;
+      var th = Math.min(H - 40, (x1 - x0) * 1.6 + rail * 2), ty0 = Math.max(32, Math.round((H - th) / 2) + 8);   // a bar box: shorter than a real table, chunky balls
       var y0 = ty0 + rail, y1 = ty0 + th - rail;
-      var R = Math.max(6.5, Math.min(9, (x1 - x0) * 0.0255)), pr = R * 1.55;   // a real ball is about 5% of the table's width; pockets about two balls wide
+      var R = Math.max(7, Math.min(11, (x1 - x0) * 0.034)), pr = R * 1.5;   // balls about 7% of the cloth width, pockets about two balls wide
       var g = { R: R, x0: x0, y0: y0, x1: x1, y1: y1, balls: [], turn: 'you', phase: 'aim', groups: { you: null, cpu: null },
         aim: -Math.PI / 2, power: 0, drag: null, msg: null, msgT: 0, shot: null, winner: null, cpuT: 0, cpuPlan: null, t0: performance.now(),
         pockets: [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x0, y: (y0 + y1) / 2 }, { x: x1, y: (y0 + y1) / 2 }, { x: x0, y: y1 }, { x: x1, y: y1 }].map(function (p) { p.r = pr; return p; }),
-        kitchen: { x: cx, y: y0 + (y1 - y0) * 0.76 }, ty0: ty0, ty1: ty0 + th };
+        kitchen: { x: cx, y: y0 + (y1 - y0) * 0.76 }, ty0: ty0, ty1: ty0 + th, tx0: tx0, tx1: tx0 + tw };
       var apexY = y0 + (y1 - y0) * 0.27, k = 0;
       for (var row = 0; row < 5; row++) for (var i = 0; i <= row; i++) {
         g.balls.push({ n: RACK[k++], x: cx + (i - row / 2) * (2 * R + 0.6), y: apexY - row * (2 * R * 0.875), vx: 0, vy: 0, r: R, alive: true, scale: 1, alpha: 1, ox: 0, oy: 0 });
@@ -897,18 +897,18 @@
       ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
       // rails: wood with grain, then the cushions, then the cloth
       var wood = ctx.createLinearGradient(0, 30, W, H); wood.addColorStop(0, '#7a4a27'); wood.addColorStop(0.45, '#4e2d14'); wood.addColorStop(1, '#6b3f1f');
-      ctx.fillStyle = 'rgba(0,0,0,0.28)'; roundRect(3, g.ty0 + 6, W - 6, g.ty1 - g.ty0, 16); ctx.fill();   // drop shadow on the green
-      ctx.fillStyle = wood; roundRect(0, g.ty0, W, g.ty1 - g.ty0, 16); ctx.fill();
-      ctx.save(); ctx.beginPath(); roundRect(0, g.ty0, W, g.ty1 - g.ty0, 16); ctx.clip();
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; roundRect(g.tx0 + 3, g.ty0 + 7, g.tx1 - g.tx0 - 2, g.ty1 - g.ty0, 16); ctx.fill();   // drop shadow on the carpet
+      ctx.fillStyle = wood; roundRect(g.tx0, g.ty0, g.tx1 - g.tx0, g.ty1 - g.ty0, 16); ctx.fill();
+      ctx.save(); ctx.beginPath(); roundRect(g.tx0, g.ty0, g.tx1 - g.tx0, g.ty1 - g.ty0, 16); ctx.clip();
       ctx.strokeStyle = 'rgba(0,0,0,0.16)'; ctx.lineWidth = 1;
       for (var gi = 0; gi < 9; gi++) {   // grain: long soft curves down the side rails and across the ends
-        var gx = 5 + gi * 2.1, wob = Math.sin(gi * 1.7) * 3, T0 = g.ty0, T1 = g.ty1, TH = T1 - T0;
+        var gx = g.tx0 + 4 + gi * 1.9, gx2 = g.tx1 - 4 - gi * 1.9, wob = Math.sin(gi * 1.7) * 3, T0 = g.ty0, T1 = g.ty1, TH = T1 - T0, X0 = g.tx0, X1 = g.tx1;
         ctx.beginPath(); ctx.moveTo(gx, T0); ctx.bezierCurveTo(gx + wob, T0 + TH * 0.35, gx - wob, T0 + TH * 0.7, gx, T1); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(W - gx, T0); ctx.bezierCurveTo(W - gx - wob, T0 + TH * 0.35, W - gx + wob, T0 + TH * 0.7, W - gx, T1); ctx.stroke();
-        var gy = T0 + 3 + gi * 2.1; ctx.beginPath(); ctx.moveTo(0, gy); ctx.bezierCurveTo(W * 0.3, gy + wob, W * 0.7, gy - wob, W, gy); ctx.stroke();
-        gy = T1 - 3 - gi * 2.1; ctx.beginPath(); ctx.moveTo(0, gy); ctx.bezierCurveTo(W * 0.3, gy - wob, W * 0.7, gy + wob, W, gy); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(gx2, T0); ctx.bezierCurveTo(gx2 - wob, T0 + TH * 0.35, gx2 + wob, T0 + TH * 0.7, gx2, T1); ctx.stroke();
+        var gy = T0 + 3 + gi * 1.9; ctx.beginPath(); ctx.moveTo(X0, gy); ctx.bezierCurveTo(X0 + (X1 - X0) * 0.3, gy + wob, X0 + (X1 - X0) * 0.7, gy - wob, X1, gy); ctx.stroke();
+        gy = T1 - 3 - gi * 1.9; ctx.beginPath(); ctx.moveTo(X0, gy); ctx.bezierCurveTo(X0 + (X1 - X0) * 0.3, gy - wob, X0 + (X1 - X0) * 0.7, gy + wob, X1, gy); ctx.stroke();
       }
-      ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 1.5; ctx.beginPath(); roundRect(3, g.ty0 + 3, W - 6, g.ty1 - g.ty0 - 6, 12); ctx.stroke();   // rail edge highlight
+      ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 1.5; ctx.beginPath(); roundRect(g.tx0 + 3, g.ty0 + 3, g.tx1 - g.tx0 - 6, g.ty1 - g.ty0 - 6, 12); ctx.stroke();   // rail edge highlight
       ctx.restore();
       ctx.fillStyle = '#8f7a55'; ctx.fillRect(g.x0 - 7, g.y0 - 7, g.x1 - g.x0 + 14, g.y1 - g.y0 + 14);                                      // cushion (darker cloth)
       ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1; ctx.strokeRect(g.x0 - 7.5, g.y0 - 7.5, g.x1 - g.x0 + 15, g.y1 - g.y0 + 15);
@@ -920,7 +920,7 @@
       g.pockets.forEach(function (pk) { circle(pk.x, pk.y, pk.r + 3.5, '#2b1a0c'); circle(pk.x, pk.y, pk.r + 2, '#8a6a44'); circle(pk.x, pk.y, pk.r, '#050505'); });
       ctx.fillStyle = '#f1e6c8';                                                                                                                // diamond sights
       function diamond(x, y) { ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4); ctx.fillRect(-2.2, -2.2, 4.4, 4.4); ctx.restore(); }
-      [0.125, 0.25, 0.375, 0.625, 0.75, 0.875].forEach(function (f) { diamond(10, g.y0 + (g.y1 - g.y0) * f); diamond(W - 10, g.y0 + (g.y1 - g.y0) * f); });
+      [0.125, 0.25, 0.375, 0.625, 0.75, 0.875].forEach(function (f) { diamond(g.tx0 + 9, g.y0 + (g.y1 - g.y0) * f); diamond(g.tx1 - 9, g.y0 + (g.y1 - g.y0) * f); });
       [0.25, 0.5, 0.75].forEach(function (f) { diamond(g.x0 + (g.x1 - g.x0) * f, g.ty0 + 10); diamond(g.x0 + (g.x1 - g.x0) * f, g.ty1 - 10); });
       // aiming guide
       var aiming = (g.phase === 'aim') || (g.phase === 'cpu' && g.cpuPlan);
@@ -951,7 +951,7 @@
       }
       // power slider on the right rail
       if (g.phase === 'aim') {
-        var sx = W - 13, top = g.y0 + 16, bot = g.y1 - 16;
+        var sx = g.tx1 - 11, top = g.y0 + 16, bot = g.y1 - 16;
         ctx.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(sx - 6, top - 6, 12, bot - top + 12, 6); ctx.fill();
         var pg = ctx.createLinearGradient(0, top, 0, bot); pg.addColorStop(0, '#ffd166'); pg.addColorStop(1, '#ef476f');
         ctx.fillStyle = pg; roundRect(sx - 4, top, 8, (bot - top) * g.power, 4); ctx.fill();
@@ -977,7 +977,7 @@
       var g = pool;
       if (p.x > W - 58 && p.y < 30) { pool = null; return; }
       if (g.phase !== 'aim') return;
-      if (p.x > W - 28 && p.y > g.y0) { g.drag = { type: 'power', y0: p.y, p0: g.power }; }
+      if (p.x > g.tx1 - 26 && p.y > g.y0) { g.drag = { type: 'power', y0: p.y, p0: g.power }; }
       else { g.drag = { type: 'aim', a: Math.atan2(p.y - g.cue.y, p.x - g.cue.x) }; }
       try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     }
