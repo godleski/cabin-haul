@@ -134,6 +134,7 @@
       if (playing === on) return;
       playing = on;
       document.body.classList.toggle('playing', on);
+      if (!on) document.body.classList.remove('pool-on');
       if (on) window.scrollTo(0, 0);
       void box.offsetHeight;   // force layout so the new size is read now
       resize();
@@ -144,7 +145,7 @@
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
       cv.style.width = W + 'px'; cv.style.height = H + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      dimpleTile = null; layerCache = {}; scriptCache = {}; poolCache = {}; speckTile = null;
+      dimpleTile = null; layerCache = {}; scriptCache = {}; poolCache = {}; speckTile = null; carpetTile = null;
     }
     resize();
     var colors = {};
@@ -714,9 +715,9 @@
     box.__pool = function () { return pool; };
     var RACK = [1, 9, 2, 10, 8, 3, 11, 7, 14, 4, 5, 13, 15, 6, 12];
     function startPool() {
-      golf = null; setPlaying(true);
+      golf = null; setPlaying(true); document.body.classList.add('pool-on');
       var rail = 20, x0 = rail, x1 = W - rail, cx = (x0 + x1) / 2;
-      var th = Math.min(H - 40, (x1 - x0) * 2 + rail * 2), ty0 = Math.max(32, Math.round((H - th) / 2) + 8);   // a real table is twice as long as it is wide
+      var th = Math.min(H - 40, (x1 - x0) * 1.6 + rail * 2), ty0 = Math.max(32, Math.round((H - th) / 2) + 8);   // a shade shorter than a real 2:1 table so it fits a phone
       var y0 = ty0 + rail, y1 = ty0 + th - rail;
       var R = Math.max(6.5, Math.min(9, (x1 - x0) * 0.0255)), pr = R * 1.55;   // a real ball is about 5% of the table's width; pockets about two balls wide
       var g = { R: R, x0: x0, y0: y0, x1: x1, y1: y1, balls: [], turn: 'you', phase: 'aim', groups: { you: null, cpu: null },
@@ -876,8 +877,24 @@
       pick.angle += (Math.random() - 0.5) * 0.02;   // Claude is good, not perfect
       return pick;
     }
+    var carpetTile = null;
+    function buildCarpetTile() {
+      var size = 64, off = document.createElement('canvas'); off.width = Math.round(size * dpr); off.height = Math.round(size * dpr);
+      var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
+      o.fillStyle = '#4a2a2e'; o.fillRect(0, 0, size, size);
+      var seed = 3; function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+      var cols = ['#5a3338', '#3d2124', '#6a3d42', '#2f1a1d', '#55303a'];
+      for (var i = 0; i < 420; i++) { o.fillStyle = cols[Math.floor(rnd() * cols.length)]; o.globalAlpha = 0.55 + rnd() * 0.45; o.fillRect(rnd() * size, rnd() * size, 1.4, 1.4); }
+      o.globalAlpha = 1;
+      carpetTile = ctx.createPattern(off, 'repeat');
+      try { carpetTile.setTransform(new DOMMatrix().scale(1 / dpr)); } catch (e) { /* ignore */ }
+    }
     function drawPool(now) {
       var g = pool, R = g.R;
+      if (!carpetTile) buildCarpetTile();
+      ctx.fillStyle = carpetTile; ctx.fillRect(0, 0, W, H);                                                    // basement carpet, no green
+      var vig = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.75); vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.35)');
+      ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
       // rails: wood with grain, then the cushions, then the cloth
       var wood = ctx.createLinearGradient(0, 30, W, H); wood.addColorStop(0, '#7a4a27'); wood.addColorStop(0.45, '#4e2d14'); wood.addColorStop(1, '#6b3f1f');
       ctx.fillStyle = 'rgba(0,0,0,0.28)'; roundRect(3, g.ty0 + 6, W - 6, g.ty1 - g.ty0, 16); ctx.fill();   // drop shadow on the green

@@ -50,6 +50,7 @@
   body.playing { padding: calc(4px + env(safe-area-inset-top, 0px)) 6px 4px; }
   body.playing #pick > :not(.bubbles) { display: none !important; }
   body.playing .bubbles { margin-top: 0; height: calc(100dvh - 8px - env(safe-area-inset-top, 0px)); min-height: 0; border-radius: 14px; }
+  body.pool-on .bubbles { border-color: #2a1619; box-shadow: none; background: #4a2a2e; }
   /* experiment: the back of a trunk instead of a green */
   .bubbles.trunk {
     border: 10px solid #15171a;
