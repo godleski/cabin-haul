@@ -1814,7 +1814,7 @@
   var votes = [], qsim = null, qIndex = 0, predSub = false, expanded = null, comments = [], draft = '', reactions = [], pickerFor = null;
   var EMOJI = ['\uD83D\uDE02', '\uD83D\uDD25', '\uD83D\uDC80', '\uD83D\uDC40', '\uD83E\uDD21'];
   function myVotes() { var m = {}; votes.forEach(function (v) { if (v.voter === me) m[v.question_id] = v.pick; }); return m; }
-  function answeredCount() { return Object.keys(myVotes()).length; }
+  function answeredCount() { var m = myVotes(); return QUESTIONS.filter(function (q) { return !!m[q.id]; }).length; }   // ignore votes for questions that no longer exist
   function firstUnanswered() { var m = myVotes(); for (var i = 0; i < QUESTIONS.length; i++) if (!m[QUESTIONS[i].id]) return i; return 0; }
   function shouldAsk() {
     if (!me || !store || !store.predictions) return false;
