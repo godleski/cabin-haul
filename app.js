@@ -721,7 +721,7 @@
       var y0 = ty0 + rail, y1 = ty0 + th - rail;
       var R = Math.max(7, Math.min(11, (x1 - x0) * 0.034)), pr = R * 1.5;   // balls about 7% of the cloth width, pockets about two balls wide
       var g = { R: R, x0: x0, y0: y0, x1: x1, y1: y1, balls: [], turn: 'you', phase: 'aim', groups: { you: null, cpu: null },
-        aim: -Math.PI / 2, power: 0, drag: null, msg: null, msgT: 0, shot: null, winner: null, cpuT: 0, cpuPlan: null, t0: performance.now(),
+        aim: -Math.PI / 2, power: 0, drag: null, broken: false, msg: null, msgT: 0, shot: null, winner: null, cpuT: 0, cpuPlan: null, t0: performance.now(),
         pockets: [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x0, y: (y0 + y1) / 2 }, { x: x1, y: (y0 + y1) / 2 }, { x: x0, y: y1 }, { x: x1, y: y1 }].map(function (p) { p.r = pr; return p; }),
         kitchen: { x: cx, y: y0 + (y1 - y0) * 0.76 }, ty0: ty0, ty1: ty0 + th, tx0: tx0, tx1: tx0 + tw };
       var apexY = y0 + (y1 - y0) * 0.27, k = 0;
@@ -738,10 +738,11 @@
     function leftIn(g, group) { return poolAlive(g).filter(function (b) { return groupOf(b.n) === group; }).length; }
     function poolMoving(g) { return g.balls.some(function (b) { return b.alive && (Math.abs(b.vx) > 0.02 || Math.abs(b.vy) > 0.02); }); }
     function shoot(g, angle, power) {
-      var v = 4 + power * 22;
+      var v = 4 + power * 22, brk = !g.broken;
+      if (brk) { v *= 2; g.broken = true; }   // the break hits twice as hard: send them everywhere
       g.cue.vx = Math.cos(angle) * v; g.cue.vy = Math.sin(angle) * v;
       g.phase = 'rolling'; g.shot = { by: g.turn, potted: [], scratch: false, firstHit: null }; g.power = 0;
-      buzz(12);
+      buzz(brk ? 30 : 12);
     }
     function poolPhysics(dt, now) {
       var g = pool, R = g.R;
@@ -768,7 +769,11 @@
         if (sp > 0) { var fr = Math.pow(sp > 4 ? 0.992 : 0.975, dt); b.vx *= fr; b.vy *= fr; if (sp < 0.06) { b.vx = 0; b.vy = 0; } }
         if (sp > 0) rollBy(b, b.vx * dt, b.vy * dt);
         // pockets
-        for (var p = 0; p < g.pockets.length; p++) { var pk = g.pockets[p]; if (Math.hypot(b.x - pk.x, b.y - pk.y) < pk.r - R * 0.15) { potBall(g, b, now); return; } }
+        for (var p = 0; p < g.pockets.length; p++) {
+          var pk = g.pockets[p], pd = Math.hypot(b.x - pk.x, b.y - pk.y);
+          if (pd < pk.r - R * 0.15) { potBall(g, b, now); return; }
+          if (pd < pk.r + R * 0.7 && sp < 2.5) { var pull = 0.09 * dt; b.vx += (pk.x - b.x) / pd * pull; b.vy += (pk.y - b.y) / pd * pull; }   // the pocket slopes: a ball hanging in the jaws drops in
+        }
         // cushions, with a gap at each pocket mouth
         var nearPocketY = Math.abs(b.y - g.y0) < R * 1.9 || Math.abs(b.y - (g.y0 + g.y1) / 2) < R * 2.0 || Math.abs(b.y - g.y1) < R * 1.9;
         var nearPocketX = Math.abs(b.x - g.x0) < R * 1.9 || Math.abs(b.x - g.x1) < R * 1.9;
