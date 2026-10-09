@@ -204,15 +204,11 @@
       <div id="expenses"><p class="skeleton">Loading…</p></div>
     </section>
 
-    <section class="page" id="page-photos" hidden>
-      <h1>Photos</h1>
-      <p class="lede">The wall of evidence. Everyone's pics from the weekend, with names attached.</p>
-      <div class="photo-tools">
-        <button type="button" class="addbtn" id="add-photos">Add photos</button>
-        <span class="photo-summary" id="photo-summary"></span>
-        <input type="file" id="photo-input" accept="image/*" multiple hidden>
-      </div>
-      <div class="photo-grid" id="photo-grid"><p class="skeleton">Loading photos…</p></div>
+    <section class="page" id="page-chat" hidden>
+      <h1>The wall</h1>
+      <p class="lede">One thread for the whole trip. Plans, trash, who's got the aux.</p>
+      <div class="wall" id="wall"><p class="skeleton">Loading…</p></div>
+      <form class="wall-bar" id="wall-form"><input type="text" id="wall-input" maxlength="300" placeholder="Say something…" autocomplete="off"><button type="submit" class="btn primary">Send</button></form>
     </section>
   </div>
 </div>
@@ -223,7 +219,7 @@
   <button type="button" class="nav-btn" data-tab="bringing" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm1 5h8v2H8zm0 4h8v2H8zm0 4h5v2H8z"/></svg><span>Bringing</span></button>
   <button type="button" class="nav-btn" data-tab="games" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm3 3.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg><span>Games</span></button>
   <button type="button" class="nav-btn" data-tab="money" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm.9 15.2v1.3h-1.8v-1.3c-1.7-.3-2.8-1.3-2.9-2.9h1.9c.1.8.7 1.3 1.9 1.3 1.1 0 1.7-.5 1.7-1.2 0-.6-.4-1-1.6-1.3l-1.3-.3c-1.7-.4-2.5-1.3-2.5-2.7 0-1.5 1.1-2.5 2.8-2.8V5.9h1.8v1.4c1.6.3 2.6 1.3 2.7 2.8h-1.9c-.1-.8-.6-1.2-1.6-1.2s-1.6.5-1.6 1.1c0 .6.4.9 1.5 1.2l1.3.3c1.9.5 2.7 1.3 2.7 2.8 0 1.6-1.2 2.6-3.1 2.9z"/></svg><span>Money</span></button>
-  <button type="button" class="nav-btn" data-tab="photos" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1.5 2H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5zm3 4.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg><span>Photos</span></button>
+  <button type="button" class="nav-btn" data-tab="chat" aria-selected="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg><span class="badge" id="chat-badge" hidden></span></span><span>Chat</span></button>
 </nav>
 <div class="sheet-wrap" id="pred-sheet" hidden>
   <div class="sheet-back" id="sheet-back"></div>
@@ -234,10 +230,6 @@
     <form class="sheet-foot chat-form" id="chat-form"><input type="text" id="chat-input" maxlength="240" placeholder="Talk your shit…" autocomplete="off"><button type="submit" class="btn primary">Send</button></form>
   </div>
 </div>
-<div class="lightbox" id="lightbox" hidden>
-  <button type="button" class="lb-close" id="lb-close" aria-label="Close">×</button>
-  <div class="lb-track" id="lb-track"></div>
-  <div class="lb-cap" id="lb-cap"></div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 

@@ -1238,19 +1238,21 @@
   function refreshForUser() {
     renderedFor = me;
     mafiaDraft = null; teamsDraft = null; teamsEdit = false; expSplit = null; expanded = null; pickerFor = null; modReveal = false;
-    renderPredictions(); renderSheet(); renderPhotos();
+    renderPredictions(); renderSheet(); renderWall(); updateChatBadge();
     renderMafia(); renderTeams(); renderLiv(); renderSmash(); renderRouletteStatus();
     renderHockeyBoard(); renderGolfBoard(); renderSplitGrid(); renderVenmo(); renderMoney();
   }
 
   // ---- Bottom tabs ----
-  var TABS = ['home', 'bringing', 'cabin', 'games', 'money', 'photos'];
+  var TABS = ['home', 'bringing', 'cabin', 'games', 'money', 'chat'];
   var tab = 'cabin';
   function showTab(name) {
     tab = name;
     TABS.forEach(function (t) { $('page-' + t).hidden = t !== tab; });
     if (tab === 'money') { renderSplitGrid(); renderVenmo(); renderMoney(); }
+    if (tab === 'chat') { renderWall(true); markWallSeen(); }
     Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function (b) { b.setAttribute('aria-selected', String(b.getAttribute('data-tab') === tab)); });
+    updateChatBadge();
     window.scrollTo(0, 0);
   }
   $('nav').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) showTab(b.getAttribute('data-tab')); });
@@ -2060,98 +2062,6 @@
   window.addEventListener('pointerup', holdEnd); window.addEventListener('pointercancel', holdEnd);
   $('mafia-body').addEventListener('contextmenu', function (e) { if (e.target.closest('#role-card')) e.preventDefault(); });
 
-  // ---- Photos tab ----
-  var photos = [], photosLoaded = false, photoSub = false, uploadingCount = 0;
-  function subscribePhotos() {
-    if (photoSub || !store || !store.photos) return;
-    photoSub = true;
-    store.photos(function (rows) {
-      photos = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? 1 : -1; });
-      photosLoaded = true; renderPhotos();
-    }, function (e) {
-      var grid = $('photo-grid'); if (grid && !photosLoaded) grid.innerHTML = '<div class="empty">Couldn\u2019t load the photos (' + esc((e && e.message) || e) + '). Pull down to refresh.</div>';
-    });
-  }
-  function renderPhotos() {
-    var grid = $('photo-grid'); if (!grid) return;
-    var by = {};
-    photos.forEach(function (ph) { by[ph.uploader] = (by[ph.uploader] || 0) + 1; });
-    var names = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; });
-    $('photo-summary').textContent = photos.length ? plural(photos.length, 'photo', 'photos') + ' · ' + names.map(function (n) { return n + ' ' + by[n]; }).join(', ') : (photosLoaded ? 'No photos yet. You go first.' : '');
-    var html = '';
-    for (var u = 0; u < uploadingCount; u++) html += '<div class="tile uploading">Uploading…</div>';
-    if (!photos.length && !uploadingCount) {
-      html += photosLoaded ? '<div class="empty">Nothing here yet. Tap Add photos and the wall starts.</div>' : '<p class="skeleton">Loading photos…</p>';
-    }
-    photos.forEach(function (ph, i) {
-      html += '<button type="button" class="tile" data-i="' + i + '"><img src="' + esc(store.photoUrl(ph)) + '" alt="Photo by ' + esc(ph.uploader) + '" loading="lazy">' +
-        '<div class="who"><b>' + esc(ph.uploader === me ? 'you' : ph.uploader) + '</b> · ' + esc(ago(ph.created_at)) + '</div>' +
-        (ph.uploader === me ? '<span class="rm" data-rm="' + esc(ph.id) + '" role="button" aria-label="Remove">×</span>' : '') + '</button>';
-    });
-    grid.innerHTML = html;
-  }
-  function shrinkImage(file) {
-    return new Promise(function (resolve, reject) {
-      var url = URL.createObjectURL(file), img = new Image();
-      img.onload = function () {
-        var max = 1600, w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, max / Math.max(w, h));
-        var cv = document.createElement('canvas'); cv.width = Math.round(w * k); cv.height = Math.round(h * k);
-        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
-        URL.revokeObjectURL(url);
-        cv.toBlob(function (blob) { blob ? resolve(blob) : reject(new Error('Could not read that image')); }, 'image/jpeg', 0.85);
-      };
-      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('That file is not an image this phone can read')); };
-      img.src = url;
-    });
-  }
-  $('add-photos').addEventListener('click', function () { $('photo-input').click(); });
-  $('photo-input').addEventListener('change', function () {
-    var files = Array.prototype.slice.call($('photo-input').files || []);
-    $('photo-input').value = '';
-    if (!files.length) return;
-    if (!store.uploadPhoto) { toast('Uploads are not available here.'); return; }
-    uploadingCount += files.length; renderPhotos();
-    var done = 0, failed = 0;
-    files.reduce(function (chain, f) {
-      return chain.then(function () {
-        return shrinkImage(f).then(function (blob) { return store.uploadPhoto(blob, me); })
-          .then(function (row) {
-            done++;
-            if (row && !photos.some(function (x) { return x.id === row.id; })) { photos.unshift(row); photosLoaded = true; }
-          }).catch(function (e) { failed++; toast('One photo failed: ' + ((e && e.message) || e)); })
-          .then(function () { uploadingCount--; renderPhotos(); });
-      });
-    }, Promise.resolve()).then(function () {
-      if (done) toast(done + (done === 1 ? ' photo' : ' photos') + ' added' + (failed ? ', ' + failed + ' failed' : '') + '.');
-    });
-  });
-  $('photo-grid').addEventListener('click', function (e) {
-    var rm = e.target.closest('[data-rm]');
-    if (rm) {
-      e.stopPropagation();
-      var id = rm.getAttribute('data-rm'), ph = photos.filter(function (x) { return x.id === id; })[0];
-      if (!ph) return;
-      if (rm.getAttribute('data-armed') !== '1') { rm.setAttribute('data-armed', '1'); rm.textContent = '?'; toast('Tap again to remove your photo.'); setTimeout(function () { rm.removeAttribute('data-armed'); rm.textContent = '×'; }, 2500); return; }
-      store.removePhoto(ph).then(function () { photos = photos.filter(function (x) { return x.id !== id; }); renderPhotos(); toast('Removed.'); })
-        .catch(function (err) { toast('Couldn’t remove that: ' + ((err && err.message) || err)); });
-      return;
-    }
-    var tile = e.target.closest('.tile[data-i]'); if (tile) openLightbox(+tile.getAttribute('data-i'));
-  });
-  function openLightbox(i) {
-    var lb = $('lightbox'), track = $('lb-track');
-    track.innerHTML = photos.map(function (ph) { return '<div class="lb-slide"><img src="' + esc(store.photoUrl(ph)) + '" alt=""></div>'; }).join('');
-    lb.hidden = false; document.body.style.overflow = 'hidden';
-    track.scrollLeft = track.clientWidth * i;
-    lbCaption();
-  }
-  function lbCaption() {
-    var track = $('lb-track'), i = Math.round(track.scrollLeft / Math.max(1, track.clientWidth)), ph = photos[i];
-    $('lb-cap').textContent = ph ? (ph.uploader === me ? 'You' : ph.uploader) + ' · ' + ago(ph.created_at) + ' · ' + (i + 1) + ' of ' + photos.length : '';
-  }
-  $('lb-track').addEventListener('scroll', lbCaption, { passive: true });
-  $('lb-close').addEventListener('click', function () { $('lightbox').hidden = true; $('lb-track').innerHTML = ''; document.body.style.overflow = ''; });
-
   // ---- Cabin tab ----
   var CABIN_PHOTOS = [    // published alongside the page
     { src: 'photos/cabin-01.jpg', cap: 'The house at dusk' },
@@ -2226,9 +2136,9 @@
     });
     if (store.comments) store.comments(function (rows) {
       comments = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? -1 : 1; });
-      renderPredictions();
+      renderPredictions(); renderWall(); if (tab === 'chat' && !$('main').hidden) markWallSeen(); else updateChatBadge();
     });
-    if (store.reactions) store.reactions(function (rows) { reactions = rows.slice(); renderPredictions(); });
+    if (store.reactions) store.reactions(function (rows) { reactions = rows.slice(); renderPredictions(); renderWall(); });
   }
   function openQuestionnaire(index, skipIntro) {
     qIndex = Math.max(0, Math.min(QUESTIONS.length - 1, index || 0));
@@ -2322,6 +2232,57 @@
     el.innerHTML = html;
     if (expanded !== null) renderSheet();
   }
+  function msgHtml(c) {
+    var g = reactionsFor(c.id), keys = Object.keys(g).sort(function (a, b) { return g[b].length - g[a].length; });
+    var rx = '';
+    if (c.id) {
+      rx += '<div class="rxs">' + keys.map(function (e) {
+        var mine = g[e].indexOf(me) >= 0;
+        return '<button type="button" class="rx-chip' + (mine ? ' mine' : '') + '" data-react="' + esc(e) + '" data-cid="' + esc(c.id) + '" title="' + esc(g[e].join(', ')) + '">' + e + ' ' + g[e].length + '</button>';
+      }).join('') + '<button type="button" class="rx-add" data-picker="' + esc(c.id) + '" aria-label="React">' + (pickerFor === c.id ? '\u00d7' : '+\uD83D\uDE42') + '</button></div>';
+      if (pickerFor === c.id) rx += '<div class="rx-picker">' + EMOJI.map(function (e) { return '<button type="button" data-react="' + e + '" data-cid="' + esc(c.id) + '"' + (g[e] && g[e].indexOf(me) >= 0 ? ' class="mine"' : '') + '>' + e + '</button>'; }).join('') + '</div>';
+    }
+    return '<div class="msg' + (c.author === me ? ' mine' : '') + '"><span class="who">' + esc(c.author === me ? 'You' : c.author) + '</span><span class="when">' + esc(ago(c.created_at)) + '</span><div class="txt">' + esc(c.text) + '</div>' + rx + '</div>';
+  }
+  // ---- The wall: one shared thread, stored as comments on question 'wall' ----
+  var WALL = 'wall', wallRendered = 0, wallDraft = '';
+  function wallMsgs() { return comments.filter(function (c) { return c.question_id === WALL; }); }
+  function unreadWall() {
+    var seen = lsGet('cabin-haul-wall-seen-' + me) || '';
+    return wallMsgs().filter(function (c) { return c.author !== me && (c.created_at || '') > seen; }).length;
+  }
+  function markWallSeen() {
+    var msgs = wallMsgs(); if (!me) return;
+    var latest = msgs.reduce(function (a, c) { return (c.created_at || '') > a ? c.created_at : a; }, '');
+    if (latest) lsSet('cabin-haul-wall-seen-' + me, latest);
+    updateChatBadge();
+  }
+  function updateChatBadge() {
+    var el = $('chat-badge'); if (!el || !me) return;
+    var n = tab === 'chat' && !$('main').hidden ? 0 : unreadWall();
+    el.hidden = !n; el.textContent = n > 9 ? '9+' : String(n);
+  }
+  function dayLabel(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); }
+  function renderWall(scroll) {
+    var el = $('wall'); if (!el || !me) return;
+    var msgs = wallMsgs();
+    if (!msgs.length) { el.innerHTML = '<div class="empty">Nothing on the wall yet. Say something.</div>'; return; }
+    var html = '', lastDay = '';
+    msgs.forEach(function (c) { var d = dayLabel(c.created_at); if (d && d !== lastDay) { html += '<div class="day">' + esc(d) + '</div>'; lastDay = d; } html += msgHtml(c); });
+    var grew = msgs.length > wallRendered; wallRendered = msgs.length;
+    el.innerHTML = html;
+    if ((scroll || grew) && tab === 'chat' && !$('main').hidden) window.scrollTo({ top: document.body.scrollHeight, behavior: scroll ? 'auto' : 'smooth' });
+  }
+  $('wall-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var input = $('wall-input'), text = input.value.replace(/\s+/g, ' ').trim();
+    if (!text) return;
+    input.value = '';
+    store.comment(WALL, me, text).catch(function (err) { toast('That didn\'t post: ' + ((err && err.message) || err)); });
+    comments.push({ question_id: WALL, author: me, text: text, created_at: new Date().toISOString() });
+    renderWall(true); markWallSeen(); input.focus();
+  });
+  $('wall').addEventListener('click', function (e) { predClick(e); });
   function renderSheet() {
     var wrap = $('pred-sheet'); if (!wrap) return;
     if (expanded === null) { wrap.hidden = true; return; }
@@ -2339,18 +2300,7 @@
     var thread = comments.filter(function (c) { return c.question_id === q.id; });
     html += '<div class="chat"><div class="chat-head">Trash talk' + (thread.length ? ' <span class="k">' + thread.length + '</span>' : '') + '</div>';
     if (!thread.length) html += '<div class="chat-empty">Nobody’s said anything yet. Stir the pot.</div>';
-    html += '<div class="chat-list" id="chat-list">' + thread.map(function (c) {
-      var g = reactionsFor(c.id), keys = Object.keys(g).sort(function (a, b) { return g[b].length - g[a].length; });
-      var rx = '';
-      if (c.id) {
-        rx += '<div class="rxs">' + keys.map(function (e) {
-          var mine = g[e].indexOf(me) >= 0;
-          return '<button type="button" class="rx-chip' + (mine ? ' mine' : '') + '" data-react="' + esc(e) + '" data-cid="' + esc(c.id) + '" title="' + esc(g[e].join(', ')) + '">' + e + ' ' + g[e].length + '</button>';
-        }).join('') + '<button type="button" class="rx-add" data-picker="' + esc(c.id) + '" aria-label="React">' + (pickerFor === c.id ? '\u00d7' : '+\uD83D\uDE42') + '</button></div>';
-        if (pickerFor === c.id) rx += '<div class="rx-picker">' + EMOJI.map(function (e) { return '<button type="button" data-react="' + e + '" data-cid="' + esc(c.id) + '"' + (g[e] && g[e].indexOf(me) >= 0 ? ' class="mine"' : '') + '>' + e + '</button>'; }).join('') + '</div>';
-      }
-      return '<div class="msg' + (c.author === me ? ' mine' : '') + '"><span class="who">' + esc(c.author === me ? 'You' : c.author) + '</span><span class="when">' + esc(ago(c.created_at)) + '</span><div class="txt">' + esc(c.text) + '</div>' + rx + '</div>';
-    }).join('') + '</div></div>';
+    html += '<div class="chat-list" id="chat-list">' + thread.map(msgHtml).join('') + '</div></div>';
     var body = $('sheet-body'), atBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 40 || wrap.hidden;
     body.innerHTML = html;
     var inp = $('chat-input'); if (inp && inp.value !== draft) inp.value = draft;
@@ -2385,13 +2335,13 @@
     reactions = reactions.filter(function (r) { return !(r.comment_id === cid && r.reactor === me && r.emoji === emoji); });
     if (on) reactions.push({ comment_id: cid, reactor: me, emoji: emoji });
     pickerFor = null;
-    renderPredictions();
+    renderPredictions(); renderWall();
     if (on) buzz(12);
     store.react(cid, me, emoji, on).catch(function (err) { toast('That reaction didn’t stick: ' + ((err && err.message) || err)); });
   }
   function predClick(e) {
     var rx = e.target.closest('[data-react]'); if (rx) { toggleReaction(rx.getAttribute('data-cid'), rx.getAttribute('data-react')); return; }
-    var pk = e.target.closest('[data-picker]'); if (pk) { var cid = pk.getAttribute('data-picker'); pickerFor = pickerFor === cid ? null : cid; renderSheet(); return; }
+    var pk = e.target.closest('[data-picker]'); if (pk) { var cid = pk.getAttribute('data-picker'); pickerFor = pickerFor === cid ? null : cid; renderSheet(); renderWall(); return; }
     var open = e.target.closest('#pred-open'); if (open) { lsDel('cabin-haul-pred-later-' + me); openQuestionnaire(firstUnanswered(), answeredCount() >= QUESTIONS.length); return; }
     var ch = e.target.closest('#pred-change'); if (ch) { var qi = +ch.getAttribute('data-q'); closeSheet(); openQuestionnaire(qi, true); return; }
     if (e.target.closest('#pred-close') || e.target.id === 'sheet-back') { closeSheet(); return; }
@@ -2408,7 +2358,6 @@
   function boot() {
     booted = true;
     subscribePredictions();
-    subscribePhotos();
     subscribeMafia();
     subscribeTeams();
     subscribeLiv();
