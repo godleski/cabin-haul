@@ -83,7 +83,7 @@
       '<div class="vs">vs</div>' +
       '<div class="side' + (c > h ? ' lead' : '') + '"><span class="num">' + c + '</span><span class="lbl">Claude</span></div>';
   }
-  var ARENA_THEME = 'trunk';   // 'green' or 'trunk' (experiment)
+  var ARENA_THEME = 'green';   // 'green' or 'trunk' (experiment)
   function renderRoster() {
     if (sim) sim.stop();
     $('roster').classList.toggle('trunk', ARENA_THEME === 'trunk');
