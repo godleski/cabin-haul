@@ -83,8 +83,10 @@
       '<div class="vs">vs</div>' +
       '<div class="side' + (c > h ? ' lead' : '') + '"><span class="num">' + c + '</span><span class="lbl">Claude</span></div>';
   }
+  var ARENA_THEME = 'trunk';   // 'green' or 'trunk' (experiment)
   function renderRoster() {
     if (sim) sim.stop();
+    $('roster').classList.toggle('trunk', ARENA_THEME === 'trunk');
     golfer = null; renderGolfPost(false);
     boardShown = false;
     subscribeBoards();
@@ -275,7 +277,8 @@
         circ(o, c, c, r, sh);
         o.save(); o.beginPath(); o.arc(c, c, r, 0, Math.PI * 2); o.clip();
         var bounce = o.createRadialGradient(c + r * 0.1, c + r * 1.05, r * 0.2, c + r * 0.1, c + r * 1.05, r * 1.1);
-        bounce.addColorStop(0, 'rgba(70,150,85,0.28)'); bounce.addColorStop(1, 'rgba(70,150,85,0)');
+        var bc = box.classList.contains('trunk') ? '60,62,64' : '70,150,85';
+        bounce.addColorStop(0, 'rgba(' + bc + ',0.28)'); bounce.addColorStop(1, 'rgba(' + bc + ',0)');
         circ(o, c, c, r, bounce);
         o.restore();
         var hl = o.createRadialGradient(c - r * 0.4, c - r * 0.42, 0, c - r * 0.4, c - r * 0.42, r * 0.55);
@@ -289,7 +292,8 @@
       var shadow = make(function (o) {
         o.save(); o.translate(c, c + r * 0.92); o.scale(1, 0.3);
         var cs = o.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 1.05);
-        cs.addColorStop(0, 'rgba(5,30,12,0.45)'); cs.addColorStop(0.6, 'rgba(5,30,12,0.22)'); cs.addColorStop(1, 'rgba(5,30,12,0)');
+        var sc = box.classList.contains('trunk') ? '0,0,0' : '5,30,12';
+        cs.addColorStop(0, 'rgba(' + sc + ',0.55)'); cs.addColorStop(0.6, 'rgba(' + sc + ',0.25)'); cs.addColorStop(1, 'rgba(' + sc + ',0)');
         circ(o, 0, 0, r * 1.05, cs); o.restore();
       });
       layerCache[key] = { under: under, over: over, shadow: shadow, size: size };
