@@ -405,8 +405,8 @@
   .fighter .streak { font-size: 0.72rem; color: var(--muted); height: 1.1rem; line-height: 1.1rem; }
   .vs { align-self: center; font: 800 1.1rem var(--display); color: var(--muted); letter-spacing: 0.04em; }
   .fighter { cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; transition: transform 120ms; }
-  .fighter::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--charge, 0) * 100%); opacity: 0.22; transition: height 40ms linear; pointer-events: none; }
-  .fighter.p1::before { background: var(--p1); } .fighter.p2::before { background: var(--p2); }
+  .fighter::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--charge, 0) * 100%); opacity: 0.22; transition: height 40ms linear; pointer-events: none; }
+  .fighter.p1::after { background: var(--p1); } .fighter.p2::after { background: var(--p2); }
   .fighter > * { position: relative; }
   .fighter.charging { transform: scale(1.03); box-shadow: 0 0 24px rgba(255, 200, 60, calc(var(--charge, 0) * 0.8)); }
   .fighter.charging .odo, .fighter.charging .fname { animation: jitter 90ms infinite; }

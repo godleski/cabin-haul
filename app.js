@@ -1212,7 +1212,7 @@
     if (!smashLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
     var c = smashCounts(), log = (smash && smash.log) || [];
     status.textContent = c.p1 + ' – ' + c.p2 + (c.p1 === c.p2 ? (log.length ? ' · tied' : '') : ' · ' + (c.p1 > c.p2 ? SMASH_P.p1 : SMASH_P.p2) + ' leads');
-    var html = '<p class="info-sub">Every Smash match, counted. Hold the KO button on the winner’s side until it fills. Anyone can log a win, so no fudging.</p>';
+    var html = '<p class="info-sub">Every Smash match, counted. Hold the winner’s card until it fills. Anyone can log a win, so no fudging.</p>';
     html += '<div class="smash"><div class="smash-board">';
     ['p1', 'p2'].forEach(function (side) {
       var n = c[side], lead = n > c[side === 'p1' ? 'p2' : 'p1'], st = smashStreak(side);
