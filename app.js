@@ -1625,7 +1625,12 @@
     if (!indPlaced) { indPlaced = true; void ind.offsetWidth; requestAnimationFrame(function () { ind.classList.remove('noanim'); }); }
   }
   window.addEventListener('resize', moveNavInd);
-  $('nav').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) { if (b.getAttribute('data-tab') !== tab) buzz(6); showTab(b.getAttribute('data-tab')); } });
+  $('nav').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-tab]'); if (!b) return;
+    buzz(6);
+    if (b.getAttribute('data-tab') === tab) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }   // tapping the tab you're on jumps back to the top
+    showTab(b.getAttribute('data-tab'));
+  });
   // the dock ducks out of the way while you scroll down and comes back as soon as you scroll up
   var lastY = 0, navAway = false;
   function setNavAway(away) { if (away === navAway) return; navAway = away; $('nav').classList.toggle('away', away); }
@@ -1653,7 +1658,28 @@
   });
 
   // ---- Games: little helpers ----
-  function buzz(pattern) { try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) { /* ignore */ } }
+  // Haptics. Android has navigator.vibrate. iPhones don't, but Safari 18 plays the system tick whenever a
+  // native switch control flips, even from a programmatic click, so a hidden switch stands in for the motor.
+  var hapticLabel = null, hapticOK = (function () { try { return 'switch' in document.createElement('input'); } catch (e) { return false; } })();
+  function hapticTick() {
+    if (!hapticLabel) {
+      var wrap = document.createElement('div'); wrap.className = 'haptic'; wrap.setAttribute('aria-hidden', 'true');
+      wrap.innerHTML = '<input type="checkbox" id="haptic-sw" switch tabindex="-1"><label for="haptic-sw"></label>';
+      document.body.appendChild(wrap); hapticLabel = wrap.querySelector('label');
+    }
+    var had = document.activeElement;
+    hapticLabel.click();
+    var sw = $('haptic-sw');
+    if (document.activeElement === sw) { try { if (had && had !== document.body && had.focus) had.focus({ preventScroll: true }); else sw.blur(); } catch (e) { /* ignore */ } }
+  }
+  function buzz(pattern) {
+    try {
+      if (navigator.vibrate) { navigator.vibrate(pattern); return; }
+      if (!hapticOK) return;
+      var pulses = Array.isArray(pattern) ? pattern : [pattern], t = 0;
+      for (var i = 0; i < pulses.length; i += 2) { if (i === 0) hapticTick(); else setTimeout(hapticTick, t); t += (pulses[i] || 0) + (pulses[i + 1] || 0); }
+    } catch (e) { /* ignore */ }
+  }
   function sameDoc(a, b) { return JSON.stringify(a || null) === JSON.stringify(b || null); }
   // slot-machine a name into an element: cycles through the pool, slows down, lands on the real one
   function spinName(el, pool, final, done) {
