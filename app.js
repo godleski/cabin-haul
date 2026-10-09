@@ -1573,7 +1573,6 @@
 
   function showScreen() {
     var picking = !me;
-    closeDrawer(true);
     $('predict').hidden = true;
     $('pick').hidden = !picking; $('main').hidden = picking; $('nav').hidden = picking;
     document.body.classList.toggle('picking', picking);
@@ -1598,80 +1597,46 @@
     renderHockeyBoard(); renderGolfBoard(); renderSplitGrid(); renderVenmo(); renderMoney();
   }
 
-  // ---- Pages, behind a slide-out menu ----
+  // ---- Bottom dock ----
   var TABS = ['home', 'bringing', 'cabin', 'games', 'money', 'chat'];
-  var TAB_TITLE = { home: 'Predictions', bringing: 'Bringing', cabin: 'The cabin', games: 'Games', money: 'Money', chat: 'The wall' };
-  var tab = 'cabin';
+  var tab = 'cabin', indPlaced = false;
   function showTab(name) {
+    var changed = name !== tab;
     tab = name;
     TABS.forEach(function (t) { $('page-' + t).hidden = t !== tab; });
     if (tab === 'money') { renderSplitGrid(); renderVenmo(); renderMoney(); }
     if (tab === 'chat') { renderWall(true); markWallSeen(); }
-    Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function (b) { b.setAttribute('aria-current', b.getAttribute('data-tab') === tab ? 'page' : 'false'); });
-    $('topbar-title').textContent = TAB_TITLE[tab] || '';
-    document.body.classList.toggle('tab-chat', tab === 'chat');
-    updateChatBadge();
-    window.scrollTo(0, 0); onPageScroll();
-  }
-  var drawerOpen = false;
-  function openDrawer() {
-    if (drawerOpen || $('nav').hidden) return;
-    drawerOpen = true;
-    var days = Math.ceil((CHECK_IN - Date.now()) / 86400000);
-    $('drawer-days').textContent = days > 1 ? days + ' days out' : days === 1 ? 'tomorrow' : days === 0 ? 'today' : 'see you there';
-    $('nav').classList.add('open'); document.documentElement.classList.add('drawer-open');
-    $('menu-btn').setAttribute('aria-expanded', 'true');
-    var cur = document.querySelector('.nav-btn[aria-current="page"]');
-    if (cur) try { cur.focus({ preventScroll: true }); } catch (err) { /* ignore */ }
-  }
-  function closeDrawer(instant) {
-    var panel = $('drawer-panel');
-    panel.style.transform = ''; panel.classList.remove('dragging');
-    if (!drawerOpen) return;
-    drawerOpen = false;
-    if (instant) { panel.classList.add('dragging'); void panel.offsetWidth; }
-    $('nav').classList.remove('open'); document.documentElement.classList.remove('drawer-open');
-    if (instant) { void panel.offsetWidth; panel.classList.remove('dragging'); }
-    $('menu-btn').setAttribute('aria-expanded', 'false');
-    if ($('nav').contains(document.activeElement)) try { $('menu-btn').focus({ preventScroll: true }); } catch (err) { /* ignore */ }
-  }
-  $('menu-btn').addEventListener('click', openDrawer);
-  $('drawer-back').addEventListener('click', function () { closeDrawer(); });
-  $('nav').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-tab]'); if (!b) return;
-    var name = b.getAttribute('data-tab');
-    closeDrawer();
-    if (name !== tab) showTab(name);
-  });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && drawerOpen) closeDrawer(); });
-  // swipe the menu back to the left to close it; it follows the finger
-  (function () {
-    var panel = $('drawer-panel'), sx = 0, sy = 0, dx = 0, t0 = 0, mode = null;
-    panel.addEventListener('pointerdown', function (e) { if (!drawerOpen) return; sx = e.clientX; sy = e.clientY; dx = 0; t0 = e.timeStamp; mode = 'maybe'; });
-    panel.addEventListener('pointermove', function (e) {
-      if (!mode) return;
-      var mx = e.clientX - sx, my = e.clientY - sy;
-      if (mode === 'maybe') {
-        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
-        if (Math.abs(my) > Math.abs(mx) || mx > 0) { mode = null; return; }   // a scroll, or a drag the wrong way
-        mode = 'drag'; panel.classList.add('dragging'); try { panel.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-      }
-      dx = Math.min(0, mx); panel.style.transform = 'translateX(' + dx + 'px)';
-      $('drawer-back').style.opacity = String(Math.max(0, 1 + dx / panel.offsetWidth));
+    Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function (b) {
+      var on = b.getAttribute('data-tab') === tab;
+      b.setAttribute('aria-selected', String(on));
+      b.classList.remove('bump'); if (on && changed) { void b.offsetWidth; b.classList.add('bump'); }
     });
-    function end(e) {
-      if (mode !== 'drag') { mode = null; return; }
-      mode = null; panel.classList.remove('dragging'); $('drawer-back').style.opacity = '';
-      var fast = dx / Math.max(1, e.timeStamp - t0) < -0.5;
-      if (dx < -panel.offsetWidth * 0.3 || (fast && dx < -24)) closeDrawer(); else panel.style.transform = '';
-      panel.addEventListener('click', swallow, true);   // the drag shouldn't also press a menu item
-      setTimeout(function () { panel.removeEventListener('click', swallow, true); }, 0);
-    }
-    function swallow(e) { e.stopPropagation(); e.preventDefault(); }
-    panel.addEventListener('pointerup', end); panel.addEventListener('pointercancel', end);
-  })();
-  // the page title slides into the top bar once the page's own heading scrolls away
-  function onPageScroll() { var bar = $('topbar'); if (bar) bar.classList.toggle('scrolled', window.scrollY > 56); }
+    document.body.classList.toggle('tab-chat', tab === 'chat');
+    moveNavInd();
+    updateChatBadge();
+    window.scrollTo(0, 0); lastY = 0; setNavAway(false);
+  }
+  // the highlight pill slides under whichever tab is on
+  function moveNavInd() {
+    var ind = document.querySelector('.nav-ind'), b = document.querySelector('.nav-btn[aria-selected="true"]');
+    if (!ind || !b || $('nav').hidden) return;
+    if (!indPlaced) ind.classList.add('noanim');
+    ind.style.width = b.offsetWidth + 'px'; ind.style.transform = 'translateX(' + b.offsetLeft + 'px)';
+    if (!indPlaced) { indPlaced = true; void ind.offsetWidth; requestAnimationFrame(function () { ind.classList.remove('noanim'); }); }
+  }
+  window.addEventListener('resize', moveNavInd);
+  $('nav').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) { if (b.getAttribute('data-tab') !== tab) buzz(6); showTab(b.getAttribute('data-tab')); } });
+  // the dock ducks out of the way while you scroll down and comes back as soon as you scroll up
+  var lastY = 0, navAway = false;
+  function setNavAway(away) { if (away === navAway) return; navAway = away; $('nav').classList.toggle('away', away); }
+  function onPageScroll() {
+    var y = window.scrollY, max = document.documentElement.scrollHeight - window.innerHeight, dy = y - lastY;
+    if (tab === 'chat' || max < 160 || $('main').hidden) setNavAway(false);
+    else if (y < 24 || y > max - 24) setNavAway(false);
+    else if (dy > 8) setNavAway(true);
+    else if (dy < -8) setNavAway(false);
+    lastY = y;
+  }
   window.addEventListener('scroll', onPageScroll, { passive: true });
 
   // ---- Games: collapsible cards ----
@@ -2559,7 +2524,6 @@
   }
   function openQuestionnaire(index, skipIntro) {
     qIndex = Math.max(0, Math.min(QUESTIONS.length - 1, index || 0));
-    closeDrawer(true);
     $('main').hidden = true; $('nav').hidden = true; $('pick').hidden = true; $('predict').hidden = false;
     document.body.classList.add('picking');
     window.scrollTo(0, 0);
@@ -2678,7 +2642,7 @@
   function updateChatBadge() {
     var el = $('chat-badge'); if (!el || !me) return;
     var n = tab === 'chat' && !$('main').hidden ? 0 : unreadWall();
-    [el, $('menu-badge')].forEach(function (b) { if (!b) return; b.hidden = !n; b.textContent = n > 9 ? '9+' : String(n); });
+    el.hidden = !n; el.textContent = n > 9 ? '9+' : String(n);
   }
   function dayLabel(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); }
   function renderWall(scroll) {
