@@ -100,7 +100,7 @@
   function renderArena(opts) {
     var box = opts.box, names = opts.names;
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    box.innerHTML = (opts.games ? '<div class="wake" id="wake" hidden>Tap anywhere once to wake up the green</div>' : '') + '<canvas class="arena" aria-hidden="true"></canvas><div class="sr-list">' +
+    box.innerHTML = '<canvas class="arena" aria-hidden="true"></canvas><div class="sr-list">' +
       names.map(function (n) { return '<button type="button" data-me="' + esc(n) + '">' + esc(n) + '</button>'; }).join('') + '</div>';
     var cv = box.querySelector('canvas'), ctx = cv.getContext('2d');
     var W = 0, H = 0, dpr = 1;
@@ -712,19 +712,18 @@
     }
 
     // Safari runs requestAnimationFrame at 30fps inside a cross-origin iframe (the claude.ai preview) until the frame
-    // gets a real tap, and a drag doesn't always count. If we're embedded and the cadence looks halved, say so once.
-    var frameGaps = [], wakeChecked = false, wakeEl = box.querySelector('.wake'), useTimer = false;
+    // gets a real tap. If we're embedded and the cadence looks halved, drive frames off a timer until that tap.
+    // The live site is top-level, so none of this applies there.
+    var frameGaps = [], useTimer = false, embedded = window.top !== window.self;
     function checkWake(now) {
-      if (!wakeEl) return;
+      if (!embedded || useTimer) return;
       frameGaps.push(now - last);
       if (frameGaps.length < 60) return;
       var sorted = frameGaps.slice().sort(function (a, b) { return a - b; }), median = sorted[30];
       frameGaps = [];
-      var throttled = median > 26 && window.top !== window.self && !document.hidden;
-      if (throttled && !wakeChecked) { wakeEl.hidden = false; wakeChecked = true; useTimer = true; }   // try driving frames off a timer instead
-      else if (!throttled && !wakeEl.hidden && !useTimer) { wakeEl.hidden = true; }
+      if (median > 26 && !document.hidden) useTimer = true;
     }
-    document.addEventListener('click', function () { if (wakeEl) wakeEl.hidden = true; useTimer = false; }, true);
+    if (embedded) document.addEventListener('click', function () { useTimer = false; }, true);
     function next() { if (useTimer) setTimeout(function () { step(performance.now()); }, 16); else requestAnimationFrame(step); }
     function step(now) {
       if (!running) return;
