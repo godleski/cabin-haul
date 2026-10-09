@@ -33,7 +33,7 @@
   // which categories get a follow-up panel, and which rows show for which answers
   var PANELS = {
     Weed: { title: 'The paperwork', sub: 'so nobody gets surprised', fields: WEED, rows: function (x) { var r = ['form', 'type']; if (x.form === 'flower' || x.form === 'prerolls') r.push('weight'); if (x.form === 'edibles') r.push('dose'); return r.concat(['grade', 'vibe']); }, placeholder: 'Strain name (e.g. Blue Dream)', order: ['form', 'type', 'weight', 'dose', 'grade', 'vibe'] },
-    Booze: { title: 'The run', sub: 'so we don\u2019t end up with nine cases of the same thing', fields: BOOZE, rows: function (x) { var r = ['kind']; if (x.kind === 'beer' || x.kind === 'seltzer') r.push('count'); if (x.kind === 'liquor') r.push('size'); return r; }, placeholder: 'Which one? (e.g. Coors Banquet, High Noon)', order: ['kind', 'count', 'size'] }
+    Booze: { title: 'The run', sub: 'so we don\u2019t triple up', fields: BOOZE, rows: function (x) { var r = ['kind']; if (x.kind === 'beer' || x.kind === 'seltzer') r.push('count'); if (x.kind === 'liquor') r.push('size'); return r; }, placeholder: 'Which one? (e.g. Coors Banquet, High Noon)', order: ['kind', 'count', 'size'] }
   };
   function optLabel(cat, key, val) { var p = PANELS[cat]; var o = p ? (p.fields[key] || { opts: [] }).opts.filter(function (x) { return x[0] === val; })[0] : null; return o ? o[1] : val; }
 
