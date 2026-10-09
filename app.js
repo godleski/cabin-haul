@@ -14,7 +14,7 @@
     ['Terry', 'Kyrsten'],
     ['Drew']
   ];
-  var CATEGORIES = ['Food', 'Drinks', 'Booze', 'Snacks', 'Supplies', 'Gear', 'Weed', 'Other'];
+  var CATEGORIES = ['Food', 'Booze', 'Weed', 'Drinks', 'Snacks', 'Supplies', 'Gear', 'Other'];
   var CAT_ICON = { Food: '\uD83C\uDF56', Drinks: '\uD83E\uDD64', Booze: '\uD83C\uDF7A', Snacks: '\uD83C\uDF7F', Supplies: '\uD83E\uDDFB', Gear: '\uD83C\uDFBF', Weed: '\uD83C\uDF3F', Other: '\uD83D\uDCE6' };
   // the weed questionnaire
   var WEED = {
@@ -25,7 +25,17 @@
     grade: { label: 'Be honest', required: true, opts: [['gas', '\uD83D\uDD25 Gas'], ['mid', '\uD83E\uDD74 Crumbly mid']] },
     vibe: { label: 'The vibe', opts: [['couch', '\uD83D\uDECB\uFE0F Couch-lock'], ['giggles', '\uD83D\uDE02 Giggles'], ['creative', '\uD83C\uDFA8 Creative'], ['munchies', '\uD83C\uDF55 Munchies'], ['paranoid', '\uD83D\uDC40 Paranoid']] }
   };
-  function weedLabel(key, val) { var o = (WEED[key] || { opts: [] }).opts.filter(function (x) { return x[0] === val; })[0]; return o ? o[1] : val; }
+  var BOOZE = {
+    kind: { label: 'What kind', opts: [['beer', '\uD83C\uDF7A Beer'], ['seltzer', '\uD83E\uDD64 Seltzer'], ['liquor', '\uD83E\uDD43 Liquor']] },
+    count: { label: 'How many', opts: [['6', '6-pack'], ['12', '12-pack'], ['18', '18-pack'], ['24', '24-pack'], ['30', '30 rack'], ['keg', 'a keg']] },
+    size: { label: 'How big', opts: [['shooters', 'Shooters'], ['pint', 'Pint'], ['fifth', 'Fifth'], ['handle', 'Handle'], ['several', 'Several']] }
+  };
+  // which categories get a follow-up panel, and which rows show for which answers
+  var PANELS = {
+    Weed: { title: 'The paperwork', sub: 'so nobody gets surprised', fields: WEED, rows: function (x) { var r = ['form', 'type']; if (x.form === 'flower' || x.form === 'prerolls') r.push('weight'); if (x.form === 'edibles') r.push('dose'); return r.concat(['grade', 'vibe']); }, placeholder: 'Strain name (e.g. Blue Dream)', order: ['form', 'type', 'weight', 'dose', 'grade', 'vibe'] },
+    Booze: { title: 'The run', sub: 'so we don\u2019t end up with nine cases of the same thing', fields: BOOZE, rows: function (x) { var r = ['kind']; if (x.kind === 'beer' || x.kind === 'seltzer') r.push('count'); if (x.kind === 'liquor') r.push('size'); return r; }, placeholder: 'Which one? (e.g. Coors Banquet, High Noon)', order: ['kind', 'count', 'size'] }
+  };
+  function optLabel(cat, key, val) { var p = PANELS[cat]; var o = p ? (p.fields[key] || { opts: [] }).opts.filter(function (x) { return x[0] === val; })[0] : null; return o ? o[1] : val; }
 
   function partyOf(name) {
     for (var i = 0; i < PARTIES.length; i++) if (PARTIES[i].indexOf(name) >= 0) return PARTIES[i].join(' & ');
@@ -2056,15 +2066,9 @@
   function showSetup(html) { $('setup').hidden = false; $('setup').innerHTML = html; $('groups').innerHTML = ''; }
 
   // ---- Render ----
-  function weedTags(it) {
-    var m = it.meta; if (!m || it.category !== 'Weed') return '';
-    var tags = [];
-    if (m.form) tags.push('<span class="tag">' + weedLabel('form', m.form) + '</span>');
-    if (m.type) tags.push('<span class="tag">' + weedLabel('type', m.type) + '</span>');
-    if (m.weight) tags.push('<span class="tag">' + weedLabel('weight', m.weight) + '</span>');
-    if (m.dose) tags.push('<span class="tag">' + weedLabel('dose', m.dose) + '</span>');
-    if (m.grade) tags.push('<span class="tag ' + esc(m.grade) + '">' + weedLabel('grade', m.grade) + '</span>');
-    if (m.vibe) tags.push('<span class="tag">' + weedLabel('vibe', m.vibe) + '</span>');
+  function metaTags(it) {
+    var m = it.meta, p = PANELS[it.category]; if (!m || !p) return '';
+    var tags = p.order.filter(function (k) { return m[k]; }).map(function (k) { return '<span class="tag' + (k === 'grade' ? ' ' + esc(m[k]) : '') + '">' + optLabel(it.category, k, m[k]) + '</span>'; });
     return tags.length ? '<div class="tags">' + tags.join('') + '</div>' : '';
   }
   function itemRow(it, showCat) {
@@ -2084,7 +2088,7 @@
     return '<div class="' + cls + '" data-id="' + esc(it.id) + '">' +
       '<span class="ico">' + (CAT_ICON[it.category] || CAT_ICON.Other) + '</span>' +
       '<div class="title">' + esc(it.name) + (it.note ? ' <span class="note">· ' + esc(it.note) + '</span>' : '') + '</div>' +
-      act + '<div class="meta">' + meta + '</div>' + weedTags(it) + '</div>';
+      act + '<div class="meta">' + meta + '</div>' + metaTags(it) + '</div>';
   }
   function groupHead(icon, title, k, cls) {
     return '<section class="group' + (cls ? ' ' + cls : '') + '"><div class="group-head"><span class="gico">' + icon + '</span><h2>' + esc(title) + '</h2><span class="k">' + k + '</span></div>';
@@ -2165,12 +2169,11 @@
     var name = nameEl.value.replace(/\s+/g, ' ').trim();
     var note = noteEl.value.replace(/\s+/g, ' ').trim();
     if (!name) { nameEl.focus(); return; }
-    var meta = null;
-    if (newCat === 'Weed') {
-      if (!weed.grade) { toast('Gas or crumbly mid? Be honest.'); return; }
-      meta = {}; Object.keys(weed).forEach(function (k) { if (weed[k]) meta[k] = weed[k]; });
-      if (meta.form !== 'flower' && meta.form !== 'prerolls') delete meta.weight;
-      if (meta.form !== 'edibles') delete meta.dose;
+    var meta = null, panel = PANELS[newCat];
+    if (panel) {
+      if (newCat === 'Weed' && !extra.grade) { toast('Gas or crumbly mid? Be honest.'); return; }
+      meta = {}; panel.rows(extra).forEach(function (k) { if (extra[k]) meta[k] = extra[k]; });   // only the rows that were showing
+      if (!Object.keys(meta).length) meta = null;
     }
     var dup = items.filter(function (it) { return norm(it.name) === norm(name); })[0];
     if (dup) {
@@ -2185,7 +2188,7 @@
     $('addbtn').disabled = true;
     store.add(row).then(function (saved) {
       if (!items.some(function (it) { return it.id === saved.id; })) items.push(saved);
-      nameEl.value = ''; noteEl.value = ''; weed = {}; renderWeedPanel();
+      nameEl.value = ''; noteEl.value = ''; extra = {}; renderExtraPanel();
       render();
       toast((mode === 'bring' ? 'On the list: ' : 'Flagged: ') + name + '.');
     }).catch(fail('Couldn\'t add that')).then(function () { $('addbtn').disabled = false; });
@@ -2221,40 +2224,36 @@
     $('mode-bring').setAttribute('aria-pressed', String(mode === 'bring'));
     $('mode-need').setAttribute('aria-pressed', String(mode === 'need'));
     $('addbtn').textContent = mode === 'bring' ? 'Add it' : 'Flag it';
-    $('new-name').placeholder = newCat === 'Weed' ? 'Strain name (e.g. Blue Dream)' : mode === 'bring' ? 'What are you bringing?' : 'What do we still need?';
+    $('new-name').placeholder = PANELS[newCat] ? PANELS[newCat].placeholder : mode === 'bring' ? 'What are you bringing?' : 'What do we still need?';
   }
-  var newCat = 'Food', weed = {};
+  var newCat = 'Food', extra = {};
   function renderCatRow() {
     $('cat-row').innerHTML = CATEGORIES.map(function (c) {
-      return '<button type="button" data-cat="' + esc(c) + '" class="' + (c === 'Weed' ? 'weed' : '') + '" aria-pressed="' + (c === newCat) + '">' + CAT_ICON[c] + ' ' + esc(c) + '</button>';
+      return '<button type="button" data-cat="' + esc(c) + '" class="' + (c === 'Weed' ? 'weed' : c === 'Booze' ? 'booze' : '') + '" aria-pressed="' + (c === newCat) + '">' + CAT_ICON[c] + ' ' + esc(c) + '</button>';
     }).join('');
   }
-  function renderWeedPanel() {
-    var el = $('weed-panel'); if (!el) return;
-    if (newCat !== 'Weed') { el.hidden = true; el.innerHTML = ''; return; }
-    el.hidden = false;
-    var rows = ['form', 'type'];
-    if (weed.form === 'flower' || weed.form === 'prerolls') rows.push('weight');
-    if (weed.form === 'edibles') rows.push('dose');
-    rows.push('grade', 'vibe');
-    el.innerHTML = '<div class="w-title">The paperwork <small>so nobody gets surprised</small></div>' + rows.map(function (k) {
-      var g = WEED[k];
-      return '<div class="w-row"><div class="w-l">' + esc(g.label) + (g.required && !weed[k] ? '<em>required</em>' : '') + '</div><div class="chips">' + g.opts.map(function (o) {
-        return '<button type="button" data-weed="' + k + '" data-val="' + esc(o[0]) + '" class="' + (k === 'grade' ? o[0] : '') + '" aria-pressed="' + (weed[k] === o[0]) + '">' + o[1] + '</button>';
+  function renderExtraPanel() {
+    var el = $('weed-panel'), panel = PANELS[newCat]; if (!el) return;
+    if (!panel) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false; el.className = 'weed ' + newCat.toLowerCase();
+    el.innerHTML = '<div class="w-title">' + esc(panel.title) + ' <small>' + esc(panel.sub) + '</small></div>' + panel.rows(extra).map(function (k) {
+      var g = panel.fields[k];
+      return '<div class="w-row"><div class="w-l">' + esc(g.label) + (g.required && !extra[k] ? '<em>required</em>' : '') + '</div><div class="chips">' + g.opts.map(function (o) {
+        return '<button type="button" data-weed="' + k + '" data-val="' + esc(o[0]) + '" class="' + (k === 'grade' ? o[0] : '') + '" aria-pressed="' + (extra[k] === o[0]) + '">' + o[1] + '</button>';
       }).join('') + '</div></div>';
     }).join('');
   }
   $('cat-row').addEventListener('click', function (e) {
     var b = e.target.closest('[data-cat]'); if (!b) return;
-    newCat = b.getAttribute('data-cat'); if (newCat !== 'Weed') weed = {};
-    renderCatRow(); renderWeedPanel(); syncMode();
-    if (newCat === 'Weed') buzz(15);
+    var was = newCat; newCat = b.getAttribute('data-cat'); if (newCat !== was) extra = {};
+    renderCatRow(); renderExtraPanel(); syncMode();
+    if (PANELS[newCat]) buzz(15);
   });
   $('weed-panel').addEventListener('click', function (e) {
     var b = e.target.closest('[data-weed]'); if (!b) return;
     var k = b.getAttribute('data-weed'), v = b.getAttribute('data-val');
-    weed[k] = weed[k] === v ? null : v;
-    renderWeedPanel();
+    extra[k] = extra[k] === v ? null : v;
+    renderExtraPanel();
   });
   renderCatRow(); syncMode();
   $('groups').addEventListener('click', function (e) {
@@ -2277,7 +2276,7 @@
       if (!rows.length) return;
       lines.push('', party.toUpperCase());
       rows.forEach(function (it) {
-        var m = it.meta && it.category === 'Weed' ? ['form', 'type', 'weight', 'dose', 'grade', 'vibe'].filter(function (k) { return it.meta[k]; }).map(function (k) { return weedLabel(k, it.meta[k]); }).join(', ') : '';
+        var p = PANELS[it.category], m = it.meta && p ? p.order.filter(function (k) { return it.meta[k]; }).map(function (k) { return optLabel(it.category, k, it.meta[k]); }).join(', ') : '';
         lines.push('• ' + it.name + (it.note ? ' (' + it.note + ')' : '') + ' · ' + it.category + (m ? ' · ' + m : ''));
       });
     });
