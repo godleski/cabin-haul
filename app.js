@@ -64,6 +64,7 @@
   }
   function renderRoster() {
     if (sim) sim.stop();
+    golfer = null; renderGolfPost(false);
     boardShown = false;
     subscribeBoards();
     renderScores();
@@ -839,11 +840,23 @@
     document.body.classList.toggle('picking', picking);
     if (picking) { renderRoster(); window.scrollTo(0, 0); return; }
     if (!booted) boot();
+    if (me !== renderedFor) refreshForUser();
     if (shouldAsk()) { openQuestionnaire(firstUnanswered()); return; }
     var partner = PARTIES.filter(function (p) { return p.indexOf(me) >= 0; })[0].filter(function (n) { return n !== me; })[0];
     $('me').innerHTML = 'Hey <b>' + esc(me) + '</b>' + (partner ? ' · with ' + esc(partner) : '');
     showTab(tab);
     render();
+  }
+
+  // Everything on the main screen labels the current person as "you" and keeps per-person drafts, so when
+  // someone taps "Not you?" and picks another name, start those over.
+  var renderedFor = null;
+  function refreshForUser() {
+    renderedFor = me;
+    mafiaDraft = null; teamsDraft = null; teamsEdit = false; expSplit = null; expanded = null; pickerFor = null; modReveal = false;
+    renderPredictions(); renderSheet(); renderPhotos();
+    renderMafia(); renderTeams(); renderLiv(); renderSmash(); renderRouletteStatus();
+    renderHockeyBoard(); renderGolfBoard(); renderSplitGrid(); renderVenmo(); renderMoney();
   }
 
   // ---- Bottom tabs ----
@@ -1841,7 +1854,7 @@
     window.scrollTo(0, 0);
     if (skipIntro) { $('q-intro').hidden = true; $('q-wrap').hidden = false; showQuestion(false); return; }
     $('q-wrap').hidden = true; $('q-intro').hidden = false;
-    $('q-intro-sub').textContent = answeredCount() ? 'You\'ve answered ' + answeredCount() + ' of ' + QUESTIONS.length + '. Pick up where you left off.' : 'Six quick calls. Everyone sees the running tally, nobody sees who picked whom.';
+    $('q-intro-sub').textContent = answeredCount() ? 'You\'ve answered ' + answeredCount() + ' of ' + QUESTIONS.length + '. Pick up where you left off.' : 'Six quick calls. Everyone sees the tally and who called what, so make them good.';
   }
   $('q-start').addEventListener('click', function () { $('q-intro').hidden = true; $('q-wrap').hidden = false; showQuestion(true); });
   $('q-intro-later').addEventListener('click', function () { lsSet('cabin-haul-pred-later-' + me, '1'); showScreen(); });
@@ -1963,7 +1976,7 @@
   }
   function openSheet(i) { expanded = i; draft = ''; pickerFor = null; renderSheet(); var body = $('sheet-body'); if (body) body.scrollTop = body.scrollHeight; }
   function closeSheet() { expanded = null; draft = ''; $('pred-sheet').hidden = true; }
-  function agoText(iso) { var a = ago(iso); return a === 'just now' ? a : a + ' ago'; }
+  function agoText(iso) { var a = ago(iso); return !a || a === 'just now' ? a : a + ' ago'; }
   function ago(iso) {
     var t = Date.parse(iso || ''); if (!t) return '';
     var m = Math.round((Date.now() - t) / 60000);
