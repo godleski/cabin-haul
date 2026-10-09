@@ -1398,15 +1398,9 @@
   var BOARD_MAX = 5;
   function renderHockeyBoard() {
     var body = $('hockeyboard-body'), st = $('hockeyboard-status'); if (!body) return;
-    var sc = scores || { humans: 0, cpu: 0 }, by = sc.by || {};
-    var h = sc.humans || 0, c = sc.cpu || 0;
-    st.innerHTML = 'Humans <b>' + h + '</b> – <b>' + c + '</b> Claude';
-    var rows = Object.keys(by).map(function (n) { return { name: n, w: by[n].w || 0, l: by[n].l || 0 }; })
-      .sort(function (a, b) { return b.w - a.w || a.l - b.l || a.name.localeCompare(b.name); });
-    if (!rows.length) { body.innerHTML = '<div class="lb-empty">Nobody yet</div>'; return; }
-    body.innerHTML = '<div class="lb">' + rows.slice(0, BOARD_MAX).map(function (r, i) {
-      return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat">' + r.w + '–' + r.l + '</span></div>';
-    }).join('') + '</div>' + (rows.length > BOARD_MAX ? '<div class="lb-more">+' + (rows.length - BOARD_MAX) + ' more</div>' : '');
+    var sc = scores || { humans: 0, cpu: 0 }, h = sc.humans || 0, c = sc.cpu || 0;
+    st.textContent = h === c ? (h ? 'Dead even' : 'No matches yet') : h > c ? 'Humans lead' : 'Claude leads';
+    body.innerHTML = '<div class="hb"><div class="hb-side' + (h > c ? ' lead' : '') + '"><span class="n">' + h + '</span><small>Humans</small></div><span class="hb-vs">vs</span><div class="hb-side claude' + (c > h ? ' lead' : '') + '"><span class="n">' + c + '</span><small>Claude</small></div></div>';
   }
   function renderGolfBoard() {
     var body = $('golfboard-body'), st = $('golfboard-status'); if (!body) return;
