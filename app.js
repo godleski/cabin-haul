@@ -1217,10 +1217,10 @@
     ['p1', 'p2'].forEach(function (side) {
       var n = c[side], lead = n > c[side === 'p1' ? 'p2' : 'p1'], st = smashStreak(side);
       var rolling = smashAnim && smashAnim.side === side;
-      html += '<div class="fighter ' + side + (lead ? ' lead' : '') + '"><div class="fname">' + esc(SMASH_P[side]) + '</div>' +
+      html += '<div class="fighter ' + side + (lead ? ' lead' : '') + '" data-side="' + side + '"><div class="fname">' + esc(SMASH_P[side]) + '</div>' +
         '<div class="odo"><div class="roll' + (rolling ? ' spin' : '') + '">' + (rolling ? '<span>' + smashAnim.from + '</span>' : '') + '<span>' + n + '</span></div></div>' +
         '<div class="streak">' + (st >= 2 ? st + ' in a row' : '') + '</div>' +
-        '<button type="button" class="ko-btn" data-side="' + side + '"><span>Hold to KO</span></button></div>';
+        '<div class="ko-hint"><span>Hold to KO</span></div></div>';
       if (side === 'p1') html += '<div class="vs">VS</div>';
     });
     html += '</div>';
@@ -1246,7 +1246,7 @@
     store.setGame('smash', doc).catch(function (e) { toast('Couldn’t save that win: ' + ((e && e.message) || e)); });
   }
   function chargeStart(e) {
-    var btn = e.target.closest('.ko-btn'); if (!btn || charge) return;
+    var btn = e.target.closest('.fighter[data-side]'); if (!btn || charge) return;
     e.preventDefault();
     try { btn.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     charge = { btn: btn, side: btn.getAttribute('data-side'), t0: performance.now(), raf: 0 };
@@ -1268,7 +1268,7 @@
   }
   $('smash-body').addEventListener('pointerdown', chargeStart);
   window.addEventListener('pointerup', chargeEnd); window.addEventListener('pointercancel', chargeEnd);
-  $('smash-body').addEventListener('contextmenu', function (e) { if (e.target.closest('.ko-btn')) e.preventDefault(); });
+  $('smash-body').addEventListener('contextmenu', function (e) { if (e.target.closest('.fighter')) e.preventDefault(); });
   $('smash-body').addEventListener('click', function (e) {
     if (e.target.closest('#smash-undo') && smash && smash.log && smash.log.length) {
       var doc = { log: smash.log.slice(0, -1), updated_at: new Date().toISOString() };
