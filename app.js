@@ -632,11 +632,19 @@
           var rel = b.vx * nx + b.vy * ny;
           if (rel < 0) { b.vx -= (1 + 0.7) * rel * nx; b.vy -= (1 + 0.7) * rel * ny; }
         });
-        // the cup: slow balls drop from anywhere over the lip, medium ones need most of the ball over it,
-        // hot ones only fall if they hit dead centre, anything faster skips across
+        // the cup: the ball drops when its centre gets over the hole, and the faster it's going the closer to
+        // dead centre it has to be. Anything whose line misses that zone catches the rim and kicks out.
         var cd = Math.hypot(b.x - g.cup.x, b.y - g.cup.y);
-        var capR = speed < 4.5 ? g.cup.r + 2 : speed < 9 ? g.cup.r - 2 : speed < 14 ? g.cup.r * 0.45 : -1;
-        if (cd < g.cup.r + b.r && cd > 0 && speed < 5) { var pull = 0.5 * dt / steps; b.vx += (g.cup.x - b.x) / cd * pull; b.vy += (g.cup.y - b.y) / cd * pull; }   // the lip slopes in
+        var capR = speed < 3 ? g.cup.r - 2 : speed < 7 ? g.cup.r - 4 : speed < 11 ? g.cup.r * 0.4 : -1;
+        if (cd < g.cup.r && cd > 0 && speed < 2.5) { var pull = 0.3 * dt / steps; b.vx += (g.cup.x - b.x) / cd * pull; b.vy += (g.cup.y - b.y) / cd * pull; }   // teetering on the edge: it topples in
+        if (cd >= capR && cd < g.cup.r + b.r * 0.7 && speed >= 2.5 && now - (g.lipT || 0) > 250) {
+          var perp = Math.abs((g.cup.x - b.x) * b.vy - (g.cup.y - b.y) * b.vx) / speed;   // how close the line of the putt passes to the centre
+          if (perp >= capR) {   // lip-out: the rim throws it sideways and takes some pace
+            g.lipT = now; g.lipFlash = now;
+            var ax = (b.x - g.cup.x) / cd, ay = (b.y - g.cup.y) / cd, kick = speed * 0.45;
+            b.vx = b.vx * 0.75 + ax * kick; b.vy = b.vy * 0.75 + ay * kick;
+          }
+        }
         if (cd < capR) {
           b.x = g.cup.x; b.y = g.cup.y; b.vx = 0; b.vy = 0;
           g.sunk = now; g.total += g.strokes;
@@ -645,7 +653,6 @@
           return;
         }
       }
-      if (Math.hypot(b.x - g.cup.x, b.y - g.cup.y) < g.cup.r + 2 && speed >= 9) { b.vx *= 0.9; b.vy *= 0.9; g.lipFlash = now; }   // rattled the lip and lost some pace
     }
     function golfRelief(g, now) {   // nudge a stopped ball clear of walls, bumpers and rocks so there's room to swing
       var b = g.ball, gap = b.r + 20, x = b.x, y = b.y;
