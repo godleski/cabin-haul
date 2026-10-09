@@ -83,10 +83,11 @@
       '<div class="vs">vs</div>' +
       '<div class="side' + (c > h ? ' lead' : '') + '"><span class="num">' + c + '</span><span class="lbl">Claude</span></div>';
   }
-  var ARENA_THEME = 'green';   // 'green' or 'trunk' (experiment)
+  var ARENA_THEME = 'pool';    // 'green', 'trunk' or 'pool'. v1 (golf balls on the green) is git tag v1-golf-green.
+  var BALL_STYLE = 'pool';     // 'golf' or 'pool'
   function renderRoster() {
     if (sim) sim.stop();
-    $('roster').classList.toggle('trunk', ARENA_THEME === 'trunk');
+    $('roster').classList.toggle('trunk', ARENA_THEME === 'trunk'); $('roster').classList.toggle('pool', ARENA_THEME === 'pool');
     golfer = null; renderGolfPost(false);
     boardShown = false;
     subscribeBoards();
@@ -134,7 +135,7 @@
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
       cv.style.width = W + 'px'; cv.style.height = H + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      dimpleTile = null; layerCache = {}; scriptCache = {};
+      dimpleTile = null; layerCache = {}; scriptCache = {}; poolCache = {}; speckTile = null;
     }
     resize();
     var colors = {};
@@ -302,6 +303,7 @@
     // Grass stains: each ball keeps its own repeating stain tile, on the same lattice as the dimples so the two roll
     // together and the stain pools in the dimples the way it does on a real ball. A new smear is stamped every rotation or so.
     var STAIN_COLS = [[104, 146, 58], [122, 158, 62], [88, 128, 52], [140, 160, 70], [96, 138, 48]];
+    var CHALK_COLS = [[64, 118, 205], [88, 140, 220], [52, 98, 180], [110, 150, 225]];   // cue chalk, for pool balls
     // a hard knock against the rail or another ball leaves a scuff: a few fine scratches and a dull patch
     function knock(b, v, now) {
       if (!b.name || Math.abs(v) < 7.5 || (b.lastScuff && now - b.lastScuff < 1500)) return;
@@ -347,7 +349,8 @@
       var x = Math.random() * s.pw, y = Math.random() * s.ph;
       var ang = (b.rollDir || 0) + (Math.random() - 0.5) * 0.7;
       var len = sp * (1.3 + Math.random() * 2.2), wid = sp * (0.55 + Math.random() * 0.6);
-      var mud = Math.random() < 0.1, col = mud ? [112, 84, 46] : STAIN_COLS[Math.floor(Math.random() * STAIN_COLS.length)];
+      var pool = BALL_STYLE === 'pool', cols = pool ? CHALK_COLS : STAIN_COLS;
+      var mud = !pool && Math.random() < 0.1, col = mud ? [112, 84, 46] : cols[Math.floor(Math.random() * cols.length)];
       var a = (mud ? 0.16 : 0.2) + Math.random() * 0.16;
       var rgba = function (k) { return 'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',' + k.toFixed(3) + ')'; };
       var wraps = [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]];
@@ -403,7 +406,101 @@
       var sp = scriptSprite(text, px);
       ctx.drawImage(sp.canvas, x - sp.w / 2, y - sp.h / 2, sp.w, sp.h);
     }
+    // ---- Pool balls (experiment) ----
+    var POOL_COLORS = ['#f4c419', '#1d4fb5', '#d9262b', '#5b2d85', '#ef7a18', '#1a7a3c', '#7e1f2b', '#161616'];
+    function poolNum(name) { var i = NAMES.indexOf(name); return i < 0 ? 0 : i + 1; }      // 0 = cue ball
+    function poolInfo(num) { if (!num) return { color: '#f6f2e8', stripe: false }; var n = num > 8 ? num - 8 : num; return { color: POOL_COLORS[n - 1], stripe: num > 8 }; }
+    var poolCache = {}, speckTile = null, SPECK = 48;
+    function buildSpeckTile() {
+      var off = document.createElement('canvas'); off.width = Math.round(SPECK * dpr); off.height = Math.round(SPECK * dpr);
+      var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var seed = 7; function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+      for (var i = 0; i < 28; i++) { o.fillStyle = i % 3 ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.12)'; o.beginPath(); o.arc(rnd() * SPECK, rnd() * SPECK, 0.5 + rnd() * 0.9, 0, Math.PI * 2); o.fill(); }
+      speckTile = ctx.createPattern(off, 'repeat');
+      try { speckTile.setTransform(new DOMMatrix().scale(1 / dpr)); } catch (e) { /* ignore */ }
+    }
+    function poolLayers(r, num) {
+      var key = Math.round(r * 2) + '@' + num + '@' + dpr;
+      if (poolCache[key]) return poolCache[key];
+      var size = Math.ceil(r * 2 + 4), c = size / 2, info = poolInfo(num);
+      function make(draw) { var off = document.createElement('canvas'); off.width = Math.round(size * dpr); off.height = Math.round(size * dpr); var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0); draw(o); return off; }
+      function circ(o, x, y, rr, fill) { o.beginPath(); o.arc(x, y, rr, 0, Math.PI * 2); o.fillStyle = fill; o.fill(); }
+      var under = make(function (o) {
+        if (info.stripe) {
+          circ(o, c, c, r, '#f6f2e8');
+          o.save(); o.beginPath(); o.arc(c, c, r, 0, Math.PI * 2); o.clip();
+          o.fillStyle = info.color; o.fillRect(0, c - r * 0.6, size, r * 1.2);                 // the band
+          o.fillStyle = 'rgba(0,0,0,0.08)'; o.fillRect(0, c - r * 0.6, size, 1.2); o.fillRect(0, c + r * 0.6 - 1.2, size, 1.2);
+          o.restore();
+        } else circ(o, c, c, r, info.color);
+        var tone = o.createRadialGradient(c - r * 0.25, c - r * 0.3, r * 0.1, c, c, r * 1.05);   // body shading, colour kept
+        tone.addColorStop(0, 'rgba(255,255,255,0.18)'); tone.addColorStop(0.55, 'rgba(255,255,255,0)'); tone.addColorStop(0.85, 'rgba(0,0,0,0.18)'); tone.addColorStop(1, 'rgba(0,0,0,0.45)');
+        circ(o, c, c, r, tone);
+      });
+      var over = make(function (o) {
+        var hl = o.createRadialGradient(c - r * 0.42, c - r * 0.45, 0, c - r * 0.42, c - r * 0.45, r * 0.5);   // broad gloss
+        hl.addColorStop(0, 'rgba(255,255,255,0.55)'); hl.addColorStop(0.5, 'rgba(255,255,255,0.12)'); hl.addColorStop(1, 'rgba(255,255,255,0)');
+        circ(o, c - r * 0.42, c - r * 0.45, r * 0.5, hl);
+        o.save(); o.translate(c - r * 0.45, c - r * 0.5); o.rotate(-0.6); o.scale(1, 0.55);           // hot specular
+        var hot = o.createRadialGradient(0, 0, 0, 0, 0, r * 0.22); hot.addColorStop(0, 'rgba(255,255,255,0.95)'); hot.addColorStop(1, 'rgba(255,255,255,0)');
+        circ(o, 0, 0, r * 0.22, hot); o.restore();
+        o.save(); o.beginPath(); o.arc(c, c, r, 0, Math.PI * 2); o.clip();
+        var bounce = o.createRadialGradient(c + r * 0.2, c + r * 1.1, r * 0.2, c + r * 0.2, c + r * 1.1, r * 1.0);   // felt bounce light
+        bounce.addColorStop(0, 'rgba(120,200,150,0.22)'); bounce.addColorStop(1, 'rgba(120,200,150,0)');
+        circ(o, c, c, r, bounce); o.restore();
+        o.beginPath(); o.arc(c, c, r - 0.5, 0, Math.PI * 2); o.lineWidth = 1; o.strokeStyle = 'rgba(0,0,0,0.35)'; o.stroke();
+      });
+      var shadow = make(function (o) {
+        o.save(); o.translate(c, c + r * 0.92); o.scale(1, 0.3);
+        var cs = o.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 1.05);
+        cs.addColorStop(0, 'rgba(0,0,0,0.5)'); cs.addColorStop(0.6, 'rgba(0,0,0,0.22)'); cs.addColorStop(1, 'rgba(0,0,0,0)');
+        circ(o, 0, 0, r * 1.05, cs); o.restore();
+      });
+      poolCache[key] = { under: under, over: over, shadow: shadow, size: size, info: info };
+      return poolCache[key];
+    }
+    function drawPoolBall(b, now) {
+      var r = b.r * b.scale, num = b.name ? poolNum(b.name) : 0;
+      if (!speckTile) buildSpeckTile();
+      var L = poolLayers(r, num), half = L.size / 2;
+      ctx.globalAlpha = b.alpha;
+      ctx.drawImage(L.shadow, b.x - half, b.y - half, L.size, L.size);
+      ctx.drawImage(L.under, b.x - half, b.y - half, L.size, L.size);
+      ctx.save(); ctx.beginPath(); ctx.arc(b.x, b.y, r - 0.5, 0, Math.PI * 2); ctx.clip();   // specks and chalk roll with the surface
+      var ox = (((b.ox || 0) % SPECK) + SPECK) % SPECK, oy = (((b.oy || 0) % SPECK) + SPECK) % SPECK;
+      ctx.translate(b.x - r + ox, b.y - r + oy); ctx.fillStyle = speckTile; ctx.fillRect(-SPECK * 2, -SPECK * 2, r * 2 + SPECK * 4, r * 2 + SPECK * 4);
+      ctx.restore();
+      if (b.stain && b.stain.pat) {
+        var s = b.stain, sx = (((b.ox || 0) % s.pw) + s.pw) % s.pw, sy = (((b.oy || 0) % s.ph) + s.ph) % s.ph;
+        ctx.save(); ctx.beginPath(); ctx.arc(b.x, b.y, r - 0.5, 0, Math.PI * 2); ctx.clip();
+        ctx.translate(b.x - r + sx, b.y - r + sy); ctx.fillStyle = s.pat; ctx.fillRect(-s.pw, -s.ph, r * 2 + s.pw * 2, r * 2 + s.ph * 2);
+        ctx.restore();
+      }
+      var k = (b.r / 40) * b.scale;
+      if (num) {                                                                   // number spot and the name
+        var cr = r * 0.46;
+        var spot = ctx.createRadialGradient(b.x - cr * 0.3, b.y - cr * 0.3, cr * 0.1, b.x, b.y, cr);
+        spot.addColorStop(0, '#ffffff'); spot.addColorStop(1, '#e6e2d6');
+        ctx.beginPath(); ctx.arc(b.x, b.y - r * 0.08, cr, 0, Math.PI * 2); ctx.fillStyle = spot; ctx.fill();
+        ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.stroke();
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#111'; ctx.font = '800 ' + Math.round(cr * 1.15) + 'px ' + fontFamily;
+        ctx.fillText(String(num), b.x, b.y - r * 0.08 + cr * 0.04);
+        var dark = L.info.stripe || num === 1 || num === 5 || num === 9 || num === 13;
+        ctx.fillStyle = dark ? '#111' : '#fff'; ctx.font = '800 ' + Math.round(9.4 * k) + 'px ' + fontFamily;
+        ctx.fillText(b.name, b.x, b.y + r * 0.7);
+      }
+      ctx.drawImage(L.over, b.x - half, b.y - half, L.size, L.size);
+      if (opts.current && opts.current === b.name) circle(b.x, b.y, r + 4, null, colors.pine[0], 3);
+      if (opts.games && b.held && !game && now - holdStart >= HOLD_SHOW_MS) {
+        var frac = Math.min(1, (now - holdStart - HOLD_SHOW_MS) / (HOLD_MS - HOLD_SHOW_MS));
+        ctx.beginPath(); ctx.arc(b.x, b.y, r + 5, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+        ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
     function drawBubble(b, now) {
+      if (BALL_STYLE === 'pool') { drawPoolBall(b, now); return; }
       var r = b.r * b.scale, col = colors.ball;
       if (!dimpleTile) buildDimpleTile();
       var L = ballLayers(r), half = L.size / 2;

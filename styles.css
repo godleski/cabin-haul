@@ -62,6 +62,29 @@
   .bubbles.trunk::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 16px; background: linear-gradient(#3a3e42, #1d2023); border-bottom: 1px solid #0d0e10; z-index: 1; pointer-events: none; }
   .bubbles.trunk::after { content: ""; position: absolute; left: 50%; top: -4px; width: 54px; height: 10px; transform: translateX(-50%); border-radius: 0 0 8px 8px; background: linear-gradient(#fff3d0, #e8d9a8); box-shadow: 0 0 18px 6px rgba(255, 236, 190, 0.35); z-index: 2; pointer-events: none; }
   .bubbles.trunk canvas { position: relative; z-index: 1; }
+  /* experiment: a pool table */
+  .bubbles.pool {
+    border: 16px solid transparent; border-radius: 22px;
+    box-shadow: inset 0 0 0 9px #155a37, inset 0 0 0 10px rgba(0, 0, 0, 0.25), inset 0 0 50px rgba(0, 0, 0, 0.35), 0 12px 30px rgba(0, 0, 0, 0.3);
+    background-origin: border-box; background-clip: border-box;
+    background:
+      radial-gradient(circle at 0 0, #050505 0 17px, #2a1a0c 18px, rgba(0, 0, 0, 0) 23px),
+      radial-gradient(circle at 100% 0, #050505 0 17px, #2a1a0c 18px, rgba(0, 0, 0, 0) 23px),
+      radial-gradient(circle at 0 100%, #050505 0 17px, #2a1a0c 18px, rgba(0, 0, 0, 0) 23px),
+      radial-gradient(circle at 100% 100%, #050505 0 17px, #2a1a0c 18px, rgba(0, 0, 0, 0) 23px),
+      radial-gradient(circle at 0 50%, #050505 0 15px, #2a1a0c 16px, rgba(0, 0, 0, 0) 21px),
+      radial-gradient(circle at 100% 50%, #050505 0 15px, #2a1a0c 16px, rgba(0, 0, 0, 0) 21px),
+      radial-gradient(circle at 8px 25%, #f3e9c8 0 2px, rgba(0, 0, 0, 0) 3px), radial-gradient(circle at 8px 75%, #f3e9c8 0 2px, rgba(0, 0, 0, 0) 3px),
+      radial-gradient(circle at calc(100% - 8px) 25%, #f3e9c8 0 2px, rgba(0, 0, 0, 0) 3px), radial-gradient(circle at calc(100% - 8px) 75%, #f3e9c8 0 2px, rgba(0, 0, 0, 0) 3px),
+      radial-gradient(circle at 33% 8px, #f3e9c8 0 2px, rgba(0, 0, 0, 0) 3px), radial-gradient(circle at 67% 8px, #f3e9c8 0 2px, rgba(0, 0, 0, 0) 3px),
+      radial-gradient(circle at 33% calc(100% - 8px), #f3e9c8 0 2px, rgba(0, 0, 0, 0) 3px), radial-gradient(circle at 67% calc(100% - 8px), #f3e9c8 0 2px, rgba(0, 0, 0, 0) 3px),
+      linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0)) padding-box,
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.6 0 0 0 0 0.6 0 0 0 0 0.6 0 0 0 0.22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") padding-box,
+      radial-gradient(ellipse at 50% 45%, #22865a, #1b6f49 70%, #155a3b) padding-box,
+      linear-gradient(135deg, #6b4423, #3f2612 45%, #5a3719) border-box;
+    background-blend-mode: normal, normal, normal, normal, normal, normal, normal, normal, normal, normal, normal, normal, normal, normal, normal, soft-light, normal, normal;
+  }
+  .bubbles.pool canvas { position: relative; }
   .sr-list { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .sr-list button:focus-visible { position: fixed; left: 16px; bottom: 16px; width: auto; height: auto; padding: 10px 14px; background: var(--surface); color: var(--fg); border: 2px solid var(--ember); border-radius: 10px; z-index: 9; }
   .hint { margin: 10px 0 0; text-align: center; font-size: 0.82rem; color: var(--muted); }
