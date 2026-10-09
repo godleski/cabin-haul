@@ -595,10 +595,16 @@
         if (g.done && now - g.done > 2600) { golf = null; }
         return;
       }
+      if (g.relief) {   // free relief: ease the ball clear of whatever it stopped against
+        var rt = Math.min(1, (now - g.relief.t0) / 320), re = 1 - Math.pow(1 - rt, 3);
+        b.x = g.relief.x0 + (g.relief.x - g.relief.x0) * re; b.y = g.relief.y0 + (g.relief.y - g.relief.y0) * re;
+        if (rt >= 1) g.relief = null;
+        return;
+      }
       var speed = Math.hypot(b.vx, b.vy);
       var fr = speed > 6 ? 0.991 : 0.978;
       b.vx *= Math.pow(fr, dt); b.vy *= Math.pow(fr, dt);
-      if (speed < 0.06) { b.vx = 0; b.vy = 0; }
+      if (speed < 0.3) { b.vx = 0; b.vy = 0; if (speed > 0) golfRelief(g, now); }
       // sub-step so fast putts can't tunnel through bumpers
       var steps = Math.max(1, Math.ceil(speed * dt / 4));
       for (var si = 0; si < steps; si++) {
@@ -626,9 +632,12 @@
           var rel = b.vx * nx + b.vy * ny;
           if (rel < 0) { b.vx -= (1 + 0.7) * rel * nx; b.vy -= (1 + 0.7) * rel * ny; }
         });
-        // the cup: drop in when over it and not too hot, otherwise it skips across the lip
+        // the cup: slow balls drop from anywhere over the lip, medium ones need most of the ball over it,
+        // hot ones only fall if they hit dead centre, anything faster skips across
         var cd = Math.hypot(b.x - g.cup.x, b.y - g.cup.y);
-        if (cd < g.cup.r - 3 && speed < 6.5) {
+        var capR = speed < 4.5 ? g.cup.r + 2 : speed < 9 ? g.cup.r - 2 : speed < 14 ? g.cup.r * 0.45 : -1;
+        if (cd < g.cup.r + b.r && cd > 0 && speed < 5) { var pull = 0.5 * dt / steps; b.vx += (g.cup.x - b.x) / cd * pull; b.vy += (g.cup.y - b.y) / cd * pull; }   // the lip slopes in
+        if (cd < capR) {
           b.x = g.cup.x; b.y = g.cup.y; b.vx = 0; b.vy = 0;
           g.sunk = now; g.total += g.strokes;
           var diff = g.strokes - g.def.par;
@@ -636,15 +645,39 @@
           return;
         }
       }
-      if (Math.hypot(b.x - g.cup.x, b.y - g.cup.y) < g.cup.r + 2 && speed >= 6.5) { b.vx *= 0.97; b.vy *= 0.97; g.lipFlash = now; }   // rattled the lip
+      if (Math.hypot(b.x - g.cup.x, b.y - g.cup.y) < g.cup.r + 2 && speed >= 9) { b.vx *= 0.9; b.vy *= 0.9; g.lipFlash = now; }   // rattled the lip and lost some pace
     }
-    function golfStrike(p, vel) {
+    function golfRelief(g, now) {   // nudge a stopped ball clear of walls, bumpers and rocks so there's room to swing
+      var b = g.ball, gap = b.r + 20, x = b.x, y = b.y;
+      for (var it = 0; it < 3; it++) {
+        if (x < gap) x = gap; if (x > W - gap) x = W - gap; if (y < gap) y = gap; if (y > H - gap) y = H - gap;
+        g.rects.forEach(function (rc) {
+          var cx = Math.max(rc.x, Math.min(rc.x + rc.w, x)), cy = Math.max(rc.y, Math.min(rc.y + rc.h, y));
+          var dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy);
+          if (d >= gap) return;
+          if (d < 0.001) { dx = 0; dy = y < rc.y + rc.h / 2 ? -1 : 1; d = 1; }
+          x = cx + dx / d * gap; y = cy + dy / d * gap;
+        });
+        g.circles.forEach(function (c) {
+          var dx = x - c.x, dy = y - c.y, d = Math.hypot(dx, dy) || 0.01, min = c.r + gap;
+          if (d >= min) return;
+          x = c.x + dx / d * min; y = c.y + dy / d * min;
+        });
+      }
+      if (Math.hypot(x - b.x, y - b.y) < 1) return;
+      g.relief = { x0: b.x, y0: b.y, x: x, y: y, t0: now }; g.reliefFlash = now;
+    }
+    function golfStrike(p, vel, from) {
       var g = golf, b = g.ball;
-      if (!g || g.sunk || g.struck) return;
-      if (Math.hypot(b.vx, b.vy) > 0.4) return;                      // wait for the ball to stop
+      if (!g || g.sunk || g.struck || g.relief) return;
+      if (Math.hypot(b.vx, b.vy) > 1) return;                        // wait for the ball to (nearly) stop
       var sp = Math.hypot(vel.x, vel.y);
-      if (sp < 1.5) return;
-      if (Math.hypot(p.x - b.x, p.y - b.y) > b.r + 14) return;         // putter has to pass through the ball
+      if (sp < 1.2) return;
+      // the putter has to pass through the ball: test the whole finger segment, not just where it landed
+      var fx = from ? from.x : p.x, fy = from ? from.y : p.y, sx = p.x - fx, sy = p.y - fy, sl = sx * sx + sy * sy;
+      var t = sl ? Math.max(0, Math.min(1, ((b.x - fx) * sx + (b.y - fy) * sy) / sl)) : 0;
+      if (Math.hypot(fx + sx * t - b.x, fy + sy * t - b.y) > b.r + 16) return;
+      b.vx = 0; b.vy = 0;
       var cap = 24, k = Math.min(1, cap / sp);
       b.vx = vel.x * k * 0.95; b.vy = vel.y * k * 0.95;
       g.strokes++; g.struck = true; g.hitFlash = performance.now();
@@ -703,6 +736,10 @@
         var par = HOLES.reduce(function (a, h) { return a + h.par; }, 0);
         ctx.fillText(g.done ? g.total + ' strokes on a par ' + par + ' course' : g.strokes + (g.strokes === 1 ? ' stroke' : ' strokes') + ' · par ' + g.def.par, W / 2, H / 2 + 20);
         ctx.globalAlpha = 1;
+      }
+      if (g.reliefFlash && now - g.reliefFlash < 1100) {
+        ctx.globalAlpha = Math.min(1, (1100 - (now - g.reliefFlash)) / 400); ctx.fillStyle = '#fff'; ctx.font = '600 11px ' + fontFamily; ctx.textAlign = 'center';
+        ctx.fillText('free relief', b.x, b.y - 18); ctx.globalAlpha = 1;
       }
       if (!g.strokes && !g.sunk && !g.putter) {
         ctx.globalAlpha = 0.6 + 0.4 * Math.sin(now / 300); ctx.fillStyle = '#fff'; ctx.font = '600 12px ' + fontFamily; ctx.textAlign = 'center';
@@ -1266,7 +1303,8 @@
         golf.putter.x = q.x; golf.putter.y = q.y;
         if (Math.hypot(vx, vy) > 0.5) { golf.putter.vx = vx; golf.putter.vy = vy; }
         trail.push(q); if (trail.length > 6) trail.shift();
-        golfStrike(q, { x: vx, y: vy });
+        var ref = trail[Math.max(0, trail.length - 4)], rdt = Math.max(8, q.t - ref.t) / 16.67;   // swing speed and line averaged over the last few samples
+        golfStrike(q, { x: (q.x - ref.x) / rdt, y: (q.y - ref.y) / rdt }, old);
         return;
       }
       if (!held) return;
