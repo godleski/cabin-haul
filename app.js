@@ -107,7 +107,7 @@
     var el = $('golf-post'); if (!el) return;
     if (!show) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false;
-    el.innerHTML = '<div class="gp-title">Who\u2019s putting?</div><div class="info-sub">Three holes, par 8. Your best round goes on the board.</div>' +
+    el.innerHTML = '<div class="gp-title">Who\u2019s putting?</div><div class="info-sub">Three random holes, par 9. Your best round goes on the board.</div>' +
       '<div class="name-grid">' + NAMES.map(function (n) { return '<button type="button" data-golfer="' + esc(n) + '" aria-pressed="false">' + esc(n) + '</button>'; }).join('') + '</div>' +
       '<div class="mafia-actions"><button type="button" class="linkbtn" id="golf-skip">Never mind</button></div>';
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -2082,7 +2082,7 @@
   }
   function renderGolfBoard() {
     var body = $('golfboard-body'), st = $('golfboard-status'); if (!body) return;
-    var by = (golfScores && golfScores.by) || {}, par = 8;
+    var by = (golfScores && golfScores.by) || {}, par = 9;   // three random holes, all par 3
     var rows = Object.keys(by).map(function (n) { return { name: n, best: by[n].best, rounds: by[n].rounds || 0 }; })
       .sort(function (a, b) { return a.best - b.best || b.rounds - a.rounds || a.name.localeCompare(b.name); });
     st.innerHTML = 'Par ' + par + (rows.length ? ' · <b>' + esc(rows[0].name === me ? 'you lead' : rows[0].name + ' leads') + '</b>' : ' · best round');
