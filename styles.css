@@ -544,7 +544,9 @@
   .rules { margin: 6px 0 0; padding-left: 18px; font-size: 0.9rem; color: var(--muted); display: grid; gap: 5px; }
   .fine { margin: 10px 0 0; font-size: 0.76rem; color: var(--muted); }
   /* ---- Hibachi orders ---- */
-  .hib-title { display: flex; align-items: center; gap: 8px; }
+  .hib-title { display: flex; align-items: center; gap: 10px; }
+  h1.hib-title .light { width: 14px; height: 14px; margin-top: 4px; }
+  .hib-status { margin-top: 14px; }
   .light { width: 11px; height: 11px; border-radius: 50%; background: #d63a1f; box-shadow: 0 0 0 3px rgba(214, 58, 31, 0.18); flex: none; transition: background-color 300ms, box-shadow 300ms; }
   .light.on { background: #2e9e44; box-shadow: 0 0 0 3px rgba(46, 158, 68, 0.22); animation: lightpulse 1.6s ease-in-out 3; }
   @keyframes lightpulse { 50% { box-shadow: 0 0 0 7px rgba(46, 158, 68, 0.12); } }

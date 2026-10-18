@@ -1599,7 +1599,7 @@
   }
 
   // ---- Bottom dock ----
-  var TABS = ['home', 'bringing', 'cabin', 'games', 'money'];
+  var TABS = ['home', 'bringing', 'cabin', 'games', 'money', 'hibachi'];
   var tab = 'cabin', indPlaced = false;
   function showTab(name) {
     var changed = name !== tab;
