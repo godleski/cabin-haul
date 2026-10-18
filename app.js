@@ -1595,7 +1595,7 @@
     mafiaDraft = null; teamsDraft = null; teamsEdit = false; expSplit = null; expanded = null; pickerFor = null; modReveal = false;
     renderPredictions(); renderSheet(); renderWall(); updateChatBadge();
     renderMafia(); renderTeams(); renderLiv(); renderSmash();
-    renderHockeyBoard(); renderGolfBoard(); renderSplitGrid(); renderVenmo(); renderMoney();
+    renderHockeyBoard(); renderGolfBoard(); renderSplitGrid(); renderVenmo(); renderMoney(); hibDraft = null; renderHibachi();
   }
 
   // ---- Bottom dock ----
@@ -2481,7 +2481,7 @@
     store.predictions(function (rows) {
       votes = rows.slice();
       var first = !predLoaded; predLoaded = true;
-      renderPredictions();
+      renderPredictions(); renderHibachi();
       if (first && !$('main').hidden && shouldAsk()) { askedThisVisit = true; openQuestionnaire(0); }
     });
     if (store.comments) store.comments(function (rows) {
@@ -2595,6 +2595,131 @@
     }
     return '<div class="msg' + (c.author === me ? ' mine' : '') + '"><span class="who">' + esc(c.author === me ? 'You' : c.author) + '</span><span class="when">' + esc(ago(c.created_at)) + '</span><div class="txt">' + esc(c.text) + '</div>' + rx + '</div>';
   }
+  // ---- Hibachi night: everyone's order, locked in one at a time ----
+  // One row per person in the predictions table (question_id 'hibachi', voter = name, pick = the order as JSON),
+  // so nobody's order can overwrite anyone else's. Edit HIBACHI_MENU to match the chef's menu.
+  var HIBACHI_Q = 'hibachi';
+  var HIBACHI_MENU = [
+    { id: 'entree', title: 'Entrée', hint: 'Pick one. Comes with fried rice, veggies and salad.', pick: 1, options: [
+      { id: 'chicken', name: 'Chicken', price: 25 },
+      { id: 'steak', name: 'Steak', price: 30 },
+      { id: 'shrimp', name: 'Shrimp', price: 30 },
+      { id: 'salmon', name: 'Salmon', price: 30 },
+      { id: 'scallops', name: 'Scallops', price: 35 },
+      { id: 'filet', name: 'Filet mignon', price: 35 },
+      { id: 'lobster', name: 'Lobster tail', price: 40 },
+      { id: 'veg', name: 'Vegetable', price: 20 }
+    ] },
+    { id: 'extras', title: 'Add-ons', hint: 'Optional. As many as you want.', pick: 0, options: [
+      { id: 'noodles', name: 'Noodles', price: 5 },
+      { id: 'xprotein', name: 'Second protein', sub: 'tell us which in the note', price: 10 },
+      { id: 'xrice', name: 'Extra fried rice', price: 5 },
+      { id: 'gyoza', name: 'Gyoza', price: 8 }
+    ] }
+  ];
+  var hibDraft = null;   // the order being built on this phone before it's locked; null until you touch something
+  function hibBaseDraft() { var my = hibOrders()[me]; return my ? { picks: JSON.parse(JSON.stringify(my.picks)), note: my.note || '' } : { picks: {}, note: '' }; }
+  function hibOrders() {
+    var out = {};
+    votes.forEach(function (v) { if (v.question_id !== HIBACHI_Q) return; try { var o = JSON.parse(v.pick); if (o && o.picks) out[v.voter] = o; } catch (e) { /* ignore */ } });
+    return out;
+  }
+  function hibOption(gid, oid) { var g = HIBACHI_MENU.filter(function (x) { return x.id === gid; })[0]; return g && g.options.filter(function (o) { return o.id === oid; })[0]; }
+  function hibLines(order) {   // ['Steak', 'Noodles', ...] in menu order
+    var lines = [];
+    HIBACHI_MENU.forEach(function (g) { (order.picks[g.id] || []).forEach(function (oid) { var o = hibOption(g.id, oid); if (o) lines.push(o.name); }); });
+    return lines;
+  }
+  function hibPrice(order) {
+    var t = 0;
+    HIBACHI_MENU.forEach(function (g) { (order.picks[g.id] || []).forEach(function (oid) { var o = hibOption(g.id, oid); if (o) t += o.price; }); });
+    return t;
+  }
+  function hibComplete(order) { return HIBACHI_MENU.every(function (g) { return !g.pick || (order.picks[g.id] || []).length >= g.pick; }); }
+  function money(n) { return '$' + (Math.round(n * 100) / 100).toFixed(n % 1 ? 2 : 0); }
+  function renderHibachi() {
+    var mine = $('hib-mine'); if (!mine || !me) return;
+    var orders = hibOrders(), locked = NAMES.filter(function (n) { return orders[n] && orders[n].locked; }), waiting = NAMES.filter(function (n) { return locked.indexOf(n) < 0; });
+    var done = waiting.length === 0;
+    $('hib-light').classList.toggle('on', done);
+    var st = $('hib-status'); st.classList.toggle('done', done);
+    st.innerHTML = done ? '✅ All ' + NAMES.length + ' orders are in. Jess, it’s all yours.' : '<b>' + locked.length + ' of ' + NAMES.length + '</b> locked in. Waiting on ' + waiting.map(function (n) { return n === me ? 'you' : esc(n); }).join(', ') + '.';
+    // my order
+    var my = orders[me], editing = hibDraft || !(my && my.locked);
+    if (!editing) {
+      mine.innerHTML = '<div class="hib-mine-locked"><span>🔒</span><div class="what"><b>Your order is locked in</b>' + esc(hibLines(my).join(', ')) + (my.note ? ' · ' + esc(my.note) : '') + '</div><span class="amt">' + money(hibPrice(my)) + '</span><button type="button" class="linkbtn" id="hib-edit">Change</button></div>';
+    } else {
+      var d = hibDraft || hibBaseDraft();
+      var html = '';
+      HIBACHI_MENU.forEach(function (g) {
+        var sel = d.picks[g.id] || [];
+        html += '<div class="hib-group"><div class="gt">' + esc(g.title) + (g.pick ? '' : '') + '</div><div class="gh">' + esc(g.hint) + '</div><div class="opts" role="' + (g.pick === 1 ? 'radiogroup' : 'group') + '">';
+        g.options.forEach(function (o) {
+          var on = sel.indexOf(o.id) >= 0;
+          html += '<button type="button" class="opt' + (g.pick === 1 ? '' : ' multi') + '" role="' + (g.pick === 1 ? 'radio' : 'checkbox') + '" aria-checked="' + on + '" data-g="' + g.id + '" data-o="' + o.id + '"><span class="box">' + (on ? '✓' : '') + '</span><span class="nm">' + esc(o.name) + (o.sub ? '<small>' + esc(o.sub) + '</small>' : '') + '</span><span class="pr">' + money(o.price) + '</span></button>';
+        });
+        html += '</div></div>';
+      });
+      html += '<input type="text" class="hib-note" id="hib-note" maxlength="120" placeholder="Allergies, no onions, extra spicy…" value="' + esc(d.note) + '">';
+      var ok = hibComplete(d);
+      html += '<div class="hib-foot"><div class="tot">' + money(hibPrice(d)) + '<small>your meal</small></div><button type="button" class="btn primary" id="hib-lock"' + (ok ? '' : ' disabled') + '>' + (my && my.locked ? 'Lock in the change' : 'Lock in my order') + '</button></div>';
+      mine.innerHTML = html;
+    }
+    // everyone, for Jess
+    var all = $('hib-all'), rows = '', counts = {}, grand = 0;
+    NAMES.forEach(function (n) {
+      var o = orders[n];
+      if (o && o.locked) {
+        var p = hibPrice(o); grand += p;
+        hibLines(o).forEach(function (l) { counts[l] = (counts[l] || 0) + 1; });
+        rows += '<div class="hib-row' + (n === me ? ' me' : '') + '"><span class="who">' + esc(n) + '</span><span class="amt">' + money(p) + '</span><span class="det">' + esc(hibLines(o).join(', ')) + (o.note ? ' · “' + esc(o.note) + '”' : '') + '</span></div>';
+      } else {
+        rows += '<div class="hib-row waiting"><span class="who">' + esc(n) + '</span><span class="amt">—</span><span class="det">not in yet</span></div>';
+      }
+    });
+    var tally = Object.keys(counts).map(function (k) { return counts[k] + '× ' + k; });
+    all.innerHTML = '<div class="hib-all"><div class="ah"><b>Everyone’s orders</b><button type="button" class="btn" id="hib-copy"' + (locked.length ? '' : ' disabled') + '>Copy for Jess</button></div><div class="hib-rows">' + rows + '</div>' +
+      (tally.length ? '<div class="hib-totals">' + esc(tally.join(' · ')) + '</div>' : '') +
+      '<div class="hib-grand"><span>Total' + (done ? '' : ' so far') + '</span><span>' + money(grand) + '</span></div></div>';
+  }
+  function hibCopyText() {
+    var orders = hibOrders(), lines = [], counts = {}, grand = 0, n = 0;
+    NAMES.forEach(function (nm) {
+      var o = orders[nm]; if (!o || !o.locked) return;
+      n++; var p = hibPrice(o); grand += p;
+      hibLines(o).forEach(function (l) { counts[l] = (counts[l] || 0) + 1; });
+      lines.push(nm + ': ' + hibLines(o).join(', ') + (o.note ? ' (' + o.note + ')' : '') + ' - ' + money(p));
+    });
+    var out = 'Hibachi orders (' + n + ' of ' + NAMES.length + ')\n' + lines.join('\n') + '\n\nTotals: ' + Object.keys(counts).map(function (k) { return counts[k] + 'x ' + k; }).join(', ') + '\nGrand total: ' + money(grand);
+    return out;
+  }
+  $('hibachi').addEventListener('click', function (e) {
+    var opt = e.target.closest('.opt');
+    if (opt) {
+      if (!hibDraft) hibDraft = hibBaseDraft();
+      var g = HIBACHI_MENU.filter(function (x) { return x.id === opt.getAttribute('data-g'); })[0], oid = opt.getAttribute('data-o');
+      var sel = (hibDraft.picks[g.id] || []).slice(), i = sel.indexOf(oid);
+      if (g.pick === 1) sel = i >= 0 ? [] : [oid]; else if (i >= 0) sel.splice(i, 1); else sel.push(oid);
+      hibDraft.picks[g.id] = sel; buzz(6); renderHibachi(); return;
+    }
+    if (e.target.closest('#hib-edit')) { hibDraft = hibBaseDraft(); renderHibachi(); return; }
+    if (e.target.closest('#hib-lock')) {
+      if (!hibDraft) hibDraft = hibBaseDraft();
+      var order = { picks: hibDraft.picks, note: (hibDraft.note || '').trim(), locked: true, at: new Date().toISOString() };
+      if (!hibComplete(order)) return;
+      var json = JSON.stringify(order);
+      store.vote(HIBACHI_Q, me, json).catch(function (err) { toast('That didn’t save: ' + ((err && err.message) || err)); });
+      votes = votes.filter(function (v) { return !(v.voter === me && v.question_id === HIBACHI_Q); });
+      votes.push({ question_id: HIBACHI_Q, voter: me, pick: json });
+      hibDraft = null; buzz([8, 30, 8]); renderHibachi();
+      var left = NAMES.filter(function (nm) { var o = hibOrders()[nm]; return !(o && o.locked); }).length;
+      toast(left ? 'Locked in. ' + left + ' to go.' : 'Locked in. That’s everyone!');
+      return;
+    }
+    if (e.target.closest('#hib-copy')) { copyText(hibCopyText(), 'Orders copied. Send them to the chef.'); buzz(6); }
+  });
+  $('hibachi').addEventListener('input', function (e) { if (e.target.id === 'hib-note') { if (!hibDraft) hibDraft = hibBaseDraft(); hibDraft.note = e.target.value; } });
+
   // ---- The wall: one shared thread, stored as comments on question 'wall' ----
   var WALL = 'wall', wallRendered = 0, wallDraft = '';
   function wallMsgs() { return comments.filter(function (c) { return c.question_id === WALL; }); }

@@ -543,6 +543,48 @@
   .steps b, .rules b, .info-sub b { color: var(--fg); font-weight: 700; }
   .rules { margin: 6px 0 0; padding-left: 18px; font-size: 0.9rem; color: var(--muted); display: grid; gap: 5px; }
   .fine { margin: 10px 0 0; font-size: 0.76rem; color: var(--muted); }
+  /* ---- Hibachi orders ---- */
+  .hib-title { display: flex; align-items: center; gap: 8px; }
+  .light { width: 11px; height: 11px; border-radius: 50%; background: #d63a1f; box-shadow: 0 0 0 3px rgba(214, 58, 31, 0.18); flex: none; transition: background-color 300ms, box-shadow 300ms; }
+  .light.on { background: #2e9e44; box-shadow: 0 0 0 3px rgba(46, 158, 68, 0.22); animation: lightpulse 1.6s ease-in-out 3; }
+  @keyframes lightpulse { 50% { box-shadow: 0 0 0 7px rgba(46, 158, 68, 0.12); } }
+  .hib-status { margin-top: 10px; font-size: 0.85rem; color: var(--muted); }
+  .hib-status b { color: var(--fg); }
+  .hib-status.done { color: #2e9e44; font-weight: 700; }
+  .hib-group { margin-top: 14px; }
+  .hib-group .gt { font: 700 0.95rem var(--display); }
+  .hib-group .gh { font-size: 0.78rem; color: var(--muted); margin-top: 1px; }
+  .opts { display: grid; gap: 6px; margin-top: 8px; }
+  .opt { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--fg); font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: border-color 120ms, background-color 120ms; }
+  .opt .box { width: 20px; height: 20px; flex: none; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font-size: 0.75rem; color: var(--pine-ink); transition: background-color 120ms, border-color 120ms; }
+  .opt.multi .box { border-radius: 6px; }
+  .opt .nm { flex: 1; min-width: 0; }
+  .opt .nm small { display: block; color: var(--muted); font-size: 0.78rem; }
+  .opt .pr { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.9rem; }
+  .opt[aria-checked="true"] { border-color: var(--pine); background: var(--pine-soft); }
+  .opt[aria-checked="true"] .box { background: var(--pine); border-color: var(--pine); }
+  .opt[aria-checked="true"] .pr { color: var(--fg); font-weight: 600; }
+  .hib-note { margin-top: 10px; width: 100%; }
+  .hib-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .hib-foot .tot { font: 800 1.2rem var(--display); font-variant-numeric: tabular-nums; }
+  .hib-foot .tot small { font: 500 0.78rem var(--body); color: var(--muted); margin-left: 6px; }
+  .hib-mine-locked { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--pine-soft); border: 1px solid var(--pine); display: flex; align-items: center; gap: 10px; }
+  .hib-mine-locked .what { flex: 1; min-width: 0; font-size: 0.92rem; }
+  .hib-mine-locked .what b { display: block; font-family: var(--display); }
+  .hib-mine-locked .amt { font: 800 1.1rem var(--display); font-variant-numeric: tabular-nums; }
+  .hib-all { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .hib-all .ah { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .hib-all .ah b { font: 700 0.95rem var(--display); }
+  .hib-rows { margin-top: 8px; display: grid; gap: 6px; }
+  .hib-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: 0.88rem; padding: 7px 0; border-bottom: 1px dashed var(--line); }
+  .hib-row .who { font-weight: 700; }
+  .hib-row .amt { font-variant-numeric: tabular-nums; font-weight: 700; }
+  .hib-row .det { grid-column: 1 / -1; color: var(--muted); font-size: 0.82rem; }
+  .hib-row.waiting .who { color: var(--muted); font-weight: 500; }
+  .hib-row.waiting .amt { color: var(--muted); font-weight: 500; }
+  .hib-row.me .who { color: var(--pine); }
+  .hib-totals { margin-top: 10px; font-size: 0.85rem; color: var(--muted); }
+  .hib-grand { display: flex; justify-content: space-between; margin-top: 8px; font: 800 1.05rem var(--display); }
   .note-card { background: var(--ember-soft); border-color: var(--ember); }
   .note-card .info-title { color: var(--ember); }
   /* ---- Money ---- */
