@@ -1611,6 +1611,7 @@
       b.setAttribute('aria-selected', String(on));
       b.classList.remove('bump'); if (on && changed) { void b.offsetWidth; b.classList.add('bump'); }
     });
+    document.body.classList.toggle('tab-home', tab === 'home');
     moveNavInd();
     updateChatBadge();
     window.scrollTo(0, 0); lastY = 0; setNavAway(false);
@@ -2538,6 +2539,14 @@
     var rows = Object.keys(counts).map(function (k) { return { pick: k, n: counts[k], who: who[k].sort() }; }).sort(function (a, b) { return b.n - a.n || a.pick.localeCompare(b.pick); });
     return { rows: rows, voted: Object.keys(voters).length };
   }
+  // Fake book odds from the votes: a smoothed share over all 13 runners, shown American style.
+  function oddsFor(n, total) {
+    var k = NAMES.length, p = (n + 0.3) / (total + 0.3 * k);
+    p = Math.min(0.93, Math.max(0.02, p));
+    var a = p >= 0.5 ? -Math.round(100 * p / (1 - p)) : Math.round(100 * (1 - p) / p);
+    a = Math.round(a / 5) * 5;
+    return (a > 0 ? '+' : '') + a;
+  }
   function reactionsFor(cid) {
     var out = {}; if (!cid) return out;
     reactions.forEach(function (r) { if (r.comment_id === cid) (out[r.emoji] = out[r.emoji] || []).push(r.reactor); });
@@ -2554,23 +2563,23 @@
     el.hidden = false;
     var mine = myVotes(), left = QUESTIONS.length - answeredCount();
     var html = '';
-    if (left) html += '<div class="pred-banner"><div><b>' + (left === QUESTIONS.length ? 'You haven’t called anything yet' : left + ' still to call') + '</b><span>Takes a minute. Then you get to talk.</span></div><button type="button" class="nudge" id="pred-open">Make my picks</button></div>';
-    else html += '<div class="pred-head"><span class="pred-count">All ' + QUESTIONS.length + ' called</span><button type="button" class="linkbtn" id="pred-open">Change my picks</button></div>';
+    var slip = $('dk-slip'); if (slip) slip.textContent = (QUESTIONS.length - left) + '/' + QUESTIONS.length;
+    if (left) html += '<div class="pred-banner"><div><b>' + (left === QUESTIONS.length ? 'Your bet slip is empty' : left + ' open ' + (left === 1 ? 'market' : 'markets') + ' on your slip') + '</b><span>Six markets, no stake, pure trash talk.</span></div><button type="button" class="nudge" id="pred-open">Make my picks</button></div>';
+    else html += '<div class="pred-head"><span class="pred-count">\u2713 Slip placed \u00b7 ' + QUESTIONS.length + ' of ' + QUESTIONS.length + '</span><button type="button" class="linkbtn" id="pred-open">Edit my slip</button></div>';
     html += '<div class="pred-list">';
     QUESTIONS.forEach(function (q, i) {
-      var t = tallyFor(q), lead = t.rows[0], total = t.rows.reduce(function (a, r) { return a + r.n; }, 0);
-      var cc = comments.filter(function (c) { return c.question_id === q.id; }).length;
-      html += '<button type="button" class="pred-card" data-q="' + i + '">' +
-        '<div class="pq">' + esc(q.text) + '</div>' +
-        '<div class="lead-row"><span class="lead' + (lead ? '' : ' none') + '">' + (lead ? esc(lead.pick) : 'No calls yet') + '</span>' + (lead ? '<span class="share">' + lead.n + ' <small>of ' + total + '</small></span>' : '') + '</div>';
-      if (total) {
-        html += '<div class="seg">' + t.rows.map(function (r, k) { return '<span style="width:' + (100 * r.n / total) + '%;background:' + SEG_COLORS[k % SEG_COLORS.length] + '"></span>'; }).join('') + '</div>';
-        html += '<div class="sub">' + t.rows.slice(1, 4).map(function (r, k) { return '<span class="k"><i class="dot" style="background:' + SEG_COLORS[(k + 1) % SEG_COLORS.length] + '"></i>' + esc(r.pick) + ' ' + r.n + '</span>'; }).join('') +
-          (cc ? '<span class="k">💬 ' + cc + '</span>' : '') +
-          (mine[q.id] ? '<span class="you">you: ' + esc(mine[q.id]) + '</span>' : '<span class="you no">no pick yet</span>') + '</div>';
-      } else {
-        html += '<div class="sub">' + t.voted + ' voted' + (mine[q.id] ? '<span class="you">you: ' + esc(mine[q.id]) + '</span>' : '<span class="you no">no pick yet</span>') + '</div>';
-      }
+      var t = tallyFor(q), total = t.rows.reduce(function (a, r) { return a + r.n; }, 0);
+      var cc = comments.filter(function (c) { return c.question_id === q.id; }).length, my = mine[q.id];
+      var rows = t.rows.slice(0, 3);
+      if (!rows.length) rows = NAMES.filter(function (n) { return n !== me; }).slice(0, 3).map(function (n) { return { pick: n, n: 0 }; });
+      if (my && !rows.some(function (r) { return r.pick === my; })) rows.push({ pick: my, n: (t.rows.filter(function (r) { return r.pick === my; })[0] || { n: 0 }).n });
+      var hot = cc >= 2;
+      html += '<button type="button" class="pred-card dk" data-q="' + i + '">' +
+        '<div class="dk-top">' + (total ? '<span class="live"><i></i>Live</span>' : '<span class="soon">Opens</span>') + '<span class="mk">' + esc(q.text) + '</span>' + (hot ? '<span class="boost">\u26A1 Boosted</span>' : '<span class="sgp">SGP</span>') + '</div>' +
+        '<div class="dk-rows">' + rows.map(function (r) {
+          return '<div class="dk-row' + (r.pick === my ? ' picked' : '') + '"><span class="rn">' + esc(r.pick) + '<small>' + (r.n ? r.n + (r.n === 1 ? ' bet' : ' bets') : 'no action') + '</small></span><span class="odds">' + oddsFor(r.n, total) + '</span></div>';
+        }).join('') + (t.rows.length > 3 ? '<div class="dk-more">+' + (t.rows.length - 3) + ' more wagers</div>' : '') + '</div>' +
+        '<div class="dk-foot"><span>' + t.voted + ' of ' + NAMES.length + ' bets in</span>' + (cc ? '<span>\uD83D\uDCAC ' + cc + '</span>' : '') + (my ? '<span class="you">\u2713 Your bet: ' + esc(my) + '</span>' : '<span class="you no">No bet placed</span>') + '</div>';
       var thread = comments.filter(function (c) { return c.question_id === q.id; }), last2 = thread.slice(-2);
       if (!thread.length) html += '<div class="pred-chat none"><span class="line"><span class="t">No trash talk yet. Start it.</span></span></div>';
       else html += '<div class="pred-chat">' + last2.map(function (c) {
@@ -2836,7 +2845,7 @@
     var html = '<div class="poll">';
     if (!t.rows.length) html += '<div class="poll-empty">No calls yet. Be first.</div>';
     t.rows.forEach(function (r, k) {
-      html += '<div class="poll-row' + (k === 0 ? ' top' : '') + '"><div class="poll-top"><span class="poll-name">' + esc(r.pick) + '</span><span class="poll-n"><b>' + r.n + '</b> · ' + Math.round(100 * r.n / total) + '%</span></div>' +
+      html += '<div class="poll-row' + (k === 0 ? ' top' : '') + '"><div class="poll-top"><span class="poll-name">' + esc(r.pick) + '</span><span class="poll-n"><b>' + r.n + '</b> · ' + Math.round(100 * r.n / total) + '% <span class="odds">' + oddsFor(r.n, total) + '</span></span></div>' +
         '<div class="poll-track"><span style="width:' + Math.round(100 * r.n / total) + '%"></span></div>' +
         '<div class="poll-who">' + r.who.map(function (n) { return '<span' + (n === me ? ' class="me"' : '') + '>' + esc(n === me ? 'you' : n) + '</span>'; }).join('') + '</div></div>';
     });
@@ -2887,13 +2896,14 @@
   function predClick(e) {
     var rx = e.target.closest('[data-react]'); if (rx) { toggleReaction(rx.getAttribute('data-cid'), rx.getAttribute('data-react')); return; }
     var pk = e.target.closest('[data-picker]'); if (pk) { var cid = pk.getAttribute('data-picker'); pickerFor = pickerFor === cid ? null : cid; renderSheet(); renderWall(); return; }
-    var open = e.target.closest('#pred-open'); if (open) { lsDel('cabin-haul-pred-later-' + me); openQuestionnaire(firstUnanswered(), answeredCount() >= QUESTIONS.length); return; }
+    var open = e.target.closest('#pred-open, #dk-open'); if (open) { lsDel('cabin-haul-pred-later-' + me); openQuestionnaire(firstUnanswered(), answeredCount() >= QUESTIONS.length); return; }
     var ch = e.target.closest('#pred-change'); if (ch) { var qi = +ch.getAttribute('data-q'); closeSheet(); openQuestionnaire(qi, true); return; }
     if (e.target.closest('#pred-close') || e.target.id === 'sheet-back') { closeSheet(); return; }
     var card = e.target.closest('.pred-card'); if (card) { openSheet(+card.getAttribute('data-q')); }
   }
   $('pred').addEventListener('click', predClick);
   $('pred-sheet').addEventListener('click', predClick);
+  $('dk-open').addEventListener('click', predClick);
 
   // ---- Data ----
   var store = window.STORE, booted = false, items = [], busy = {}, live = false, itemsLoaded = false;

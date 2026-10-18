@@ -587,27 +587,65 @@
   #page-cabin .key-card .info-title { color: #8a5a00; }
   #page-cabin .note-card { background: #fde6d2; }
 
-  /* ---- Predictions: the sportsbook. Midnight board, gold leaders, a live odds ticker. ---- */
+  /* ---- Predictions: a mock sportsbook app. Black board, lime green odds, bet slip in the header. ---- */
   #page-home {
-    --surface: #1a2440; --bg: #121a30; --fg: #f2efe4; --muted: #9ba6bd; --line: #2d3c5e; --pine: #f5c542; --pine-soft: rgba(245, 197, 66, 0.16); --pine-ink: #1a1400; --ember: #ff9a62; --ember-soft: rgba(255, 154, 98, 0.16);
-    background: radial-gradient(circle at 80% 0%, rgba(245, 197, 66, 0.18), transparent 38%), linear-gradient(180deg, #0c1222 0%, #101a30 50%, #0d1528 100%); color: var(--fg);
+    --dkg: #53d337; --dkg-ink: #06200a; --surface: #1f1f1f; --bg: #141414; --fg: #ffffff; --muted: #9b9b9b; --line: #313131; --pine: #53d337; --pine-soft: rgba(83, 211, 55, 0.14); --pine-ink: #06200a; --ember: #ffb347; --ember-soft: rgba(255, 179, 71, 0.14);
+    background: #0f0f0f; color: var(--fg); padding-top: 12px;
   }
-  .odds-hero .eyebrow, .odds-hero h1, .odds-hero .lede { padding-right: 86px; }
-  .odds-hero .eyebrow { color: #f5c542; }
-  .odds-hero h1 { color: #fff; }
-  .odds-hero .lede { color: #b6c0d6; }
-  .odds-hero .orb { position: absolute; right: 0; top: 0; font-size: 64px; line-height: 1; filter: drop-shadow(0 0 16px rgba(165, 120, 255, 0.8)); animation: orb 3s ease-in-out infinite; }
-  @keyframes orb { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-6px) rotate(4deg); } }
-  .ticker { margin: 16px -16px 0; padding: 7px 0; background: #f5c542; color: #1a1400; overflow: hidden; font: 800 0.7rem var(--display); letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; }
-  .ticker .tk { display: inline-flex; animation: ticker 22s linear infinite; }
-  .ticker span { padding-left: 1em; }
-  @keyframes ticker { to { transform: translateX(-50%); } }
-  #page-home .pred { margin-top: 18px; }
-  #page-home .pred-card { box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3); }
-  #page-home .pred-card .lead { color: #f5c542; text-shadow: 0 0 14px rgba(245, 197, 66, 0.35); }
-  #page-home .pred-card .pq { color: #8f9bb5; }
-  #page-home .seg { background: #0c1222; }
-  #page-home .pred-chat { background: #121a30; }
+  .dk-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .dk-brand { display: flex; align-items: center; gap: 8px; }
+  .dk-brand .crown { width: 30px; height: 30px; border-radius: 8px; background: var(--dkg); clip-path: polygon(50% 0, 62% 30%, 92% 14%, 82% 70%, 18% 70%, 8% 14%, 38% 30%); }
+  .dk-brand .bn { font: 800 1.15rem var(--display); letter-spacing: -0.02em; color: #fff; }
+  .dk-brand .bn b { color: var(--dkg); }
+  .dk-brand .bs { font: 700 0.62rem var(--body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+  .dk-slipbtn { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; flex: none; border: 0; border-radius: 10px; padding: 8px 12px; background: var(--dkg); color: var(--dkg-ink); font: 800 0.82rem var(--body); cursor: pointer; -webkit-tap-highlight-color: transparent; box-shadow: 0 6px 16px rgba(83, 211, 55, 0.3); }
+  .dk-slipbtn b { background: var(--dkg-ink); color: var(--dkg); border-radius: 6px; padding: 1px 6px; font-variant-numeric: tabular-nums; }
+  .dk-slipico { width: 12px; height: 14px; border: 2px solid var(--dkg-ink); border-radius: 2px; position: relative; }
+  .dk-slipico::after { content: ""; position: absolute; left: 2px; right: 2px; top: 3px; height: 2px; background: var(--dkg-ink); box-shadow: 0 3px 0 var(--dkg-ink); }
+  .dk-tabs { display: flex; gap: 18px; margin: 16px -16px 0; padding: 0 16px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); font: 700 0.85rem var(--body); color: var(--muted); white-space: nowrap; }
+  .dk-tabs::-webkit-scrollbar { display: none; }
+  .dk-tabs span { padding: 10px 0; border-bottom: 3px solid transparent; }
+  .dk-tabs span.on { color: #fff; border-bottom-color: var(--dkg); }
+  .dk-promo { margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: linear-gradient(135deg, #163a1c, #1c1c1c 70%); border: 1px solid #2a4a2e; }
+  .dk-promo-t { font: 800 1rem var(--display); color: var(--dkg); text-transform: uppercase; letter-spacing: 0.04em; }
+  .dk-promo-s { font-size: 0.86rem; color: #cfcfcf; margin-top: 4px; }
+  #page-home .pred { margin-top: 12px; }
+  #page-home .pred-banner { background: #1f1f1f; border: 1px solid var(--line); border-left: 4px solid var(--dkg); }
+  #page-home .pred-banner b { color: #fff; } #page-home .pred-banner span { color: var(--muted); }
+  #page-home .pred-banner .btn, #page-home .pred-banner button { background: var(--dkg); color: var(--dkg-ink); }
+  #page-home .pred-count { background: rgba(83, 211, 55, 0.14); color: var(--dkg); }
+  #page-home .pred-head .linkbtn { color: var(--dkg); }
+  /* market cards */
+  .pred-card.dk { padding: 0; overflow: hidden; border-radius: 12px; border-color: var(--line); background: var(--surface); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35); }
+  .dk-top { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); background: #262626; }
+  .dk-top .mk { flex: 1; min-width: 0; font: 700 0.86rem var(--body); color: #fff; line-height: 1.25; }
+  .dk-top .live { display: inline-flex; align-items: center; gap: 5px; font: 800 0.62rem var(--body); letter-spacing: 0.1em; text-transform: uppercase; color: #ff3b30; flex: none; }
+  .dk-top .live i { width: 7px; height: 7px; border-radius: 50%; background: #ff3b30; box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.6); animation: livepulse 1.4s ease-out infinite; }
+  .dk-top .soon { font: 800 0.62rem var(--body); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); flex: none; }
+  .dk-top .sgp, .dk-top .boost { flex: none; font: 800 0.62rem var(--body); letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 6px; border-radius: 4px; }
+  .dk-top .sgp { background: #2f2f2f; color: #cfcfcf; }
+  .dk-top .boost { background: rgba(83, 211, 55, 0.16); color: var(--dkg); }
+  @keyframes livepulse { to { box-shadow: 0 0 0 7px rgba(255, 59, 48, 0); } }
+  .dk-rows { padding: 6px 12px 2px; display: grid; gap: 6px; }
+  .dk-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .dk-row .rn { font: 600 0.95rem var(--body); color: #fff; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+  .dk-row .rn small { font: 500 0.72rem var(--body); color: var(--muted); }
+  .dk-row .odds { flex: none; min-width: 72px; text-align: center; padding: 8px 10px; border-radius: 6px; background: #2c2c2c; border: 1px solid #3a3a3a; color: var(--dkg); font: 800 0.92rem var(--body); font-variant-numeric: tabular-nums; }
+  .dk-row.picked .odds { background: var(--dkg); border-color: var(--dkg); color: var(--dkg-ink); }
+  .dk-row.picked .rn { color: var(--dkg); }
+  .dk-more { font: 600 0.76rem var(--body); color: var(--dkg); padding: 4px 0 6px; }
+  .dk-foot { display: flex; gap: 12px; align-items: center; padding: 8px 12px 10px; font: 500 0.74rem var(--body); color: var(--muted); border-top: 1px solid var(--line); margin-top: 6px; }
+  .dk-foot .you { margin-left: auto; font-weight: 700; color: var(--dkg); }
+  .dk-foot .you.no { color: var(--ember); }
+  .pred-card.dk .pred-chat { margin: 0 12px 12px; background: #161616; }
+  .pred-card.dk .pred-chat .more { color: var(--dkg); }
+  .poll-n .odds { display: inline-block; margin-left: 8px; padding: 2px 7px; border-radius: 5px; background: #2c2c2c; color: var(--dkg); font: 800 0.74rem var(--body); font-variant-numeric: tabular-nums; }
+  /* the detail sheet goes dark to match while the sportsbook tab is up */
+  body.tab-home .sheet { --surface: #1f1f1f; --bg: #141414; --fg: #fff; --muted: #9b9b9b; --line: #313131; --pine: #53d337; --pine-soft: rgba(83, 211, 55, 0.14); --pine-ink: #06200a; --ember: #ffb347; --ember-soft: rgba(255, 179, 71, 0.14); background: var(--surface); color: var(--fg); }
+  body.tab-home .sheet .poll-track { background: rgba(255, 255, 255, 0.1); }
+  body.tab-home .sheet .sheet-x { background: #2c2c2c; color: #fff; }
+  body.tab-home .sheet input[type="text"] { background: #141414; color: #fff; border-color: #313131; }
+  @media (prefers-reduced-motion: reduce) { .dk-top .live i { animation: none; } }
 
   /* ---- Bringing: kraft paper, sticky notes, a highlighter stroke. ---- */
   #page-bringing {
