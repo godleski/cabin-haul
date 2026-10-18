@@ -2392,6 +2392,63 @@
     Array.prototype.forEach.call($('dots').children, function (d, k) { d.classList.toggle('on', k === i); });
   }, { passive: true });
   $('copy-address').addEventListener('click', function () { copyText($('cabin-address').textContent, 'Address copied.'); });
+  // The door codes live in secrets.js as ciphertext. The trip password (shared in the group text, never in
+  // the repo) unlocks them in the browser via PBKDF2 + AES-GCM; the derived key is kept on this phone after that.
+  var secrets = null;
+  function b64bytes(b) { var bin = atob(b), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
+  function bytes64(u) { var bin = ''; for (var i = 0; i < u.length; i++) bin += String.fromCharCode(u[i]); return btoa(bin); }
+  function secretsReady() { return !!(window.SECRETS && window.crypto && crypto.subtle); }
+  function deriveSecretKey(pass) {
+    var S = window.SECRETS, enc = new TextEncoder();
+    return crypto.subtle.importKey('raw', enc.encode(pass.normalize('NFKC')), 'PBKDF2', false, ['deriveKey']).then(function (base) {
+      return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b64bytes(S.salt), iterations: S.rounds || 300000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, true, ['decrypt']);
+    });
+  }
+  function openSecrets(key) {
+    var S = window.SECRETS;
+    return crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64bytes(S.iv) }, key, b64bytes(S.data)).then(function (buf) { return JSON.parse(new TextDecoder().decode(buf)); });
+  }
+  function renderSecrets() {
+    var codes = $('codes'), form = $('unlock'); if (!codes) return;
+    codes.classList.toggle('locked', !secrets);
+    if (form) form.hidden = !!secrets || !secretsReady();
+    Array.prototype.forEach.call(codes.querySelectorAll('.code'), function (c) {
+      var v = secrets ? secrets[c.getAttribute('data-key')] : null;
+      c.querySelector('.val').textContent = v || (secrets ? '—' : '••••');
+    });
+    var ws = $('wifi-sub'); if (ws) ws.textContent = secrets ? (secrets.wifiPass ? 'password: ' + secrets.wifiPass : 'no password') : '';
+    var rn = $('res-no'); if (rn) rn.textContent = secrets ? (secrets.reservation || '—') : '•••••';
+  }
+  function unlockWith(pass) {
+    var form = $('unlock'), msg = $('unlock-msg');
+    form.classList.add('busy'); msg.textContent = '';
+    return deriveSecretKey(pass).then(function (key) {
+      return openSecrets(key).then(function (data) {
+        secrets = data;
+        return crypto.subtle.exportKey('raw', key).then(function (raw) { lsSet('cabin-haul-key', bytes64(new Uint8Array(raw))); });
+      });
+    }).then(function () { renderSecrets(); buzz([8, 30, 8]); toast('Unlocked. Codes stay on this phone.'); })
+      .catch(function () { msg.textContent = 'Not it. Check the group text.'; buzz(20); })
+      .then(function () { form.classList.remove('busy'); });
+  }
+  (function () {
+    renderSecrets();
+    var saved = secretsReady() && lsGet('cabin-haul-key');
+    if (saved) {   // unlocked on this phone before: re-open with the stored key, no password needed
+      crypto.subtle.importKey('raw', b64bytes(saved), { name: 'AES-GCM' }, false, ['decrypt']).then(openSecrets)
+        .then(function (data) { secrets = data; renderSecrets(); })
+        .catch(function () { lsDel('cabin-haul-key'); renderSecrets(); });   // secrets were re-sealed with a new password
+    }
+    var form = $('unlock'); if (!form) return;
+    form.addEventListener('submit', function (e) { e.preventDefault(); var v = $('trip-code').value.trim(); if (v) unlockWith(v); });
+  })();
+  $('page-cabin').addEventListener('click', function (e) {
+    var c = e.target.closest('.code'); if (!c) return;
+    if (!secrets) { var inp = $('trip-code'); if (inp) { inp.focus(); } buzz(10); return; }
+    var v = secrets[c.getAttribute('data-key')]; if (!v) return;
+    copyText(v, c.getAttribute('data-what') + ' copied.'); buzz(6);
+    c.classList.add('copied'); setTimeout(function () { c.classList.remove('copied'); }, 900);
+  });
   renderCabin();
 
   // ---- Predictions ----

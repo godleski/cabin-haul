@@ -111,29 +111,81 @@
         <div class="date right"><span class="lbl">Checkout</span><span class="day">Sun, Oct 25</span><span class="time">10:00 AM</span></div>
       </div>
 
+      <div class="info-card key-card">
+        <div class="info-row">
+          <span class="info-icon">🔑</span>
+          <div class="info-body"><div class="info-title">Getting in</div><div class="info-sub">Front door keypad. Tap a code to copy it. Keep the garage door shut when nobody's using it, the pipes freeze.</div></div>
+        </div>
+        <div class="codes" id="codes">
+          <button type="button" class="code" data-key="door" data-what="Door code"><span class="lbl">Front door</span><span class="val">••••</span></button>
+          <button type="button" class="code" data-key="garage" data-what="Garage code"><span class="lbl">Garage</span><span class="val">••••</span></button>
+          <button type="button" class="code" data-key="wifi" data-what="Wi-Fi name"><span class="lbl">Wi-Fi</span><span class="val">••••</span><span class="sub" id="wifi-sub"></span></button>
+        </div>
+        <form class="unlock" id="unlock" autocomplete="off">
+          <label for="trip-code">The codes are locked. Enter the trip password from the group text.</label>
+          <div class="unlock-row"><input type="password" id="trip-code" placeholder="trip password" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go"><button type="submit" class="btn primary" id="unlock-btn">Unlock</button></div>
+          <div class="unlock-msg" id="unlock-msg" aria-live="polite"></div>
+        </form>
+      </div>
+
       <div class="info-card">
         <div class="info-row">
           <span class="info-icon">📍</span>
           <div class="info-body"><div class="info-title">Getting there</div><div class="info-sub" id="cabin-address">2225 Lakota Trail, Winter Park, CO 80482</div></div>
         </div>
+        <ol class="steps">
+          <li>I-70 to <b>Exit 232</b>, toward US-40 / Empire / Granby</li>
+          <li><b>US-40 West</b> about 25 miles into Winter Park</li>
+          <li>Right into the <b>Lakota</b> neighborhood, then 0.3 miles on Lakota Trail</li>
+          <li><b>Second driveway on the left</b> after Arrowhead Way</li>
+        </ol>
         <div class="info-actions">
+          <a class="btn primary" id="directions" href="https://maps.apple.com/?daddr=39.89542,-105.76100&dirflg=d" target="_blank" rel="noopener">Apple Maps</a>
+          <a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=39.89542,-105.76100" target="_blank" rel="noopener">Google Maps</a>
           <button type="button" class="btn" id="copy-address">Copy address</button>
-          <a class="btn primary" id="directions" href="https://maps.apple.com/?daddr=2225+Lakota+Trail,+Winter+Park,+CO+80482" target="_blank" rel="noopener">Directions</a>
-          <a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=2225+Lakota+Trail,+Winter+Park,+CO+80482" target="_blank" rel="noopener">Google Maps</a>
         </div>
+        <p class="fine">Both map links use the host's exact pin (39.89542, -105.76100), which they say beats the street address.</p>
       </div>
 
       <div class="info-card note-card">
         <div class="info-row">
-          <span class="info-icon">📝</span>
-          <div class="info-body"><div class="info-title">Note from Mitch</div><div class="info-sub">I'll keep this page updated as the host sends stuff over: door codes, how to get in, parking, wifi, all of it. Check back here before you leave.</div></div>
+          <span class="info-icon">🚗</span>
+          <div class="info-body"><div class="info-title">Parking: 5 cars, max</div><div class="info-sub"><b>2 in the garage, 3 in the driveway.</b> The owner's car stays in the garage; leave it alone. No street parking anywhere in Lakota, they fine for it. Overflow lot is on the right as you turn into the neighborhood off US-40. Carpool if you can.</div></div>
         </div>
       </div>
 
       <div class="info-card">
         <div class="info-row">
-          <span class="info-icon">🔑</span>
-          <div class="info-body"><div class="info-title">Checking in</div><div class="info-sub">Check-in instructions get emailed one week before arrival, so expect door codes and the rest around Oct 16. The host also wants everyone on their "Happy Stays X" guest app for property details, discounted attractions, and scheduled events.</div></div>
+          <span class="info-icon">🏠</span>
+          <div class="info-body"><div class="info-title">House rules, the short list</div>
+            <ul class="rules">
+              <li>No skis or boards inside the house. Garage only.</li>
+              <li>Trash goes in the bins in the garage. Pickup is Monday, so bag everything and get it out there before we leave Sunday.</li>
+              <li>Garage door closed when not in use.</li>
+              <li>Checkout is 10 AM Sunday. Hard stop.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <div class="info-row">
+          <span class="info-icon">🚌</span>
+          <div class="info-body"><div class="info-title">Getting around</div><div class="info-sub"><b>No Ubers in Winter Park.</b> The Lift is a free shuttle that covers Winter Park and Fraser. The Lift Rider app shows where the bus is and when it gets to you.</div></div>
+        </div>
+        <div class="info-actions">
+          <a class="btn primary" href="https://theliftwp.com" target="_blank" rel="noopener">The Lift shuttle</a>
+          <a class="btn" href="https://www.winterparkresort.com/the-mountain/mountain-information/maps" target="_blank" rel="noopener">Mountain maps</a>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <div class="info-row">
+          <span class="info-icon">☎️</span>
+          <div class="info-body"><div class="info-title">Something's wrong?</div><div class="info-sub">Winter Park Escapes, 8 AM to 7 PM mountain time. After hours the number goes to their call center. Reservation <b id="res-no">•••••</b> under Mitchell Godleski.</div></div>
+        </div>
+        <div class="info-actions">
+          <a class="btn primary" href="tel:+18008373048">Call 800-837-3048</a>
         </div>
       </div>
 
@@ -227,6 +279,7 @@
 <!-- app:end -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
+<script src="secrets.js"></script>
 <script src="store-supabase.js"></script>
 <script src="app.js"></script>
 </body>

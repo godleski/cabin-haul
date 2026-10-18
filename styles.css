@@ -503,6 +503,26 @@
   .mod-row .btn { padding: 5px 9px; font-size: 0.75rem; }
   .cheat { margin-top: 12px; font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
   .cheat b { color: var(--fg); }
+  .key-card { background: var(--pine-soft); border-color: var(--pine); }
+  .key-card .info-title { color: var(--pine); }
+  .codes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .code { display: grid; gap: 1px; justify-items: center; padding: 10px 6px 9px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); cursor: pointer; font: inherit; -webkit-tap-highlight-color: transparent; transition: transform 120ms; }
+  .code:active { transform: scale(0.96); }
+  .code .lbl { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .code .val { font: 800 1.5rem/1.15 var(--display); letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+  .code .sub { font-size: 0.7rem; color: var(--muted); }
+  .code.copied { border-color: var(--pine); box-shadow: inset 0 0 0 1px var(--pine); }
+  .codes.locked .val { color: var(--muted); letter-spacing: 0.1em; }
+  .unlock { margin-top: 12px; display: grid; gap: 8px; }
+  .unlock label { font-size: 0.85rem; color: var(--muted); }
+  .unlock-row { display: flex; gap: 8px; }
+  .unlock-row input { flex: 1; min-width: 0; }
+  .unlock-msg { font-size: 0.8rem; color: var(--ember); min-height: 1em; }
+  .unlock.busy .btn { opacity: 0.6; pointer-events: none; }
+  .steps { margin: 10px 0 0; padding-left: 22px; font-size: 0.9rem; color: var(--muted); display: grid; gap: 4px; }
+  .steps b, .rules b, .info-sub b { color: var(--fg); font-weight: 700; }
+  .rules { margin: 6px 0 0; padding-left: 18px; font-size: 0.9rem; color: var(--muted); display: grid; gap: 5px; }
+  .fine { margin: 10px 0 0; font-size: 0.76rem; color: var(--muted); }
   .note-card { background: var(--ember-soft); border-color: var(--ember); }
   .note-card .info-title { color: var(--ember); }
   /* ---- Money ---- */

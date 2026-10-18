@@ -8,6 +8,7 @@ const out = [
   '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Yellowtail&display=swap">',
   '<style>', fs.readFileSync('styles.css', 'utf8').trim(), '</style>',
   body.trim(),
+  '<script>', fs.readFileSync('secrets.js', 'utf8').trim(), '</script>',
   '<script>', fs.readFileSync('store-artifact.js', 'utf8').trim(), '</script>',
   '<script>', fs.readFileSync('app.js', 'utf8').trim(), '</script>', ''
 ].join('\n');

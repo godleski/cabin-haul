@@ -1,1 +1,4 @@
 dist/
+
+# plaintext codes, sealed into secrets.js by tools/seal-secrets.js
+secrets.json
