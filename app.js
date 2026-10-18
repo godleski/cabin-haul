@@ -1574,7 +1574,8 @@
   function showScreen() {
     var picking = !me;
     $('predict').hidden = true;
-    $('pick').hidden = !picking; $('main').hidden = picking; $('nav').hidden = picking;
+    $('pick').hidden = !picking; $('main').hidden = picking; $('nav').hidden = picking; $('chat-fab').hidden = picking;
+    if (picking) closeChat();
     document.body.classList.toggle('picking', picking);
     if (picking) { renderRoster(); window.scrollTo(0, 0); return; }
     if (!booted) boot();
@@ -1598,20 +1599,18 @@
   }
 
   // ---- Bottom dock ----
-  var TABS = ['home', 'bringing', 'cabin', 'games', 'money', 'chat'];
+  var TABS = ['home', 'bringing', 'cabin', 'games', 'money'];
   var tab = 'cabin', indPlaced = false;
   function showTab(name) {
     var changed = name !== tab;
     tab = name;
     TABS.forEach(function (t) { $('page-' + t).hidden = t !== tab; });
     if (tab === 'money') { renderSplitGrid(); renderVenmo(); renderMoney(); }
-    if (tab === 'chat') { renderWall(true); markWallSeen(); }
     Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function (b) {
       var on = b.getAttribute('data-tab') === tab;
       b.setAttribute('aria-selected', String(on));
       b.classList.remove('bump'); if (on && changed) { void b.offsetWidth; b.classList.add('bump'); }
     });
-    document.body.classList.toggle('tab-chat', tab === 'chat');
     moveNavInd();
     updateChatBadge();
     window.scrollTo(0, 0); lastY = 0; setNavAway(false);
@@ -1636,7 +1635,7 @@
   function setNavAway(away) { if (away === navAway) return; navAway = away; $('nav').classList.toggle('away', away); }
   function onPageScroll() {
     var y = window.scrollY, max = document.documentElement.scrollHeight - window.innerHeight, dy = y - lastY;
-    if (tab === 'chat' || max < 160 || $('main').hidden) setNavAway(false);
+    if (max < 160 || $('main').hidden) setNavAway(false);
     else if (y < 24 || y > max - 24) setNavAway(false);
     else if (dy > 8) setNavAway(true);
     else if (dy < -8) setNavAway(false);
@@ -2485,13 +2484,14 @@
     });
     if (store.comments) store.comments(function (rows) {
       comments = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? -1 : 1; });
-      renderPredictions(); renderWall(); if (tab === 'chat' && !$('main').hidden) markWallSeen(); else updateChatBadge();
+      renderPredictions(); renderWall(); if (chatOpen) markWallSeen(); else updateChatBadge();
     });
     if (store.reactions) store.reactions(function (rows) { reactions = rows.slice(); renderPredictions(); renderWall(); });
   }
   function openQuestionnaire(index, skipIntro) {
     qIndex = Math.max(0, Math.min(QUESTIONS.length - 1, index || 0));
-    $('main').hidden = true; $('nav').hidden = true; $('pick').hidden = true; $('predict').hidden = false;
+    closeChat();
+    $('main').hidden = true; $('nav').hidden = true; $('chat-fab').hidden = true; $('pick').hidden = true; $('predict').hidden = false;
     document.body.classList.add('picking');
     window.scrollTo(0, 0);
     if (skipIntro) { $('q-intro').hidden = true; $('q-wrap').hidden = false; showQuestion(false); return; }
@@ -2608,7 +2608,7 @@
   }
   function updateChatBadge() {
     var el = $('chat-badge'); if (!el || !me) return;
-    var n = tab === 'chat' && !$('main').hidden ? 0 : unreadWall();
+    var n = chatOpen ? 0 : unreadWall();
     el.hidden = !n; el.textContent = n > 9 ? '9+' : String(n);
   }
   function dayLabel(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); }
@@ -2620,7 +2620,7 @@
     msgs.forEach(function (c) { var d = dayLabel(c.created_at); if (d && d !== lastDay) { html += '<div class="day">' + esc(d) + '</div>'; lastDay = d; } html += msgHtml(c); });
     var grew = msgs.length > wallRendered; wallRendered = msgs.length;
     el.innerHTML = html;
-    if ((scroll || grew) && tab === 'chat' && !$('main').hidden) window.scrollTo({ top: document.body.scrollHeight, behavior: scroll ? 'auto' : 'smooth' });
+    if ((scroll || grew) && chatOpen) { var wb = $('wall-body'); wb.scrollTo({ top: wb.scrollHeight, behavior: scroll ? 'auto' : 'smooth' }); }
   }
   $('wall-form').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -2632,6 +2632,21 @@
     renderWall(true); markWallSeen(); input.focus();
   });
   $('wall').addEventListener('click', function (e) { predClick(e); });
+  // the wall opens as a sheet from the floating button
+  var chatOpen = false;
+  function openChat() {
+    if (chatOpen || !me) return;
+    chatOpen = true; $('chat-sheet').hidden = false; document.body.classList.add('chat-open');
+    renderWall(true); markWallSeen(); buzz(6);
+  }
+  function closeChat() {
+    if (!chatOpen) return;
+    chatOpen = false; $('chat-sheet').hidden = true; document.body.classList.remove('chat-open');
+    updateChatBadge();
+  }
+  $('chat-fab').addEventListener('click', openChat);
+  $('chat-sheet').addEventListener('click', function (e) { if (e.target.closest('#chat-close') || e.target.id === 'chat-back') closeChat(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && chatOpen) closeChat(); });
   function renderSheet() {
     var wrap = $('pred-sheet'); if (!wrap) return;
     if (expanded === null) { wrap.hidden = true; return; }
