@@ -2673,11 +2673,14 @@
       var html = '';
       HIBACHI_MENU.forEach(function (g) {
         var sel = d.picks[g.id] || [];
-        html += '<div class="hib-group"><div class="gt">' + esc(g.title) + (g.pick ? '' : '') + '</div><div class="gh">' + esc(g.hint) + '</div><div class="opts" role="' + (g.pick === 1 ? 'radiogroup' : 'group') + '">';
+        html += '<div class="hib-group"><div class="gt">' + esc(g.title) + '</div><div class="gh">' + esc(g.hint) + '</div><div class="opts" role="' + (g.pick === 1 ? 'radiogroup' : 'group') + '">';
+        // once something is picked, the other sections of the same group go gray (still tappable to switch)
+        var secOf = {}, cur = null; g.options.forEach(function (o) { if (o.sec) cur = o.sec; else secOf[o.id] = cur; });
+        var pickedSec = g.pick === 1 && sel.length ? secOf[sel[0]] : null, sec = null;
         g.options.forEach(function (o) {
-          if (o.sec) { html += '<div class="opt-sec">' + esc(o.sec) + '</div>'; return; }
+          if (o.sec) { sec = o.sec; html += '<div class="opt-sec' + (pickedSec && pickedSec !== sec ? ' dim' : '') + '">' + esc(o.sec) + '</div>'; return; }
           var on = sel.indexOf(o.id) >= 0;
-          html += '<button type="button" class="opt' + (g.pick === 1 ? '' : ' multi') + '" role="' + (g.pick === 1 ? 'radio' : 'checkbox') + '" aria-checked="' + on + '" data-g="' + g.id + '" data-o="' + o.id + '"><span class="box">' + (on ? '✓' : '') + '</span><span class="nm">' + esc(o.name) + (o.sub ? '<small>' + esc(o.sub) + '</small>' : '') + '</span><span class="pr">' + money(o.price) + '</span></button>';
+          html += '<button type="button" class="opt' + (g.pick === 1 ? '' : ' multi') + (pickedSec && pickedSec !== sec ? ' dim' : '') + '" role="' + (g.pick === 1 ? 'radio' : 'checkbox') + '" aria-checked="' + on + '" data-g="' + g.id + '" data-o="' + o.id + '"><span class="box">' + (on ? '✓' : '') + '</span><span class="nm">' + esc(o.name) + (o.sub ? '<small>' + esc(o.sub) + '</small>' : '') + '</span><span class="pr">' + money(o.price) + '</span></button>';
         });
         html += '</div></div>';
       });

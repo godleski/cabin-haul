@@ -559,6 +559,8 @@
   .opts { display: grid; gap: 6px; margin-top: 8px; }
   .opt-sec { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 6px 0 -2px 2px; }
   .opt-sec:first-child { margin-top: 0; }
+  .opt.dim, .opt-sec.dim { opacity: 0.38; filter: grayscale(1); transition: opacity 200ms, filter 200ms; }
+  .opt.dim .pr { color: var(--muted); }
   .opt { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--fg); font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: border-color 120ms, background-color 120ms; }
   .opt .box { width: 20px; height: 20px; flex: none; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font-size: 0.75rem; color: var(--pine-ink); transition: background-color 120ms, border-color 120ms; }
   .opt.multi .box { border-radius: 6px; }
