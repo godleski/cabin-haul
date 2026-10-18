@@ -543,6 +543,82 @@
   .steps b, .rules b, .info-sub b { color: var(--fg); font-weight: 700; }
   .rules { margin: 6px 0 0; padding-left: 18px; font-size: 0.9rem; color: var(--muted); display: grid; gap: 5px; }
   .fine { margin: 10px 0 0; font-size: 0.76rem; color: var(--muted); }
+  /* ---- Hibachi: the whole tab goes grill-house red, black menu panels, white caps ---- */
+  #page-hibachi {
+    --hr: #c8102e; --hr-deep: #8d0b20; --hk: #141414; --hk-2: #1f1f1f; --hk-3: #2c2c2c; --hw: #fff; --hmuted: rgba(255, 255, 255, 0.72);
+    color: var(--hw); margin: 10px -16px calc(-100px - env(safe-area-inset-bottom, 0px)); padding: 22px 16px calc(120px + env(safe-area-inset-bottom, 0px));
+    min-height: calc(100dvh - 40px); border-radius: 22px 22px 0 0;
+    background: radial-gradient(circle at 15% 10%, rgba(255, 255, 255, 0.12), transparent 40%), radial-gradient(circle at 90% 30%, rgba(0, 0, 0, 0.18), transparent 45%), linear-gradient(180deg, #d4142f 0%, var(--hr) 35%, var(--hr-deep) 100%);
+  }
+  .hib-hero { position: relative; padding-right: 96px; }
+  .hib-eyebrow { font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 700; color: rgba(255, 255, 255, 0.8); }
+  .hib-h1 { font: 800 clamp(2.6rem, 12vw, 3.4rem)/0.92 var(--display); letter-spacing: -0.03em; text-transform: uppercase; margin-top: 6px; color: var(--hw); text-shadow: 0 3px 0 rgba(0, 0, 0, 0.25); }
+  .hib-h1 .light { display: inline-block; width: 16px; height: 16px; margin-left: 6px; vertical-align: middle; box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.25); background: #3a0a10; border: 2px solid rgba(255, 255, 255, 0.5); }
+  .hib-h1 .light.on { background: #39d353; border-color: #fff; box-shadow: 0 0 0 4px rgba(57, 211, 83, 0.3), 0 0 18px #39d353; }
+  .hib-ribbon { display: inline-block; margin-top: 12px; padding: 7px 12px; background: var(--hk); color: var(--hw); font: 800 0.72rem var(--display); letter-spacing: 0.12em; text-transform: uppercase; border-radius: 4px; transform: rotate(-1.5deg); box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3); }
+  .hib-lede { margin: 14px 0 0; color: rgba(255, 255, 255, 0.9); max-width: 36ch; }
+  /* the onion volcano */
+  .volcano { position: absolute; right: 0; top: 4px; width: 88px; height: 96px; }
+  .volcano .ring { position: absolute; left: 50%; transform: translateX(-50%); border: 3px solid rgba(255, 255, 255, 0.9); border-radius: 50%; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25); }
+  .volcano .r1 { width: 76px; height: 24px; bottom: 0; } .volcano .r2 { width: 60px; height: 20px; bottom: 15px; } .volcano .r3 { width: 44px; height: 16px; bottom: 28px; } .volcano .r4 { width: 28px; height: 11px; bottom: 39px; }
+  .volcano .flame { position: absolute; left: 50%; bottom: 44px; font-size: 30px; line-height: 1; transform-origin: 50% 100%; animation: flick 520ms ease-in-out infinite alternate; filter: drop-shadow(0 0 10px rgba(255, 170, 0, 0.8)); }
+  .volcano .spark { position: absolute; left: 50%; bottom: 66px; width: 4px; height: 4px; border-radius: 50%; background: #ffd23f; animation: spark 1.4s ease-out infinite; opacity: 0; }
+  .volcano .s2 { animation-delay: 0.45s; margin-left: 8px; } .volcano .s3 { animation-delay: 0.9s; margin-left: -10px; }
+  @keyframes flick { from { transform: translateX(-50%) scale(1) rotate(-5deg); } to { transform: translateX(-52%) scale(1.14, 1.22) rotate(5deg); } }
+  @keyframes spark { 0% { opacity: 0; transform: translate(0, 0) scale(1); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(-6px, -34px) scale(0.3); } }
+  #page-hibachi .hib-status { margin-top: 18px; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 999px; background: var(--hk); color: var(--hw); font-size: 0.86rem; }
+  #page-hibachi .hib-status b { color: var(--hw); }
+  #page-hibachi .hib-status .st-ico { font-size: 1.15rem; line-height: 1; }
+  #page-hibachi .hib-status.done { background: #1b5e2b; color: #fff; }
+  #page-hibachi .hib-group { margin-top: 16px; padding: 14px; background: var(--hk); border-radius: 16px; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25); }
+  #page-hibachi .hib-group .gt { color: var(--hw); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.9rem; }
+  #page-hibachi .hib-group .gh { color: var(--hmuted); }
+  #page-hibachi .opt-sec { display: inline-block; margin: 10px 0 2px; padding: 4px 10px; background: var(--hw); color: var(--hk); border-radius: 4px; letter-spacing: 0.12em; }
+  #page-hibachi .opt-sec:first-child { margin-top: 2px; }
+  #page-hibachi .opt { background: var(--hk-2); border-color: var(--hk-3); color: var(--hw); }
+  #page-hibachi .opt .box { border-color: #555; }
+  #page-hibachi .opt .pr { color: var(--hmuted); }
+  #page-hibachi .opt[aria-checked="true"] { background: var(--hr); border-color: #ff6b7a; box-shadow: 0 0 0 1px #ff6b7a inset; }
+  #page-hibachi .opt[aria-checked="true"] .box { background: var(--hw); border-color: var(--hw); color: var(--hr); }
+  #page-hibachi .opt[aria-checked="true"] .pr { color: var(--hw); }
+  #page-hibachi .opt.dim, #page-hibachi .opt-sec.dim { opacity: 0.28; }
+  #page-hibachi .hib-note { margin-top: 14px; background: var(--hk); color: var(--hw); border: 1px solid var(--hk-3); border-radius: 12px; padding: 11px 12px; }
+  #page-hibachi .hib-note::placeholder { color: rgba(255, 255, 255, 0.5); }
+  #page-hibachi .hib-foot .tot { color: var(--hw); font-size: 1.5rem; }
+  #page-hibachi .hib-foot .tot small { color: var(--hmuted); }
+  .hib-lockbtn { background: var(--hk); color: var(--hw); font-size: 0.95rem; padding: 12px 18px; border-radius: 14px; box-shadow: 0 5px 0 #000, 0 10px 20px rgba(0, 0, 0, 0.3); transition: transform 100ms, box-shadow 100ms; }
+  .hib-lockbtn:active { transform: translateY(3px); box-shadow: 0 2px 0 #000; }
+  .hib-lockbtn[disabled] { opacity: 0.4; box-shadow: none; }
+  #page-hibachi .hib-mine-locked { background: var(--hk); border-color: var(--hk); color: var(--hw); border-radius: 16px; position: relative; overflow: visible; }
+  #page-hibachi .hib-mine-locked .what b { color: #ffd23f; }
+  #page-hibachi .hib-mine-locked .linkbtn { color: #ffd23f; }
+  .hib-mine-locked.sizzle { animation: sizzle 500ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both; }
+  .hib-mine-locked.sizzle::before, .hib-mine-locked.sizzle::after { content: "\1F525"; position: absolute; top: -6px; font-size: 22px; animation: flameup 900ms ease-out both; pointer-events: none; }
+  .hib-mine-locked.sizzle::before { left: 14%; } .hib-mine-locked.sizzle::after { right: 18%; animation-delay: 120ms; }
+  @keyframes sizzle { 0% { transform: scale(0.94) rotate(-1deg); } 50% { transform: scale(1.03) rotate(0.6deg); } 100% { transform: none; } }
+  @keyframes flameup { 0% { opacity: 0; transform: translateY(10px) scale(0.6); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(-46px) scale(1.3) rotate(10deg); } }
+  #page-hibachi .hib-pay { background: var(--hk); border-color: #3d95ce; color: var(--hw); }
+  #page-hibachi .hib-pay .pt b { color: #8ac6f0; }
+  #page-hibachi .hib-pay.paid { background: #1b5e2b; border-color: #39d353; }
+  #page-hibachi .hib-pay .fine { color: var(--hmuted); }
+  #page-hibachi .hib-pay .linkbtn { color: #fff; }
+  #page-hibachi .hib-pay-actions .btn:not(.primary) { background: var(--hk-3); color: var(--hw); }
+  /* the ticket */
+  #page-hibachi .ticket { margin-top: 22px; padding: 16px 16px 22px; background: #fffdf5; color: #1b1b1b; border-top: 0; border-radius: 6px 6px 0 0; position: relative; box-shadow: 0 14px 30px rgba(0, 0, 0, 0.3); font-variant-numeric: tabular-nums; }
+  #page-hibachi .ticket::after { content: ""; position: absolute; left: 0; right: 0; bottom: -10px; height: 10px; background: linear-gradient(-45deg, transparent 7px, #fffdf5 0) 0 0 / 14px 14px repeat-x, linear-gradient(45deg, transparent 7px, #fffdf5 0) 0 0 / 14px 14px repeat-x; }
+  #page-hibachi .ticket .ah { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 10px; }
+  #page-hibachi .ticket .ah b { font: 800 1.1rem var(--display); text-transform: uppercase; letter-spacing: 0.1em; }
+  #page-hibachi .ticket .tk-sub { grid-row: 2; font-size: 0.78rem; color: #6b6b6b; letter-spacing: 0.06em; text-transform: uppercase; }
+  #page-hibachi .ticket .ah .btn { grid-row: 1 / span 2; background: var(--hk); color: var(--hw); }
+  #page-hibachi .ticket .ah .btn[disabled] { opacity: 0.4; }
+  #page-hibachi .ticket .hib-row { border-bottom: 1px dashed #c9c4b4; }
+  #page-hibachi .ticket .hib-row .det { color: #5d5d5d; }
+  #page-hibachi .ticket .hib-row.waiting .who, #page-hibachi .ticket .hib-row.waiting .amt { color: #9a9a9a; }
+  #page-hibachi .ticket .hib-row.me .who { color: var(--hr); }
+  #page-hibachi .ticket .pd { background: #e3efe8; color: #2d6a4f; } #page-hibachi .ticket .pd.owes { background: #fbe9db; color: #b5561c; }
+  #page-hibachi .ticket .hib-totals { color: #5d5d5d; }
+  #page-hibachi .ticket .hib-grand { border-top: 2px solid #1b1b1b; padding-top: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
+  @media (prefers-reduced-motion: reduce) { .volcano .flame, .volcano .spark, .hib-mine-locked.sizzle, .hib-mine-locked.sizzle::before, .hib-mine-locked.sizzle::after { animation: none; } }
   /* ---- Hibachi orders ---- */
   .hib-title { display: flex; align-items: center; gap: 10px; }
   h1.hib-title .light { width: 14px; height: 14px; margin-top: 4px; }

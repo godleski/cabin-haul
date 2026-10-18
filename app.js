@@ -2668,12 +2668,12 @@
     var done = waiting.length === 0;
     $('hib-light').classList.toggle('on', done);
     var st = $('hib-status'); st.classList.toggle('done', done);
-    st.innerHTML = done ? '✅ All ' + NAMES.length + ' orders are in. Jess, it’s all yours.' : '<b>' + locked.length + ' of ' + NAMES.length + '</b> locked in. Waiting on ' + waiting.map(function (n) { return n === me ? 'you' : esc(n); }).join(', ') + '.';
+    st.innerHTML = done ? '<span class="st-ico">🔥</span><span><b>Grill’s hot.</b> All ' + NAMES.length + ' orders are in. Jess, send the ticket.</span>' : '<span class="st-ico">🥢</span><span><b>' + locked.length + ' of ' + NAMES.length + '</b> at the table. Still need ' + waiting.map(function (n) { return n === me ? 'you' : esc(n); }).join(', ') + '.</span>';
     // my order
     var my = orders[me], editing = hibDraft || !(my && my.locked);
     if (!editing) {
       var price = hibPrice(my), payNote = 'Hibachi: ' + hibLines(my).join(', ');
-      mine.innerHTML = '<div class="hib-mine-locked"><span>🔒</span><div class="what"><b>Your order is locked in</b>' + esc(hibLines(my).join(', ')) + (my.note ? ' · ' + esc(my.note) : '') + '</div><span class="amt">' + money(price) + '</span><button type="button" class="linkbtn" id="hib-edit">Change</button></div>' +
+      mine.innerHTML = '<div class="hib-mine-locked' + (hibJustLocked ? ' sizzle' : '') + '"><span>🔒</span><div class="what"><b>Your order is locked in</b>' + esc(hibLines(my).join(', ')) + (my.note ? ' · ' + esc(my.note) : '') + '</div><span class="amt">' + money(price) + '</span><button type="button" class="linkbtn" id="hib-edit">Change</button></div>' +
         (me === HIBACHI_PAYEE.name ? '' :
           '<div class="hib-pay' + (hibJustLocked ? ' pop' : '') + (my.paid ? ' paid' : '') + '">' +
             (my.paid
@@ -2701,7 +2701,7 @@
       });
       html += '<input type="text" class="hib-note" id="hib-note" maxlength="120" placeholder="Allergies, no onions, extra spicy…" value="' + esc(d.note) + '">';
       var ok = hibComplete(d);
-      html += '<div class="hib-foot"><div class="tot">' + money(hibPrice(d)) + '<small>your meal</small></div><button type="button" class="btn primary" id="hib-lock"' + (ok ? '' : ' disabled') + '>' + (my && my.locked ? 'Lock in the change' : 'Lock in my order') + '</button></div>';
+      html += '<div class="hib-foot"><div class="tot">' + money(hibPrice(d)) + '<small>your plate</small></div><button type="button" class="btn primary hib-lockbtn" id="hib-lock"' + (ok ? '' : ' disabled') + '>' + (my && my.locked ? '🔥 Lock in the change' : '🔥 Lock it in') + '</button></div>';
       mine.innerHTML = html;
     }
     // everyone, for Jess
@@ -2717,7 +2717,7 @@
       }
     });
     var tally = Object.keys(counts).map(function (k) { return counts[k] + '× ' + k; });
-    all.innerHTML = '<div class="hib-all"><div class="ah"><b>Everyone’s orders</b><button type="button" class="btn" id="hib-copy"' + (locked.length ? '' : ' disabled') + '>Copy for Jess</button></div><div class="hib-rows">' + rows + '</div>' +
+    all.innerHTML = '<div class="hib-all ticket"><div class="ah"><b>Order ticket</b><span class="tk-sub">' + locked.length + ' of ' + NAMES.length + ' plates</span><button type="button" class="btn" id="hib-copy"' + (locked.length ? '' : ' disabled') + '>Copy the ticket</button></div><div class="hib-rows">' + rows + '</div>' +
       (tally.length ? '<div class="hib-totals">' + esc(tally.join(' · ')) + '</div>' : '') +
       '<div class="hib-grand"><span>Total' + (done ? '' : ' so far') + '</span><span>' + money(grand) + '</span></div></div>';
   }
