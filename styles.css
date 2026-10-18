@@ -354,6 +354,7 @@
   #liv { --ac: #d2691e; --ac-soft: rgba(210, 105, 30, 0.14); }
   #smash { --ac: #d63a1f; --ac-soft: rgba(214, 58, 31, 0.12); }
   #mafia { --ac: #8e2f44; --ac-soft: rgba(142, 47, 68, 0.14); }
+  .section-lede { margin-top: 24px; font-weight: 600; color: var(--fg); }
   .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
   .board-card { padding: 12px 12px 10px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); min-width: 0; }
   #hockeyboard { --ac: #d97757; } #golfboard { --ac: #2d6a4f; }
