@@ -2600,21 +2600,40 @@
   // so nobody's order can overwrite anyone else's. Edit HIBACHI_MENU to match the chef's menu.
   var HIBACHI_Q = 'hibachi';
   var HIBACHI_MENU = [
-    { id: 'entree', title: 'Entrée', hint: 'Pick one. Comes with fried rice, veggies and salad.', pick: 1, options: [
-      { id: 'chicken', name: 'Chicken', price: 25 },
-      { id: 'steak', name: 'Steak', price: 30 },
-      { id: 'shrimp', name: 'Shrimp', price: 30 },
-      { id: 'salmon', name: 'Salmon', price: 30 },
-      { id: 'scallops', name: 'Scallops', price: 35 },
-      { id: 'filet', name: 'Filet mignon', price: 35 },
-      { id: 'lobster', name: 'Lobster tail', price: 40 },
-      { id: 'veg', name: 'Vegetable', price: 20 }
+    { id: 'plate', title: 'Your plate', hint: 'Pick one. Every plate comes with fried rice, saut\u00e9ed vegetables and yum-yum and ginger sauce.', pick: 1, options: [
+      { sec: 'Combination plates' },
+      { id: 'c-lss', name: 'Lobster, Scallops & Shrimp', price: 65 },
+      { id: 'c-fl', name: 'Filet Mignon & Lobster', price: 65 },
+      { id: 'c-fsc', name: 'Filet Mignon & Scallops', price: 60 },
+      { id: 'c-fsh', name: 'Filet Mignon & Shrimp', price: 60 },
+      { id: 'c-fc', name: 'Filet Mignon & Chicken', price: 60 },
+      { id: 'c-nsc', name: 'NY Strip, Chicken & Shrimp', price: 60 },
+      { id: 'c-nsh', name: 'NY Strip & Shrimp', price: 50 },
+      { id: 'c-nc', name: 'NY Strip & Chicken', price: 50 },
+      { id: 'c-csh', name: 'Chicken & Shrimp', price: 45 },
+      { sec: 'Small plates' },
+      { id: 's-lob2', name: '2 Lobster Tails', price: 60 },
+      { id: 's-filet', name: 'Filet Mignon', price: 50 },
+      { id: 's-ny', name: 'New York Strip Steak', price: 45 },
+      { id: 's-salmon', name: 'Salmon', price: 40 },
+      { id: 's-scallops', name: 'Scallops', price: 40 },
+      { id: 's-shrimp', name: 'Shrimp', price: 40 },
+      { id: 's-chicken', name: 'Chicken', price: 35 },
+      { id: 's-tofu', name: 'Tofu', price: 30 }
     ] },
-    { id: 'extras', title: 'Add-ons', hint: 'Optional. As many as you want.', pick: 0, options: [
-      { id: 'noodles', name: 'Noodles', price: 5 },
-      { id: 'xprotein', name: 'Second protein', sub: 'tell us which in the note', price: 10 },
-      { id: 'xrice', name: 'Extra fried rice', price: 5 },
-      { id: 'gyoza', name: 'Gyoza', price: 8 }
+    { id: 'extra', title: '\u00c0 la carte', hint: 'Optional. Add a protein on top of your plate.', pick: 0, options: [
+      { id: 'a-lob', name: 'Lobster Tail', price: 30 },
+      { id: 'a-filet', name: 'Filet Mignon', price: 30 },
+      { id: 'a-ny', name: 'New York Strip Steak', price: 25 },
+      { id: 'a-chicken', name: 'Chicken', price: 25 },
+      { id: 'a-salmon', name: 'Salmon', price: 20 },
+      { id: 'a-scallops', name: 'Scallops', price: 20 },
+      { id: 'a-shrimp', name: 'Shrimp', price: 15 }
+    ] },
+    { id: 'sides', title: 'Extra sides', hint: 'Optional. Your plate already has rice and veggies; these are extra portions.', pick: 0, options: [
+      { id: 'side-rice', name: 'Fried Rice', price: 8 },
+      { id: 'side-veg', name: 'Saut\u00e9 Vegetables', price: 6 },
+      { id: 'side-udon', name: 'Udon Noodles', price: 6 }
     ] }
   ];
   var hibDraft = null;   // the order being built on this phone before it's locked; null until you touch something
@@ -2624,10 +2643,20 @@
     votes.forEach(function (v) { if (v.question_id !== HIBACHI_Q) return; try { var o = JSON.parse(v.pick); if (o && o.picks) out[v.voter] = o; } catch (e) { /* ignore */ } });
     return out;
   }
-  function hibOption(gid, oid) { var g = HIBACHI_MENU.filter(function (x) { return x.id === gid; })[0]; return g && g.options.filter(function (o) { return o.id === oid; })[0]; }
+  function hibOption(gid, oid) { var g = HIBACHI_MENU.filter(function (x) { return x.id === gid; })[0]; return g && g.options.filter(function (o) { return o.id && o.id === oid; })[0]; }
   function hibLines(order) {   // ['Steak', 'Noodles', ...] in menu order
     var lines = [];
     HIBACHI_MENU.forEach(function (g) { (order.picks[g.id] || []).forEach(function (oid) { var o = hibOption(g.id, oid); if (o) lines.push(o.name); }); });
+    return lines;
+  }
+  function hibChefLines(order) {   // like hibLines, but says which column of the menu each thing came from
+    var lines = [];
+    HIBACHI_MENU.forEach(function (g) {
+      (order.picks[g.id] || []).forEach(function (oid) {
+        var o = hibOption(g.id, oid); if (!o) return;
+        lines.push(g.id === 'plate' ? o.name + ' plate' : g.id === 'extra' ? o.name + ' (a la carte)' : o.name + ' (side)');
+      });
+    });
     return lines;
   }
   function hibPrice(order) {
@@ -2655,6 +2684,7 @@
         var sel = d.picks[g.id] || [];
         html += '<div class="hib-group"><div class="gt">' + esc(g.title) + (g.pick ? '' : '') + '</div><div class="gh">' + esc(g.hint) + '</div><div class="opts" role="' + (g.pick === 1 ? 'radiogroup' : 'group') + '">';
         g.options.forEach(function (o) {
+          if (o.sec) { html += '<div class="opt-sec">' + esc(o.sec) + '</div>'; return; }
           var on = sel.indexOf(o.id) >= 0;
           html += '<button type="button" class="opt' + (g.pick === 1 ? '' : ' multi') + '" role="' + (g.pick === 1 ? 'radio' : 'checkbox') + '" aria-checked="' + on + '" data-g="' + g.id + '" data-o="' + o.id + '"><span class="box">' + (on ? '✓' : '') + '</span><span class="nm">' + esc(o.name) + (o.sub ? '<small>' + esc(o.sub) + '</small>' : '') + '</span><span class="pr">' + money(o.price) + '</span></button>';
         });
@@ -2671,8 +2701,8 @@
       var o = orders[n];
       if (o && o.locked) {
         var p = hibPrice(o); grand += p;
-        hibLines(o).forEach(function (l) { counts[l] = (counts[l] || 0) + 1; });
-        rows += '<div class="hib-row' + (n === me ? ' me' : '') + '"><span class="who">' + esc(n) + '</span><span class="amt">' + money(p) + '</span><span class="det">' + esc(hibLines(o).join(', ')) + (o.note ? ' · “' + esc(o.note) + '”' : '') + '</span></div>';
+        hibChefLines(o).forEach(function (l) { counts[l] = (counts[l] || 0) + 1; });
+        rows += '<div class="hib-row' + (n === me ? ' me' : '') + '"><span class="who">' + esc(n) + '</span><span class="amt">' + money(p) + '</span><span class="det">' + esc(hibChefLines(o).join(', ')) + (o.note ? ' · “' + esc(o.note) + '”' : '') + '</span></div>';
       } else {
         rows += '<div class="hib-row waiting"><span class="who">' + esc(n) + '</span><span class="amt">—</span><span class="det">not in yet</span></div>';
       }
@@ -2687,8 +2717,8 @@
     NAMES.forEach(function (nm) {
       var o = orders[nm]; if (!o || !o.locked) return;
       n++; var p = hibPrice(o); grand += p;
-      hibLines(o).forEach(function (l) { counts[l] = (counts[l] || 0) + 1; });
-      lines.push(nm + ': ' + hibLines(o).join(', ') + (o.note ? ' (' + o.note + ')' : '') + ' - ' + money(p));
+      hibChefLines(o).forEach(function (l) { counts[l] = (counts[l] || 0) + 1; });
+      lines.push(nm + ': ' + hibChefLines(o).join(' + ') + (o.note ? ' (' + o.note + ')' : '') + ' - ' + money(p));
     });
     var out = 'Hibachi orders (' + n + ' of ' + NAMES.length + ')\n' + lines.join('\n') + '\n\nTotals: ' + Object.keys(counts).map(function (k) { return counts[k] + 'x ' + k; }).join(', ') + '\nGrand total: ' + money(grand);
     return out;
