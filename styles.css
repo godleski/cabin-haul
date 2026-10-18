@@ -675,9 +675,13 @@
   #page-games {
     --surface: #1e2140; --bg: #141633; --fg: #fff; --muted: #9aa3d6; --line: #3a3f7a; --pine: #ffcc00; --pine-soft: rgba(255, 204, 0, 0.15); --pine-ink: #1a1a1a; --ember: #ff4757; --ember-soft: rgba(255, 71, 87, 0.15);
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    color: var(--fg); background: #1a1c3a; position: relative; isolation: isolate;
+    --scan: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 2px, transparent 2px 4px);
+    color: var(--fg); background: var(--scan), #1a1c3a; position: relative;
   }
-  #page-games::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1; border-radius: 22px 22px 0 0; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 2px, transparent 2px 4px); }
+  /* the scanlines sit on the page and on closed panels; an open panel is clean inside so it's readable */
+  .arcade-hero::after, #page-games .board-card::after, #page-games .game-card:not(:has(.game-head[aria-expanded="true"]))::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--scan); }
+  .arcade-hero { position: relative; }
+  #page-games .board-card, #page-games .game-card { position: relative; }
   .arcade-hero { padding-right: 84px; }
   .arcade-hero .eyebrow { color: #fff; font: 700 0.8rem var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
   .arcade-hero .eyebrow .cursor { animation: blink 1s steps(2, start) infinite; }
