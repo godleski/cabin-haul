@@ -2621,10 +2621,10 @@
       { id: 'c-nc', name: 'NY Strip & Chicken', price: 50 },
       { id: 'c-csh', name: 'Chicken & Shrimp', price: 45 }
     ] },
-    { id: 'sides', title: 'Extra sides', hint: 'Optional. Your plate already has rice and veggies; these are extra portions.', pick: 0, options: [
-      { id: 'side-rice', name: 'Fried Rice', price: 8 },
-      { id: 'side-veg', name: 'Saut\u00e9 Vegetables', price: 6 },
-      { id: 'side-udon', name: 'Udon Noodles', price: 6 }
+    { id: 'sides', title: 'Extra sides', hint: 'Optional, and most people won\u2019t need them.', warn: 'Your plate already comes with fried rice and saut\u00e9ed vegetables. These are second helpings on top of that, for an extra charge.', pick: 0, options: [
+      { id: 'side-rice', name: 'Fried Rice', sub: 'a second helping', price: 8 },
+      { id: 'side-veg', name: 'Saut\u00e9 Vegetables', sub: 'a second helping', price: 6 },
+      { id: 'side-udon', name: 'Udon Noodles', sub: 'not included with the plate', price: 6 }
     ] }
   ];
   var HIBACHI_PAYEE = { name: 'Jess', handle: 'Craftyj627' };   // fronts the chef; everyone Venmos her their plate
@@ -2688,7 +2688,7 @@
       var html = '';
       HIBACHI_MENU.forEach(function (g) {
         var sel = d.picks[g.id] || [];
-        html += '<div class="hib-group"><div class="gt">' + esc(g.title) + '</div><div class="gh">' + esc(g.hint) + '</div><div class="opts" role="' + (g.pick === 1 ? 'radiogroup' : 'group') + '">';
+        html += '<div class="hib-group"><div class="gt">' + esc(g.title) + '</div><div class="gh">' + esc(g.hint) + '</div>' + (g.warn ? '<div class="hib-warn">\u26A0\uFE0F ' + esc(g.warn) + '</div>' : '') + '<div class="opts" role="' + (g.pick === 1 ? 'radiogroup' : 'group') + '">';
         // once something is picked, the other sections of the same group go gray (still tappable to switch)
         var secOf = {}, cur = null; g.options.forEach(function (o) { if (o.sec) cur = o.sec; else secOf[o.id] = cur; });
         var pickedSec = g.pick === 1 && sel.length ? secOf[sel[0]] : null, sec = null;
