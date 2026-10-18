@@ -671,30 +671,42 @@
   #page-bringing .item { border-radius: 10px; }
   #page-bringing .group-head h2 { font-family: var(--display); }
 
-  /* ---- Games: the arcade. Neon title, grid floor, LED scoreboards. ---- */
+  /* ---- Games: retro video game. CRT scanlines, pixel-shadow title, high-score boards, level-select cards. ---- */
   #page-games {
-    --surface: #221642; --bg: #170e30; --fg: #f6f1ff; --muted: #b3a6d4; --line: #3b2a6a; --pine: #2ee6ff; --pine-soft: rgba(46, 230, 255, 0.14); --pine-ink: #06161c; --ember: #ff3fa4; --ember-soft: rgba(255, 63, 164, 0.16);
-    background: linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px) 0 0 / 26px 26px, linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px) 0 0 / 26px 26px, radial-gradient(circle at 20% 0%, rgba(255, 63, 164, 0.22), transparent 40%), radial-gradient(circle at 90% 20%, rgba(46, 230, 255, 0.16), transparent 40%), linear-gradient(180deg, #120a26, #1a1038 60%, #120a26); color: var(--fg);
+    --surface: #1e2140; --bg: #141633; --fg: #fff; --muted: #9aa3d6; --line: #3a3f7a; --pine: #ffcc00; --pine-soft: rgba(255, 204, 0, 0.15); --pine-ink: #1a1a1a; --ember: #ff4757; --ember-soft: rgba(255, 71, 87, 0.15);
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color: var(--fg); background: #1a1c3a; position: relative; isolation: isolate;
   }
+  #page-games::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1; border-radius: 22px 22px 0 0; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 2px, transparent 2px 4px); }
   .arcade-hero { padding-right: 84px; }
-  .arcade-hero .eyebrow { color: #2ee6ff; animation: blink 1.6s steps(2, start) infinite; }
-  .arcade-hero h1.neon { color: #fff; text-shadow: 0 0 6px #fff, 0 0 14px #ff3fa4, 0 0 30px #ff3fa4, 0 0 52px #ff3fa4; animation: neon 4s ease-in-out infinite; }
-  .arcade-hero .lede { color: #c3b6e6; }
-  .arcade-hero .lede b { color: #2ee6ff; }
-  .arcade-hero .dice { position: absolute; right: 0; top: 0; font-size: 62px; line-height: 1; filter: drop-shadow(0 0 14px rgba(46, 230, 255, 0.7)); animation: dice 2.8s ease-in-out infinite; }
-  @keyframes dice { 0%, 100% { transform: rotate(-10deg) translateY(0); } 50% { transform: rotate(14deg) translateY(-8px); } }
-  @keyframes neon { 0%, 100% { opacity: 1; } 92% { opacity: 1; } 94% { opacity: 0.6; } 96% { opacity: 1; } 98% { opacity: 0.75; } }
+  .arcade-hero .eyebrow { color: #fff; font: 700 0.8rem var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+  .arcade-hero .eyebrow .cursor { animation: blink 1s steps(2, start) infinite; }
+  .arcade-hero h1.neon { color: #ffcc00; text-shadow: 4px 4px 0 #ff4757, 8px 8px 0 #0d0e24; -webkit-text-stroke: 1px #1a1a1a; letter-spacing: 0; }
+  .arcade-hero .lede { color: #c9cff2; font: 500 0.9rem/1.5 var(--mono); }
+  .arcade-hero .lede b { color: #ffcc00; }
+  .arcade-hero .dice { position: absolute; right: 0; top: 0; font-size: 62px; line-height: 1; transform: rotate(-8deg); animation: invader 1.6s steps(2, end) infinite; }
+  @keyframes invader { 0%, 100% { transform: rotate(-8deg) translateY(0); } 50% { transform: rotate(-8deg) translateY(6px); } }
   @keyframes blink { to { visibility: hidden; } }
-  #page-games .section-lede { color: #f6f1ff; }
-  #page-games .board-card { background: #0b0716; border-color: #3b2a6a; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset, 0 10px 24px rgba(0, 0, 0, 0.4); }
-  #page-games .bc-title { color: #f6f1ff; }
-  #page-games .hb-side .n { color: #ffb347; text-shadow: 0 0 12px rgba(255, 179, 71, 0.7); font-variant-numeric: tabular-nums; }
-  #page-games .hb-side.lead .n { color: #39ff9e; text-shadow: 0 0 12px rgba(57, 255, 158, 0.7); }
-  #page-games .hb-side.claude.lead .n { color: #ff8a5b; text-shadow: 0 0 12px rgba(255, 138, 91, 0.7); }
-  #page-games .lb-row { background: #140d28; }
-  #page-games .game-card { background: var(--surface); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35); }
-  #page-games .game-head h2 { color: #fff; }
-  #page-games .big-btn { box-shadow: 0 0 18px var(--ac-soft), 0 6px 18px var(--ac-soft), 0 2px 0 rgba(0, 0, 0, 0.3); }
+  #page-games .section-lede { color: #ffcc00; font: 700 0.85rem var(--mono); text-transform: uppercase; letter-spacing: 0.08em; }
+  #page-games .boards { gap: 14px; margin-top: 22px; }
+  #page-games .board-card { background: #000; border: 0; border-radius: 0; box-shadow: 0 0 0 3px #fff, 0 0 0 6px #1a1c3a, 0 0 0 9px #ffcc00; margin: 6px; }
+  #page-games .bc-title { font: 700 0.78rem var(--mono); color: #ffcc00; text-transform: uppercase; letter-spacing: 0.06em; }
+  #page-games .bc-sub { font-family: var(--mono); color: #9aa3d6; } #page-games .bc-sub b { color: #ff4757; }
+  #page-games .hb-side .n { font-family: var(--mono); color: #fff; text-shadow: 3px 3px 0 #ff4757; }
+  #page-games .hb-side.lead .n { color: #ffcc00; text-shadow: 3px 3px 0 #ff4757; }
+  #page-games .hb-side.claude.lead .n { color: #ff4757; text-shadow: 3px 3px 0 #0d0e24; }
+  #page-games .hb-side small, #page-games .hb-vs { font-family: var(--mono); color: #9aa3d6; }
+  #page-games .lb-row { background: #0d0e24; border-radius: 0; font-family: var(--mono); } #page-games .lb-row .rank { color: #ffcc00; } #page-games .lb-row.me { box-shadow: inset 0 0 0 2px #ffcc00; }
+  #page-games .lb-row .stat { background: transparent; border: 1px solid #3a3f7a; border-radius: 0; }
+  #page-games .game-card { background: var(--surface); border: 0; border-radius: 0; box-shadow: 0 0 0 3px #fff, 0 0 0 6px #1a1c3a, 0 0 0 9px var(--ac); margin: 28px 8px 0; }
+  #page-games .game-card:has(.game-head[aria-expanded="true"]) { box-shadow: 0 0 0 3px #ffcc00, 0 0 0 6px #1a1c3a, 0 0 0 9px var(--ac); }
+  #page-games .game-head h2 { color: #fff; text-transform: uppercase; letter-spacing: 0.04em; font-size: 1rem; }
+  #page-games .game-head .k { border-radius: 0; font-family: var(--mono); }
+  #page-games .game-head .gi { border-radius: 0; }
+  #page-games .big-btn { border-radius: 0; box-shadow: 0 4px 0 #0d0e24; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }
+  #page-games .btn { border-radius: 0; }
+  #page-games input[type="text"], #page-games .name-grid button, #page-games .segc { border-radius: 0; }
+  @media (prefers-reduced-motion: reduce) { .arcade-hero .eyebrow .cursor, .arcade-hero .dice { animation: none; } }
 
   /* ---- Money: the register. Dollar green, a cash drawer readout, receipts. ---- */
   #page-money {

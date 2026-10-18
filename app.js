@@ -2218,6 +2218,8 @@
 
   // ---- Games: Mafia dealer ----
   var mafia = null, mafiaLoaded = false, mafiaSub = false, mafiaDraft = null, revealHold = false, modReveal = false, mafiaDealAnim = false;
+  var MAFIA_MOD = 'Drew';   // Drew always runs the game; nobody else gets the controls
+  function isMod() { return me === MAFIA_MOD; }
   var ROLE_ICON = { mafia: '\uD83D\uDD76\uFE0F', doctor: '\uD83E\uDE7A', detective: '\uD83D\uDD0D', villager: '\uD83C\uDF3E' };
   var ROLE_INFO = {
     mafia: { title: 'Mafia', side: 'mafia', desc: 'Each night, pick someone with the other Mafia to take out. By day, act innocent.' },
@@ -2239,11 +2241,16 @@
     if (!mafiaLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
     var g = mafia && mafia.status === 'dealt' ? mafia : null;
     if (!g) {
+      status.textContent = 'No game running';
+      if (!isMod()) {
+        body.innerHTML = '<div class="liv-locked"><div class="lock">\uD83D\uDD75\uFE0F</div><b>' + esc(MAFIA_MOD) + ' runs Mafia.</b><span>Your card shows up here the moment he deals.</span></div>' +
+          (mafia && mafia.status === 'ended' ? '<p class="info-sub" style="margin-top:10px">Last game ended ' + esc(agoText(mafia.ended_at)) + '.</p>' : '');
+        return;
+      }
       // lobby: set up a game
       var d = mafiaDraft || (mafiaDraft = mafiaDefaults());
-      status.textContent = 'No game running';
       var n = d.players.length + (d.hostPlays ? 1 : 0);
-      var html = '<p class="info-sub">You’d be the moderator. Pick who’s playing, deal, and everyone sees their own role on their own phone.</p>';
+      var html = '<p class="info-sub">You’re the moderator, always. Pick who’s playing, deal, and everyone sees their own role on their own phone.</p>';
       html += '<div class="name-grid">' + NAMES.map(function (nm) {
         var inGame = nm === me ? d.hostPlays : d.players.indexOf(nm) >= 0;
         return '<button type="button" data-player="' + esc(nm) + '" aria-pressed="' + inGame + '">' + esc(nm === me ? 'You' : nm) + '</button>';
@@ -2262,7 +2269,7 @@
     // a game is running
     var alive = g.players.filter(function (p) { return (g.dead || []).indexOf(p) < 0; });
     var mafiaAlive = alive.filter(function (p) { return g.roles[p] === 'mafia'; }).length, townAlive = alive.length - mafiaAlive;
-    status.textContent = g.players.length + ' playing · dealt by ' + (g.host === me ? 'you' : g.host) + ' ' + agoText(g.dealt_at);
+    status.textContent = g.players.length + ' playing · dealt ' + agoText(g.dealt_at);
     var html = '';
     var myRole = g.roles[me];
     if (myRole) {
@@ -2273,10 +2280,10 @@
         '<div class="role-face front ' + info.side + '"><div class="icon">' + ROLE_ICON[myRole] + '</div><div class="sub">You are</div><div class="role">' + esc(info.title) + '</div><div class="desc">' + esc(info.desc) + '</div>' +
         (mates.length ? '<div class="mates">Your Mafia: ' + esc(mates.join(', ')) + '</div>' : (myRole === 'mafia' ? '<div class="mates">You’re the only Mafia.</div>' : '')) + '</div></div></div>';
       if (dead) html += '<p class="info-sub" style="margin-top:8px">You’re out. No talking, no hints, no faces.</p>';
-    } else if (g.host !== me) {
-      html += '<p class="info-sub">You’re not in this one. ' + esc(g.host) + ' is running it.</p>';
+    } else if (!isMod()) {
+      html += '<p class="info-sub">You’re not in this one. ' + esc(MAFIA_MOD) + ' is running it.</p>';
     }
-    if (g.host === me) {
+    if (isMod()) {
       html += '<div class="cheat"><b>Moderator</b> · ' + mafiaAlive + ' Mafia and ' + townAlive + ' town still alive' +
         (mafiaAlive === 0 ? ' · <b>Town wins.</b>' : mafiaAlive >= townAlive ? ' · <b>Mafia wins.</b>' : '') + '</div>';
       html += '<div class="mafia-actions"><button type="button" class="btn" id="mod-toggle">' + (modReveal ? 'Hide roles' : 'Show all roles') + '</button><button type="button" class="btn" id="mafia-redeal">Re-deal</button><button type="button" class="btn" id="mafia-end">End game</button></div>';
@@ -2288,14 +2295,14 @@
       }
       html += '<div class="cheat"><b>Night:</b> everyone closes eyes → Mafia open, agree on a target, close → Doctor opens, points at a save, closes → Detective opens, points at someone, you nod or shake, closes.<br><b>Day:</b> announce who didn’t make it, argue, vote someone out. Repeat until the Mafia are gone or they outnumber the town.</div>';
     } else {
-      html += '<div class="cheat">' + alive.length + ' of ' + g.players.length + ' still alive' + ((g.dead || []).length ? ' · out: ' + esc((g.dead || []).join(', ')) : '') + '</div>';
-      html += '<div class="mafia-actions"><button type="button" class="linkbtn" id="mafia-takeover">Take over as moderator</button></div>';
+      html += '<div class="cheat">' + alive.length + ' of ' + g.players.length + ' still alive' + ((g.dead || []).length ? ' · out: ' + esc((g.dead || []).join(', ')) : '') + ' · ' + esc(MAFIA_MOD) + ' is moderating</div>';
     }
     body.innerHTML = html;
     mafiaDealAnim = false; modRevealAnim = false;
   }
   var modRevealAnim = false;
   function dealMafia() {
+    if (!isMod()) return;
     var d = mafiaDraft || mafiaDefaults();
     var players = d.players.slice(); if (d.hostPlays && players.indexOf(me) < 0) players.push(me);
     var n = players.length;
@@ -2313,6 +2320,7 @@
     store.setGame('mafia', doc).catch(function (e) { toast('Couldn’t deal: ' + ((e && e.message) || e)); });
   }
   $('mafia-body').addEventListener('click', function (e) {
+    if (!isMod()) return;   // only the moderator's taps do anything here; everyone else just holds their card
     var d = mafiaDraft || (mafiaDraft = mafiaDefaults());
     var pl = e.target.closest('[data-player]');
     if (pl) {
@@ -2333,11 +2341,6 @@
       return;
     }
     if (e.target.closest('#mod-toggle')) { modReveal = !modReveal; modRevealAnim = modReveal; renderMafia(); return; }
-    if (e.target.closest('#mafia-takeover')) {
-      var took = Object.assign({}, mafia, { host: me });
-      store.setGame('mafia', took).then(function () { mafia = took; renderMafia(); }).catch(function (err) { toast('Couldn’t take over: ' + ((err && err.message) || err)); });
-      return;
-    }
     var dd = e.target.closest('[data-dead]');
     if (dd) {
       var who = dd.getAttribute('data-dead'), dead = (mafia.dead || []).slice();
