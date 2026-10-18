@@ -2508,21 +2508,30 @@
     window.scrollTo(0, 0);
     if (skipIntro) { $('q-intro').hidden = true; $('q-wrap').hidden = false; showQuestion(false); return; }
     $('q-wrap').hidden = true; $('q-intro').hidden = false;
-    $('q-intro-sub').textContent = answeredCount() ? 'You\'ve answered ' + answeredCount() + ' of ' + QUESTIONS.length + '. Pick up where you left off.' : 'Six quick calls. Everyone sees the tally and who called what, so make them good.';
+    $('q-intro-sub').textContent = answeredCount() ? 'You\'ve got ' + answeredCount() + ' of ' + QUESTIONS.length + ' on your slip. Pick up where you left off.' : 'Six quick calls, no stake. Everyone sees the board and who bet what, so make them good.';
+    var slip0 = $('q-slip'); if (slip0) slip0.textContent = answeredCount() + '/' + QUESTIONS.length;
+    var il = $('q-intro-list'); if (il) il.innerHTML = QUESTIONS.map(function (qq) {   // each market with the current favourite's price
+      var t = tallyFor(qq), total = t.rows.reduce(function (a, r) { return a + r.n; }, 0), lead = t.rows[0];
+      return '<li><span>' + esc(qq.text) + (lead ? '<small>' + esc(lead.pick) + ' favoured</small>' : '<small>No action yet</small>') + '</span><b>' + oddsFor(lead ? lead.n : 0, total) + '</b></li>';
+    }).join('');
   }
   $('q-start').addEventListener('click', function () { $('q-intro').hidden = true; $('q-wrap').hidden = false; showQuestion(true); });
   $('q-intro-later').addEventListener('click', function () { lsSet('cabin-haul-pred-later-' + me, '1'); showScreen(); });
   var picking = false;
   function showQuestion(animate) {
     var q = QUESTIONS[qIndex], mine = myVotes()[q.id] || null;
-    $('q-progress').textContent = 'Prediction ' + (qIndex + 1) + ' of ' + QUESTIONS.length;
+    $('q-progress').textContent = 'Market ' + (qIndex + 1) + ' of ' + QUESTIONS.length;
     $('q-text').textContent = q.text;
-    $('q-current').textContent = mine ? 'Your pick: ' + mine + '. Tap another to change it.' : (q.type === 'couple' ? 'Tap a couple.' : 'Tap a name. Yes, you can pick yourself.');
+    $('q-current').textContent = mine ? 'On your slip: ' + mine + '. Tap another to swap it.' : (q.type === 'couple' ? 'Tap a couple to add them to your slip.' : 'Tap a name to add them to your slip. Yes, you can bet on yourself.');
+    var bar = $('q-progress-bar'); if (bar) bar.innerHTML = QUESTIONS.map(function (qq, k) { return '<i class="' + (k < qIndex ? 'done' : k === qIndex ? 'now' : '') + '"></i>'; }).join('');
+    var slip = $('q-slip'); if (slip) slip.textContent = answeredCount() + '/' + QUESTIONS.length;
+    var t = tallyFor(q), total = t.rows.reduce(function (a, r) { return a + r.n; }, 0), byPick = {};
+    t.rows.forEach(function (r) { byPick[r.pick] = r.n; });
     var wrap = $('q-wrap');
     if (animate) { wrap.classList.remove('slide'); void wrap.offsetWidth; wrap.classList.add('slide'); }
     var names = q.type === 'couple' ? COUPLES : NAMES.slice().sort();
     $('q-grid').innerHTML = names.map(function (n) {
-      return '<button type="button" class="pickbtn" data-pick="' + esc(n) + '" aria-pressed="' + (mine === n) + '">' + esc(n) + (mine === n ? '<span class="tick">\u2713</span>' : '') + '</button>';
+      return '<button type="button" class="pickbtn" data-pick="' + esc(n) + '" aria-pressed="' + (mine === n) + '"><span class="nm">' + esc(n) + '</span><span class="odds">' + oddsFor(byPick[n] || 0, total) + '</span>' + (mine === n ? '<span class="tick">\u2713 On slip</span>' : '') + '</button>';
     }).join('');
     picking = false;
   }
@@ -2530,13 +2539,18 @@
     var b = e.target.closest('[data-pick]'); if (!b || picking) return;
     picking = true;
     var q = QUESTIONS[qIndex], pick = b.getAttribute('data-pick');
-    Array.prototype.forEach.call($('q-grid').children, function (el) { el.setAttribute('aria-pressed', String(el === b)); });
+    Array.prototype.forEach.call($('q-grid').children, function (el) {
+      el.setAttribute('aria-pressed', String(el === b));
+      var tk = el.querySelector('.tick'); if (tk) tk.remove();
+    });
+    b.insertAdjacentHTML('beforeend', '<span class="tick">\u2713 On slip</span>'); buzz(6);
     store.vote(q.id, me, pick).catch(function (e2) { toast('That pick didn\'t save: ' + ((e2 && e2.message) || e2)); });
     votes = votes.filter(function (v) { return !(v.voter === me && v.question_id === q.id); });
     votes.push({ question_id: q.id, voter: me, pick: pick, updated_at: new Date().toISOString() });
+    var slipNow = $('q-slip'); if (slipNow) slipNow.textContent = answeredCount() + '/' + QUESTIONS.length;
     setTimeout(function () {
       if (qIndex + 1 < QUESTIONS.length) { qIndex++; showQuestion(true); }
-      else { toast('Picks are in. You can change them any time from here.'); tab = 'home'; showScreen(); }
+      else { toast('Slip placed. You can change a bet any time from the board.'); tab = 'home'; showScreen(); }
     }, 260);
   });
   $('q-later').addEventListener('click', function () { lsSet('cabin-haul-pred-later-' + me, '1'); showScreen(); });

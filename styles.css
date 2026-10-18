@@ -647,6 +647,45 @@
   body.tab-home .sheet input[type="text"] { background: #141414; color: #fff; border-color: #313131; }
   @media (prefers-reduced-motion: reduce) { .dk-top .live i { animation: none; } }
 
+  /* ---- Predictions questionnaire: the sportsbook's bet slip, same board as the Predictions tab ---- */
+  #predict.dk-page {
+    --dkg: #53d337; --dkg-ink: #06200a; --surface: #1f1f1f; --bg: #141414; --fg: #fff; --muted: #9b9b9b; --line: #313131; --pine: #53d337; --pine-soft: rgba(83, 211, 55, 0.14); --pine-ink: #06200a; --ember: #ffb347; --ember-soft: rgba(255, 179, 71, 0.14);
+    margin: 10px -16px calc(-32px - env(safe-area-inset-bottom, 0px)); padding: 12px 16px calc(40px + env(safe-area-inset-bottom, 0px)); min-height: calc(100dvh - 40px); border-radius: 22px 22px 0 0;
+    background: #0f0f0f; color: var(--fg);
+  }
+  #predict .dk-slipbtn.static { cursor: default; box-shadow: none; }
+  #predict .intro { padding-top: 0; }
+  #predict .intro .dk-promo { margin-top: 14px; }
+  #predict .intro .eyebrow { margin-top: 20px; color: var(--dkg); }
+  #predict h1 { color: #fff; font-size: 1.7rem; margin-top: 6px; }
+  #predict .intro h1 { font-size: 2rem; }
+  #predict .intro-list { margin: 16px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+  #predict .intro-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); font: 600 0.88rem var(--body); color: #fff; }
+  #predict .intro-list li span { min-width: 0; }
+  #predict .intro-list li small { display: block; font: 500 0.74rem var(--body); color: var(--muted); margin-top: 1px; }
+  #predict .intro-list li b { flex: none; padding: 5px 9px; border-radius: 6px; background: #2c2c2c; border: 1px solid #3a3a3a; color: var(--dkg); font: 800 0.8rem var(--body); font-variant-numeric: tabular-nums; }
+  #predict .intro-actions .addbtn { background: var(--dkg); color: var(--dkg-ink); border-radius: 8px; box-shadow: 0 6px 16px rgba(83, 211, 55, 0.3); }
+  #predict .linkbtn { color: var(--dkg); }
+  #predict .lede { color: var(--muted); }
+  .q-prog { display: flex; gap: 4px; margin-top: 16px; }
+  .q-prog i { flex: 1; height: 4px; border-radius: 2px; background: #2c2c2c; }
+  .q-prog i.done { background: var(--dkg); } .q-prog i.now { background: #fff; }
+  .q-market { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+  .q-market .eyebrow { flex: 1; color: var(--muted); margin: 0; }
+  .q-market .live { display: inline-flex; align-items: center; gap: 5px; font: 800 0.62rem var(--body); letter-spacing: 0.1em; text-transform: uppercase; color: #ff3b30; }
+  .q-market .live i { width: 7px; height: 7px; border-radius: 50%; background: #ff3b30; animation: livepulse 1.4s ease-out infinite; }
+  .q-market .sgp { font: 800 0.62rem var(--body); letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 6px; border-radius: 4px; background: #2f2f2f; color: #cfcfcf; }
+  #predict .pickgrid { gap: 8px; margin-top: 16px; }
+  #predict .pickbtn { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px; text-align: left; padding: 12px 10px 12px 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); color: #fff; font: 600 0.95rem var(--body); overflow: hidden; }
+  #predict .pickbtn .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #predict .pickbtn .odds { flex: none; padding: 6px 7px; border-radius: 6px; background: #2c2c2c; border: 1px solid #3a3a3a; color: var(--dkg); font: 800 0.78rem var(--body); font-variant-numeric: tabular-nums; }
+  #predict .pickbtn .tick { position: static; grid-column: 1 / -1; font: 800 0.62rem var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--dkg-ink); opacity: 1; margin-top: 2px; }
+  #predict .pickbtn[aria-pressed="true"] { background: var(--dkg); border-color: var(--dkg); color: var(--dkg-ink); }
+  #predict .pickbtn[aria-pressed="true"] .odds { background: var(--dkg-ink); border-color: var(--dkg-ink); color: var(--dkg); }
+  #predict .q-foot .linkbtn { color: var(--muted); }
+  body.picking:has(#predict:not([hidden])) { background: #0f0f0f; }
+  body.picking:has(#predict:not([hidden])) .toast { background: var(--dkg); color: #06200a; }
+
   /* ---- Bringing: kraft paper, sticky notes, a highlighter stroke. ---- */
   #page-bringing {
     --surface: #fffdf7; --bg: #f4ecda; --fg: #2b2218; --muted: #6f6353; --line: #dccbab; --pine: #1f6f50; --pine-soft: #dcebe1; --pine-ink: #fff; --ember: #c0392b; --ember-soft: #f8ddd8;

@@ -25,27 +25,29 @@
     <div class="golf-post" id="golf-post" hidden></div>
   </div>
 
-  <!-- Screen 1.5: predictions questionnaire -->
-  <div id="predict" hidden>
+  <!-- Screen 1.5: predictions questionnaire, styled as the sportsbook's bet slip -->
+  <div id="predict" class="dk-page" hidden>
+    <div class="dk-head">
+      <div class="dk-brand"><span class="crown" aria-hidden="true"></span><span class="bn">Cabin<b>Kings</b></span><span class="bs">Sportsbook</span></div>
+      <span class="dk-slipbtn static"><span class="dk-slipico" aria-hidden="true"></span>Bet slip <b id="q-slip">0/6</b></span>
+    </div>
     <div id="q-intro" class="intro" hidden>
-      <div class="eyebrow">Before you go in</div>
-      <h1>Call your shots for the weekend</h1>
-      <p class="lede" id="q-intro-sub"></p>
-      <ul class="intro-list">
-        <li>Who passes out somewhere that isn't a bed</li>
-        <li>Who's most fucked up</li>
-        <li>Who gets stuck in I-70 traffic the longest</li>
-        <li>First into the hot tub</li>
-        <li>Who starts the shots</li>
-        <li>Who makes the best cocktail</li>
-      </ul>
+      <div class="dk-tabs" aria-hidden="true"><span class="on">Bet slip</span><span>Open bets</span><span>Settled</span></div>
+      <div class="dk-promo">
+        <div class="dk-promo-t">Before you go in</div>
+        <div class="dk-promo-s" id="q-intro-sub"></div>
+      </div>
+      <div class="eyebrow">Six markets on the board</div>
+      <h1>Call your shots<br>for the weekend</h1>
+      <ul class="intro-list" id="q-intro-list"></ul>
       <div class="intro-actions">
-        <button type="button" class="addbtn" id="q-start">Make my predictions</button>
+        <button type="button" class="addbtn" id="q-start">Build my slip</button>
         <button type="button" class="linkbtn" id="q-intro-later">Later</button>
       </div>
     </div>
     <div id="q-wrap" class="slide">
-      <div class="eyebrow" id="q-progress">Prediction 1 of 6</div>
+      <div class="q-prog" id="q-progress-bar" aria-hidden="true"></div>
+      <div class="q-market"><span class="live"><i></i>Live</span><span class="eyebrow" id="q-progress">Market 1 of 6</span><span class="sgp">SGP</span></div>
       <h1 id="q-text"></h1>
       <p class="lede" id="q-current"></p>
       <div class="pickgrid" id="q-grid"></div>
