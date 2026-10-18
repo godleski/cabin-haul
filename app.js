@@ -1947,7 +1947,9 @@
       body.innerHTML = '<div class="liv-locked"><div class="lock">\uD83D\uDD12</div><b>Liv’s eyes only.</b></div>';
       return;
     }
-    var html = '<p class="info-sub">Liv wants to really get to know everyone. One question at a time, no repeats, nowhere to hide. Only Liv and Mitch can read these; the rest just get asked.</p>';
+    var html = me === 'Liv'
+      ? '<p class="info-sub"><b>Hey Liv.</b> Mitch made this for you: 100 deep, uncomfortable questions to ask people, one at a time, no repeats. Only you and Mitch can see them. Use responsibly.</p>'
+      : '<p class="info-sub">Liv\u2019s stash of deep, uncomfortable questions. One at a time, no repeats, nowhere to hide. Only Liv and Mitch can read these; the rest just get asked.</p>';
     html += '<div class="legend"><span class="h1"><i></i>Deep · gets you thinking</span><span class="h2"><i></i>Uncomfortable · gets you sweating</span><span class="h3"><i></i>No mercy · gets you divorced</span></div>';
     if (cur) {
       var an = livAnim || {}; livAnim = null;
