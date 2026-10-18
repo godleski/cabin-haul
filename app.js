@@ -2601,6 +2601,15 @@
   var HIBACHI_Q = 'hibachi';
   var HIBACHI_MENU = [
     { id: 'plate', title: 'Your plate', hint: 'Pick one. Every plate comes with fried rice, saut\u00e9ed vegetables and yum-yum and ginger sauce.', pick: 1, options: [
+      { sec: 'Meat choice' },
+      { id: 's-lob2', name: '2 Lobster Tails', price: 60 },
+      { id: 's-filet', name: 'Filet Mignon', price: 50 },
+      { id: 's-ny', name: 'New York Strip Steak', price: 45 },
+      { id: 's-salmon', name: 'Salmon', price: 40 },
+      { id: 's-scallops', name: 'Scallops', price: 40 },
+      { id: 's-shrimp', name: 'Shrimp', price: 40 },
+      { id: 's-chicken', name: 'Chicken', price: 35 },
+      { id: 's-tofu', name: 'Tofu', price: 30 },
       { sec: 'Combination plates' },
       { id: 'c-lss', name: 'Lobster, Scallops & Shrimp', price: 65 },
       { id: 'c-fl', name: 'Filet Mignon & Lobster', price: 65 },
@@ -2610,25 +2619,7 @@
       { id: 'c-nsc', name: 'NY Strip, Chicken & Shrimp', price: 60 },
       { id: 'c-nsh', name: 'NY Strip & Shrimp', price: 50 },
       { id: 'c-nc', name: 'NY Strip & Chicken', price: 50 },
-      { id: 'c-csh', name: 'Chicken & Shrimp', price: 45 },
-      { sec: 'Small plates' },
-      { id: 's-lob2', name: '2 Lobster Tails', price: 60 },
-      { id: 's-filet', name: 'Filet Mignon', price: 50 },
-      { id: 's-ny', name: 'New York Strip Steak', price: 45 },
-      { id: 's-salmon', name: 'Salmon', price: 40 },
-      { id: 's-scallops', name: 'Scallops', price: 40 },
-      { id: 's-shrimp', name: 'Shrimp', price: 40 },
-      { id: 's-chicken', name: 'Chicken', price: 35 },
-      { id: 's-tofu', name: 'Tofu', price: 30 }
-    ] },
-    { id: 'extra', title: '\u00c0 la carte', hint: 'Optional. Add a protein on top of your plate.', pick: 0, options: [
-      { id: 'a-lob', name: 'Lobster Tail', price: 30 },
-      { id: 'a-filet', name: 'Filet Mignon', price: 30 },
-      { id: 'a-ny', name: 'New York Strip Steak', price: 25 },
-      { id: 'a-chicken', name: 'Chicken', price: 25 },
-      { id: 'a-salmon', name: 'Salmon', price: 20 },
-      { id: 'a-scallops', name: 'Scallops', price: 20 },
-      { id: 'a-shrimp', name: 'Shrimp', price: 15 }
+      { id: 'c-csh', name: 'Chicken & Shrimp', price: 45 }
     ] },
     { id: 'sides', title: 'Extra sides', hint: 'Optional. Your plate already has rice and veggies; these are extra portions.', pick: 0, options: [
       { id: 'side-rice', name: 'Fried Rice', price: 8 },
@@ -2654,7 +2645,7 @@
     HIBACHI_MENU.forEach(function (g) {
       (order.picks[g.id] || []).forEach(function (oid) {
         var o = hibOption(g.id, oid); if (!o) return;
-        lines.push(g.id === 'plate' ? o.name + ' plate' : g.id === 'extra' ? o.name + ' (a la carte)' : o.name + ' (side)');
+        lines.push(g.id === 'plate' ? o.name + ' plate' : o.name + ' (side)');
       });
     });
     return lines;
