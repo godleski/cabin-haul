@@ -1680,6 +1680,22 @@
       for (var i = 0; i < pulses.length; i += 2) { if (i === 0) hapticTick(); else setTimeout(hapticTick, t); t += (pulses[i] || 0) + (pulses[i + 1] || 0); }
     } catch (e) { /* ignore */ }
   }
+  // Drop-ins: anyone not on the roster can be added to a game by name. They live only in that game's
+  // draft and doc, never in NAMES, so the rest of the app doesn't know they exist.
+  function guestsOf(d) { return d.guests || []; }
+  function addGuest(d, raw) {
+    var nm = String(raw || '').replace(/\s+/g, ' ').trim().slice(0, 20);
+    if (!nm) return null;
+    var taken = NAMES.concat(guestsOf(d)).some(function (x) { return x.toLowerCase() === nm.toLowerCase(); });
+    if (taken) { toast(nm + ' is already in.'); return null; }
+    d.guests = guestsOf(d).concat([nm]); d.players.push(nm); return nm;
+  }
+  function dropGuest(d, nm) { d.guests = guestsOf(d).filter(function (x) { return x !== nm; }); d.players = d.players.filter(function (x) { return x !== nm; }); }
+  function guestRowHtml(d, id) {
+    return '<div class="guests">' + guestsOf(d).map(function (g) {
+      return '<span class="guest">' + esc(g) + '<button type="button" data-drop-guest="' + esc(g) + '" aria-label="Remove ' + esc(g) + '">\u00d7</button></span>';
+    }).join('') + '<form class="guest-add" id="' + id + '"><input type="text" maxlength="20" placeholder="Add someone who\u2019s stopping by" autocomplete="off" autocapitalize="words"><button type="submit" class="btn">Add</button></form></div>';
+  }
   function sameDoc(a, b) { return JSON.stringify(a || null) === JSON.stringify(b || null); }
   // slot-machine a name into an element: cycles through the pool, slows down, lands on the real one
   function spinName(el, pool, final, done) {
@@ -1706,7 +1722,7 @@
     teamsSub = true;
     store.game('teams', function (doc) { var same = teamsLoaded && sameDoc(doc, teams); teams = doc; teamsLoaded = true; if (!same) renderTeams(); });
   }
-  function teamsDefaults() { return { players: NAMES.slice(), count: 2, split: true }; }
+  function teamsDefaults() { return { players: NAMES.slice(), count: 2, split: true, guests: [] }; }
   function partnerOf(name) {
     var p = PARTIES.filter(function (x) { return x.indexOf(name) >= 0; })[0];
     return p ? (p.filter(function (n) { return n !== name; })[0] || null) : null;
@@ -1746,13 +1762,14 @@
       return;
     }
     if (!t || teamsEdit) {
-      var d = teamsDraft || (teamsDraft = t ? { players: t.players.slice(), count: t.count, split: !!t.split } : teamsDefaults());
+      var d = teamsDraft || (teamsDraft = t ? { players: t.players.slice(), count: t.count, split: !!t.split, guests: (t.guests || []).slice() } : teamsDefaults());
       var n = d.players.length;
       status.textContent = t ? 'Changing who’s in' : 'No teams yet';
       html += '<p class="info-sub">Pick who’s in, how many teams, and let the phone decide. Everyone sees the same teams.</p>';
-      html += '<div class="name-grid">' + NAMES.map(function (nm) {
-        return '<button type="button" data-player="' + esc(nm) + '" aria-pressed="' + (d.players.indexOf(nm) >= 0) + '">' + esc(nm) + '</button>';
+      html += '<div class="name-grid">' + NAMES.concat(guestsOf(d)).map(function (nm) {
+        return '<button type="button" data-player="' + esc(nm) + '" aria-pressed="' + (d.players.indexOf(nm) >= 0) + '"' + (guestsOf(d).indexOf(nm) >= 0 ? ' class="is-guest"' : '') + '>' + esc(nm) + '</button>';
       }).join('') + '</div>';
+      html += guestRowHtml(d, 'teams-guest');
       var cnt = Math.min(d.count, Math.max(2, n)), sizes = n >= cnt ? teamSizes(n, cnt).join(' / ') : '';
       html += '<div class="mafia-opts">' +
         '<div class="opt-row"><span>Teams <span class="info-sub">(' + n + ' in' + (sizes ? ' → ' + sizes : '') + ')</span></span><span class="stepper"><button type="button" data-step="-1">−</button><b>' + d.count + '</b><button type="button" data-step="1">+</button></span></div>' +
@@ -1772,10 +1789,10 @@
     html += '<div class="mafia-actions"><button type="button" class="big-btn" id="teams-shuffle">\uD83C\uDFB2 Roll again</button><button type="button" class="btn" id="teams-edit">Change who’s in</button><button type="button" class="btn" id="teams-clear">Clear</button></div>';
     body.innerHTML = html;
   }
-  function saveTeams(players, count, split) {
+  function saveTeams(players, count, split, guests) {
     count = Math.max(2, Math.min(count, players.length));
     if (players.length < 2) { toast('Need at least two people.'); return; }
-    var doc = { status: 'set', by: me, players: players, count: count, split: !!split, teams: makeTeams(players, count, split), made_at: new Date().toISOString() };
+    var doc = { status: 'set', by: me, players: players, count: count, split: !!split, guests: guests || [], teams: makeTeams(players, count, split), made_at: new Date().toISOString() };
     if (teamsScramble) return;
     teamsDraft = null; teamsEdit = false;
     var t0 = performance.now();
@@ -1789,6 +1806,12 @@
     };
     tick();
   }
+  $('teams-body').addEventListener('submit', function (e) {
+    if (e.target.id !== 'teams-guest') return;
+    e.preventDefault();
+    var d = teamsDraft || (teamsDraft = teamsDefaults()), inp = e.target.querySelector('input');
+    if (addGuest(d, inp.value)) { renderTeams(); var again = document.querySelector('#teams-guest input'); if (again) again.focus(); buzz(6); }
+  });
   $('teams-body').addEventListener('click', function (e) {
     var d = teamsDraft || (teamsDraft = teamsDefaults());
     var pl = e.target.closest('[data-player]');
@@ -1801,9 +1824,10 @@
     if (st) { d.count = Math.max(2, Math.min(6, d.count + (+st.getAttribute('data-step')))); renderTeams(); return; }
     var op = e.target.closest('[data-opt]');
     if (op) { var key = op.getAttribute('data-opt'); d[key] = !d[key]; renderTeams(); return; }
-    if (e.target.closest('#teams-make')) { saveTeams(d.players.slice(), d.count, d.split); return; }
+    var dg = e.target.closest('[data-drop-guest]'); if (dg) { dropGuest(d, dg.getAttribute('data-drop-guest')); renderTeams(); return; }
+    if (e.target.closest('#teams-make')) { saveTeams(d.players.slice(), d.count, d.split, guestsOf(d)); return; }
     if (e.target.closest('#teams-cancel')) { teamsEdit = false; teamsDraft = null; renderTeams(); return; }
-    if (e.target.closest('#teams-shuffle') && teams) { saveTeams(teams.players.slice(), teams.count, teams.split); return; }
+    if (e.target.closest('#teams-shuffle') && teams) { saveTeams(teams.players.slice(), teams.count, teams.split, teams.guests || []); return; }
     if (e.target.closest('#teams-edit') && teams) { teamsEdit = true; teamsDraft = null; renderTeams(); return; }
     if (e.target.closest('#teams-clear') && teams) {
       var cleared = { status: 'cleared', by: me, cleared_at: new Date().toISOString() };
@@ -2240,7 +2264,7 @@
   }
   function mafiaDefaults() {
     var players = NAMES.filter(function (n) { return n !== me; });
-    return { players: players, mafiaCount: Math.max(1, Math.round(players.length / 4)), doctor: true, detective: true, hostPlays: false };
+    return { players: players, mafiaCount: Math.max(1, Math.round(players.length / 4)), doctor: true, detective: true, hostPlays: false, guests: [] };
   }
   function renderMafia() {
     var body = $('mafia-body'), status = $('mafia-status'); if (!body) return;
@@ -2257,10 +2281,11 @@
       var d = mafiaDraft || (mafiaDraft = mafiaDefaults());
       var n = d.players.length + (d.hostPlays ? 1 : 0);
       var html = '<p class="info-sub">You’re the moderator, always. Pick who’s playing, deal, and everyone sees their own role on their own phone.</p>';
-      html += '<div class="name-grid">' + NAMES.map(function (nm) {
+      html += '<div class="name-grid">' + NAMES.concat(guestsOf(d)).map(function (nm) {
         var inGame = nm === me ? d.hostPlays : d.players.indexOf(nm) >= 0;
-        return '<button type="button" data-player="' + esc(nm) + '" aria-pressed="' + inGame + '">' + esc(nm === me ? 'You' : nm) + '</button>';
+        return '<button type="button" data-player="' + esc(nm) + '" aria-pressed="' + inGame + '"' + (guestsOf(d).indexOf(nm) >= 0 ? ' class="is-guest"' : '') + '>' + esc(nm === me ? 'You' : nm) + '</button>';
       }).join('') + '</div>';
+      html += guestRowHtml(d, 'mafia-guest');
       html += '<div class="mafia-opts">' +
         '<div class="opt-row"><span>Mafia <span class="info-sub">(' + n + ' playing)</span></span><span class="stepper"><button type="button" data-step="-1">−</button><b>' + d.mafiaCount + '</b><button type="button" data-step="1">+</button></span></div>' +
         '<div class="opt-row"><span>Doctor</span><button type="button" class="toggle" data-opt="doctor" aria-pressed="' + d.doctor + '" aria-label="Doctor"></button></div>' +
@@ -2321,13 +2346,20 @@
     while (deck.length < n) deck.push('villager');
     for (var j = deck.length - 1; j > 0; j--) { var k = Math.floor(Math.random() * (j + 1)); var t = deck[j]; deck[j] = deck[k]; deck[k] = t; }
     var roles = {}; players.forEach(function (p, idx) { roles[p] = deck[idx]; });
-    var doc = { status: 'dealt', host: me, players: players, roles: roles, dead: [], dealt_at: new Date().toISOString(), mafia_count: mafiaCount };
+    var doc = { status: 'dealt', host: me, players: players, roles: roles, dead: [], dealt_at: new Date().toISOString(), mafia_count: mafiaCount, guests: guestsOf(d) };
     mafia = doc; modReveal = false; mafiaDealAnim = true; renderMafia(); buzz([20, 50, 20, 50, 20]); toast('Dealt. Everyone can check their phone.');
     store.setGame('mafia', doc).catch(function (e) { toast('Couldn’t deal: ' + ((e && e.message) || e)); });
   }
+  $('mafia-body').addEventListener('submit', function (e) {
+    if (e.target.id !== 'mafia-guest' || !isMod()) return;
+    e.preventDefault();
+    var d = mafiaDraft || (mafiaDraft = mafiaDefaults()), inp = e.target.querySelector('input');
+    if (addGuest(d, inp.value)) { renderMafia(); var again = document.querySelector('#mafia-guest input'); if (again) again.focus(); buzz(6); }
+  });
   $('mafia-body').addEventListener('click', function (e) {
     if (!isMod()) return;   // only the moderator's taps do anything here; everyone else just holds their card
     var d = mafiaDraft || (mafiaDraft = mafiaDefaults());
+    var dg = e.target.closest('[data-drop-guest]'); if (dg) { dropGuest(d, dg.getAttribute('data-drop-guest')); renderMafia(); return; }
     var pl = e.target.closest('[data-player]');
     if (pl) {
       var nm = pl.getAttribute('data-player');
@@ -2340,7 +2372,7 @@
     var op = e.target.closest('[data-opt]');
     if (op) { var key = op.getAttribute('data-opt'); d[key] = !d[key]; renderMafia(); return; }
     if (e.target.closest('#mafia-deal')) { dealMafia(); return; }
-    if (e.target.closest('#mafia-redeal')) { mafiaDraft = { players: mafia.players.filter(function (p) { return p !== me; }), mafiaCount: mafia.mafia_count || 3, doctor: Object.keys(mafia.roles).some(function (p) { return mafia.roles[p] === 'doctor'; }), detective: Object.keys(mafia.roles).some(function (p) { return mafia.roles[p] === 'detective'; }), hostPlays: mafia.players.indexOf(me) >= 0 }; dealMafia(); return; }
+    if (e.target.closest('#mafia-redeal')) { mafiaDraft = { guests: (mafia.guests || []).slice(), players: mafia.players.filter(function (p) { return p !== me; }), mafiaCount: mafia.mafia_count || 3, doctor: Object.keys(mafia.roles).some(function (p) { return mafia.roles[p] === 'doctor'; }), detective: Object.keys(mafia.roles).some(function (p) { return mafia.roles[p] === 'detective'; }), hostPlays: mafia.players.indexOf(me) >= 0 }; dealMafia(); return; }
     if (e.target.closest('#mafia-end')) {
       var ended = Object.assign({}, mafia, { status: 'ended', ended_at: new Date().toISOString() });
       store.setGame('mafia', ended).then(function () { mafia = ended; mafiaDraft = null; renderMafia(); }).catch(function (err) { toast('Couldn’t end it: ' + ((err && err.message) || err)); });
