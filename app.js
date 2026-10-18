@@ -1945,7 +1945,7 @@
     var cur = liv && typeof liv.q === 'number' ? LIV_Q[liv.q] : null;
     status.textContent = seen.length ? seen.length + ' of ' + LIV_Q.length + ' asked' : LIV_Q.length + ' questions';
     if (!livAllowed()) {
-      body.innerHTML = '<div class="liv-locked"><div class="lock">\uD83D\uDD12</div><b>Liv’s eyes only.</b><span>She has the questions. You get asked them. ' + (cur ? 'One is live right now' + (liv.victim === me ? ', and it’s yours. Good luck.' : ', and ' + esc(liv.victim) + ' is in the chair.') : 'Nothing drawn yet.') + '</span></div>';
+      body.innerHTML = '<div class="liv-locked"><div class="lock">\uD83D\uDD12</div><b>Liv’s eyes only.</b></div>';
       return;
     }
     var html = '<p class="info-sub">Liv wants to really get to know everyone. One question at a time, no repeats, nowhere to hide. Only Liv and Mitch can read these; the rest just get asked.</p>';
