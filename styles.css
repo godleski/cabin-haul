@@ -543,6 +543,149 @@
   .steps b, .rules b, .info-sub b { color: var(--fg); font-weight: 700; }
   .rules { margin: 6px 0 0; padding-left: 18px; font-size: 0.9rem; color: var(--muted); display: grid; gap: 5px; }
   .fine { margin: 10px 0 0; font-size: 0.76rem; color: var(--muted); }
+  /* the money form and the questionnaire button lost their base styles in the Bringing redesign; restored here */
+  .money-form { margin-top: 12px; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; color: var(--fg); }
+  .money-form .row { display: flex; gap: 8px; }
+  .money-form .row2 { display: flex; gap: 10px; margin-top: 12px; }
+  .addbtn { border: 0; background: var(--pine); color: var(--pine-ink); font: 800 0.95rem var(--display); padding: 12px 18px; border-radius: 999px; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15); }
+  .addbtn:disabled { opacity: 0.5; }
+  /* ===== Every tab is its own world. Each page sets the shared tokens for its cards and gets a hero on top. ===== */
+  .page.themed { margin: 10px -16px calc(-100px - env(safe-area-inset-bottom, 0px)); padding: 22px 16px calc(120px + env(safe-area-inset-bottom, 0px)); min-height: calc(100dvh - 40px); border-radius: 22px 22px 0 0; }
+  .hero { position: relative; }
+  .hero .eyebrow { font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 700; }
+  .hero h1 { font: 800 clamp(2.5rem, 11.5vw, 3.3rem)/0.92 var(--display); letter-spacing: -0.03em; text-transform: uppercase; margin-top: 6px; }
+  .hero .lede { margin-top: 14px; max-width: 38ch; }
+  .page.themed .page-h1 { display: none; }
+
+  /* ---- Cabin: alpine night. Stars, a ridge line, a lodge with a lit window and chimney smoke. ---- */
+  #page-cabin {
+    --surface: #fbf6ea; --bg: #f1e9d6; --fg: #1b2a22; --muted: #5e6b62; --line: #e0d6c0; --pine: #2d6a4f; --pine-soft: #e3efe8; --pine-ink: #fff; --ember: #c8641e; --ember-soft: #fbe9db;
+    background: linear-gradient(180deg, #0b1f18 0%, #12332a 45%, #1a4634 100%); color: #f3efe3;
+  }
+  .cabin-hero { padding-bottom: 86px; padding-right: 110px; }
+  .cabin-hero .eyebrow { color: #a9d6b8; }
+  .cabin-hero h1 { color: #fbf6ea; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35); }
+  .cabin-hero .lede { color: rgba(243, 239, 227, 0.82); }
+  .cabin-hero .sky { position: absolute; inset: 0; pointer-events: none; }
+  .cabin-hero .star { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff; box-shadow: 0 0 6px #fff; animation: twinkle 2.6s ease-in-out infinite; }
+  .cabin-hero .moon { position: absolute; right: 18px; top: -2px; width: 34px; height: 34px; border-radius: 50%; background: #f7f0d8; box-shadow: inset -9px -5px 0 0 #12332a, 0 0 18px rgba(247, 240, 216, 0.45); }
+  .cabin-hero .ridge { position: absolute; left: -16px; right: -16px; bottom: 0; width: calc(100% + 32px); height: 90px; }
+  .cabin-hero .ridge .far { fill: #163c2f; } .cabin-hero .ridge .near { fill: #0f2a21; }
+  .cabin-hero .lodge { position: absolute; right: 26px; bottom: 16px; width: 54px; height: 44px; }
+  .cabin-hero .lodge .roof { position: absolute; left: -6px; bottom: 22px; width: 0; height: 0; border-left: 33px solid transparent; border-right: 33px solid transparent; border-bottom: 22px solid #4a2d1c; }
+  .cabin-hero .lodge .wall { position: absolute; left: 0; bottom: 0; width: 54px; height: 24px; background: #5e3a24; border-radius: 0 0 3px 3px; }
+  .cabin-hero .lodge .win { position: absolute; left: 20px; top: 6px; width: 14px; height: 12px; border-radius: 2px; background: #ffd27a; box-shadow: 0 0 14px 4px rgba(255, 210, 122, 0.55); animation: windowglow 2.4s ease-in-out infinite alternate; }
+  .cabin-hero .lodge .smoke { position: absolute; left: 38px; bottom: 44px; width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, 0.45); animation: smoke 3.2s ease-out infinite; }
+  .cabin-hero .lodge .smoke.s2 { animation-delay: 1.6s; }
+  @keyframes twinkle { 0%, 100% { opacity: 0.35; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
+  @keyframes windowglow { from { box-shadow: 0 0 10px 3px rgba(255, 210, 122, 0.4); } to { box-shadow: 0 0 18px 6px rgba(255, 210, 122, 0.7); } }
+  @keyframes smoke { 0% { opacity: 0; transform: translate(0, 0) scale(0.6); } 20% { opacity: 0.7; } 100% { opacity: 0; transform: translate(10px, -36px) scale(2); } }
+  #page-cabin .carousel { margin-top: 0; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4); }
+  #page-cabin .dots span { background: rgba(255, 255, 255, 0.3); } #page-cabin .dots span.on { background: #fbf6ea; }
+  #page-cabin .dates, #page-cabin .info-card { color: var(--fg); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25); }
+  #page-cabin .key-card { background: #fff7dc; border-color: #e6c35c; }
+  #page-cabin .key-card .info-title { color: #8a5a00; }
+  #page-cabin .note-card { background: #fde6d2; }
+
+  /* ---- Predictions: the sportsbook. Midnight board, gold leaders, a live odds ticker. ---- */
+  #page-home {
+    --surface: #1a2440; --bg: #121a30; --fg: #f2efe4; --muted: #9ba6bd; --line: #2d3c5e; --pine: #f5c542; --pine-soft: rgba(245, 197, 66, 0.16); --pine-ink: #1a1400; --ember: #ff9a62; --ember-soft: rgba(255, 154, 98, 0.16);
+    background: radial-gradient(circle at 80% 0%, rgba(245, 197, 66, 0.18), transparent 38%), linear-gradient(180deg, #0c1222 0%, #101a30 50%, #0d1528 100%); color: var(--fg);
+  }
+  .odds-hero .eyebrow, .odds-hero h1, .odds-hero .lede { padding-right: 86px; }
+  .odds-hero .eyebrow { color: #f5c542; }
+  .odds-hero h1 { color: #fff; }
+  .odds-hero .lede { color: #b6c0d6; }
+  .odds-hero .orb { position: absolute; right: 0; top: 0; font-size: 64px; line-height: 1; filter: drop-shadow(0 0 16px rgba(165, 120, 255, 0.8)); animation: orb 3s ease-in-out infinite; }
+  @keyframes orb { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-6px) rotate(4deg); } }
+  .ticker { margin: 16px -16px 0; padding: 7px 0; background: #f5c542; color: #1a1400; overflow: hidden; font: 800 0.7rem var(--display); letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; }
+  .ticker .tk { display: inline-flex; animation: ticker 22s linear infinite; }
+  .ticker span { padding-left: 1em; }
+  @keyframes ticker { to { transform: translateX(-50%); } }
+  #page-home .pred { margin-top: 18px; }
+  #page-home .pred-card { box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3); }
+  #page-home .pred-card .lead { color: #f5c542; text-shadow: 0 0 14px rgba(245, 197, 66, 0.35); }
+  #page-home .pred-card .pq { color: #8f9bb5; }
+  #page-home .seg { background: #0c1222; }
+  #page-home .pred-chat { background: #121a30; }
+
+  /* ---- Bringing: kraft paper, sticky notes, a highlighter stroke. ---- */
+  #page-bringing {
+    --surface: #fffdf7; --bg: #f4ecda; --fg: #2b2218; --muted: #6f6353; --line: #dccbab; --pine: #1f6f50; --pine-soft: #dcebe1; --pine-ink: #fff; --ember: #c0392b; --ember-soft: #f8ddd8;
+    background: radial-gradient(rgba(70, 45, 15, 0.08) 1px, transparent 1.4px) 0 0 / 14px 14px, linear-gradient(180deg, #ecdfc6, #e5d5b7); color: var(--fg);
+  }
+  .haul-hero { padding-right: 84px; }
+  .haul-hero .eyebrow { color: #8b5e34; }
+  .haul-hero h1 { color: #2b2218; }
+  .haul-hero h1 mark { background: linear-gradient(104deg, transparent 2%, #ffe66d 4%, #ffe66d 96%, transparent 98%); color: inherit; padding: 0 6px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+  .haul-hero .lede { color: #5f5240; }
+  .haul-hero .cart { position: absolute; right: 2px; top: 2px; font-size: 60px; line-height: 1; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.2)); animation: cart 2.4s ease-in-out infinite; }
+  @keyframes cart { 0%, 100% { transform: rotate(-6deg) translateX(0); } 50% { transform: rotate(4deg) translateX(-6px); } }
+  #page-bringing .haul-stats { gap: 12px; margin-top: 20px; padding-top: 8px; }
+  #page-bringing .stat { position: relative; border: 0; background: #fff3a3; color: #3a3000; transform: rotate(-1.6deg); box-shadow: 2px 5px 12px rgba(0, 0, 0, 0.14); border-radius: 4px; }
+  #page-bringing .stat:nth-child(2) { background: #ffd6e0; color: #4a1a26; transform: rotate(1.2deg); }
+  #page-bringing .stat:nth-child(3) { background: #d6ecff; color: #0f2d4a; transform: rotate(-0.6deg); }
+  #page-bringing .stat.need { background: #ffd1c2; color: #5a1e08; }
+  #page-bringing .stat .l { color: inherit; opacity: 0.7; }
+  #page-bringing .stat .n, #page-bringing .stat.need .n, #page-bringing .stat.mine .n { color: inherit; }
+  #page-bringing .stat::before { content: ""; position: absolute; top: -8px; left: 50%; width: 46px; height: 15px; transform: translateX(-50%) rotate(-3deg); background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(0, 0, 0, 0.06); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
+  #page-bringing .haul-add, #page-bringing .item { box-shadow: 0 6px 16px rgba(60, 40, 10, 0.1); }
+  #page-bringing .item { border-radius: 10px; }
+  #page-bringing .group-head h2 { font-family: var(--display); }
+
+  /* ---- Games: the arcade. Neon title, grid floor, LED scoreboards. ---- */
+  #page-games {
+    --surface: #221642; --bg: #170e30; --fg: #f6f1ff; --muted: #b3a6d4; --line: #3b2a6a; --pine: #2ee6ff; --pine-soft: rgba(46, 230, 255, 0.14); --pine-ink: #06161c; --ember: #ff3fa4; --ember-soft: rgba(255, 63, 164, 0.16);
+    background: linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px) 0 0 / 26px 26px, linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px) 0 0 / 26px 26px, radial-gradient(circle at 20% 0%, rgba(255, 63, 164, 0.22), transparent 40%), radial-gradient(circle at 90% 20%, rgba(46, 230, 255, 0.16), transparent 40%), linear-gradient(180deg, #120a26, #1a1038 60%, #120a26); color: var(--fg);
+  }
+  .arcade-hero { padding-right: 84px; }
+  .arcade-hero .eyebrow { color: #2ee6ff; animation: blink 1.6s steps(2, start) infinite; }
+  .arcade-hero h1.neon { color: #fff; text-shadow: 0 0 6px #fff, 0 0 14px #ff3fa4, 0 0 30px #ff3fa4, 0 0 52px #ff3fa4; animation: neon 4s ease-in-out infinite; }
+  .arcade-hero .lede { color: #c3b6e6; }
+  .arcade-hero .lede b { color: #2ee6ff; }
+  .arcade-hero .dice { position: absolute; right: 0; top: 0; font-size: 62px; line-height: 1; filter: drop-shadow(0 0 14px rgba(46, 230, 255, 0.7)); animation: dice 2.8s ease-in-out infinite; }
+  @keyframes dice { 0%, 100% { transform: rotate(-10deg) translateY(0); } 50% { transform: rotate(14deg) translateY(-8px); } }
+  @keyframes neon { 0%, 100% { opacity: 1; } 92% { opacity: 1; } 94% { opacity: 0.6; } 96% { opacity: 1; } 98% { opacity: 0.75; } }
+  @keyframes blink { to { visibility: hidden; } }
+  #page-games .section-lede { color: #f6f1ff; }
+  #page-games .board-card { background: #0b0716; border-color: #3b2a6a; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset, 0 10px 24px rgba(0, 0, 0, 0.4); }
+  #page-games .bc-title { color: #f6f1ff; }
+  #page-games .hb-side .n { color: #ffb347; text-shadow: 0 0 12px rgba(255, 179, 71, 0.7); font-variant-numeric: tabular-nums; }
+  #page-games .hb-side.lead .n { color: #39ff9e; text-shadow: 0 0 12px rgba(57, 255, 158, 0.7); }
+  #page-games .hb-side.claude.lead .n { color: #ff8a5b; text-shadow: 0 0 12px rgba(255, 138, 91, 0.7); }
+  #page-games .lb-row { background: #140d28; }
+  #page-games .game-card { background: var(--surface); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35); }
+  #page-games .game-head h2 { color: #fff; }
+  #page-games .big-btn { box-shadow: 0 0 18px var(--ac-soft), 0 6px 18px var(--ac-soft), 0 2px 0 rgba(0, 0, 0, 0.3); }
+
+  /* ---- Money: the register. Dollar green, a cash drawer readout, receipts. ---- */
+  #page-money {
+    --surface: #f8f4e8; --bg: #efe8d5; --fg: #1b2a22; --muted: #5f6b60; --line: #d8d0b8; --pine: #1f6b45; --pine-soft: #dcebe1; --pine-ink: #fff; --ember: #b8860b; --ember-soft: #f6ecd0; --lake: #2d6fa8;
+    background: repeating-radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 12px), linear-gradient(180deg, #0f4a31 0%, #176041 50%, #0f4530 100%); color: #eaf3ec;
+  }
+  .cash-hero { padding-right: 96px; }
+  .cash-hero .eyebrow { color: #a9e0bf; }
+  .cash-hero h1 { color: #f8f4e8; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.3); }
+  .cash-hero .lede { color: rgba(234, 243, 236, 0.85); }
+  .cash-hero .bills { position: absolute; right: 0; top: -4px; width: 90px; height: 100px; pointer-events: none; }
+  .cash-hero .bills span { position: absolute; font-size: 40px; line-height: 1; animation: bill 4.2s ease-in-out infinite; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.3)); }
+  .cash-hero .bills span:nth-child(1) { left: 0; top: 8px; } .cash-hero .bills span:nth-child(2) { left: 34px; top: 34px; animation-delay: 1.4s; font-size: 46px; } .cash-hero .bills span:nth-child(3) { left: 44px; top: -2px; animation-delay: 2.8s; }
+  @keyframes bill { 0%, 100% { transform: translateY(0) rotate(-12deg); } 50% { transform: translateY(-10px) rotate(8deg); } }
+  #page-money .venmo, #page-money .money-form, #page-money .exp, #page-money .money-summary > * { color: var(--fg); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22); }
+  #page-money .venmo label { color: var(--fg); }
+  #page-money .money-you { background: #0b1f15; border-color: #39d353; color: #d8ffe8; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35), inset 0 0 0 3px #071510; border-radius: 12px; }
+  #page-money .money-you .big { color: #39d353; text-shadow: 0 0 14px rgba(57, 211, 83, 0.65); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+  #page-money .money-you .sub { color: rgba(216, 255, 232, 0.7); }
+  #page-money .money-you.owe { background: #2a0e0e; border-color: #ff6b5b; color: #ffe0dc; }
+  #page-money .money-you.owe .big { color: #ff6b5b; text-shadow: 0 0 14px rgba(255, 107, 91, 0.6); }
+  #page-money .money-you.owe .sub { color: rgba(255, 224, 220, 0.7); }
+  #page-money .exp-head { color: #f8f4e8; }
+  #page-money .exp-head small { color: #a9e0bf; }
+  #page-money .exp { border-radius: 6px; background: #fffdf4; position: relative; }
+  #page-money .exp::before { content: ""; position: absolute; left: 0; right: 0; top: -5px; height: 5px; background: linear-gradient(-45deg, transparent 4px, #fffdf4 0) 0 0 / 8px 8px repeat-x, linear-gradient(45deg, transparent 4px, #fffdf4 0) 0 0 / 8px 8px repeat-x; transform: scaleY(-1); }
+  #page-money .skeleton, #page-money .empty { color: #cfe7d8; border-color: rgba(255, 255, 255, 0.3); }
+
+  @media (prefers-reduced-motion: reduce) { .cabin-hero .star, .cabin-hero .win, .cabin-hero .smoke, .odds-hero .orb, .ticker .tk, .haul-hero .cart, .arcade-hero .eyebrow, .arcade-hero h1.neon, .arcade-hero .dice, .cash-hero .bills span { animation: none; } }
   /* ---- Hibachi: the whole tab goes grill-house red, black menu panels, white caps ---- */
   #page-hibachi {
     --hr: #c8102e; --hr-deep: #8d0b20; --hk: #141414; --hk-2: #1f1f1f; --hk-3: #2c2c2c; --hw: #fff; --hmuted: rgba(255, 255, 255, 0.72);

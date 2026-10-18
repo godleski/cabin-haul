@@ -61,16 +61,24 @@
     </div>
     <div class="notice" id="setup" hidden></div>
 
-    <section class="page" id="page-home">
-      <div class="eyebrow">Cabin trip</div>
-      <h1>Predictions</h1>
-      <p class="lede">Everyone's calls for the weekend, live. Tap a question for the full breakdown and the trash talk.</p>
+    <section class="page themed" id="page-home">
+      <div class="hero odds-hero">
+        <div class="orb" aria-hidden="true">🔮</div>
+        <div class="eyebrow">The book is open</div>
+        <h1>Call your<br>shots</h1>
+        <p class="lede">Everyone's calls for the weekend, live. Tap a question for the full breakdown and the trash talk.</p>
+        <div class="ticker" aria-hidden="true"><div class="tk"><span>Live odds &nbsp;·&nbsp; Winter Park &nbsp;·&nbsp; Oct 23 to 25 &nbsp;·&nbsp; All bets final at check-in &nbsp;·&nbsp; No refunds &nbsp;·&nbsp; </span><span>Live odds &nbsp;·&nbsp; Winter Park &nbsp;·&nbsp; Oct 23 to 25 &nbsp;·&nbsp; All bets final at check-in &nbsp;·&nbsp; No refunds &nbsp;·&nbsp; </span></div></div>
+      </div>
       <div class="pred" id="pred" hidden></div>
     </section>
 
-    <section class="page" id="page-bringing" hidden>
-      <h1>Who's bringing what</h1>
-      <p class="lede">Call what you've got so nobody doubles up. Flag what's missing and someone will grab it.</p>
+    <section class="page themed" id="page-bringing" hidden>
+      <div class="hero haul-hero">
+        <div class="cart" aria-hidden="true">🛒</div>
+        <div class="eyebrow">The haul</div>
+        <h1><mark>Who's bringing</mark><br><mark>what</mark></h1>
+        <p class="lede">Call what you've got so nobody doubles up. Flag what's missing and someone will grab it.</p>
+      </div>
 
       <div class="haul-stats" id="haul-stats"></div>
 
@@ -98,10 +106,15 @@
       <div id="groups"><p class="skeleton">Loading the list…</p></div>
     </section>
 
-    <section class="page" id="page-cabin" hidden>
-      <div class="eyebrow" id="cabin-countdown">Winter Park, Colorado</div>
-      <h1>The cabin</h1>
-      <p class="lede">WP Resort Home 2225 · hot tub, bunks, great view. Hosted by Winter Park Escapes.</p>
+    <section class="page themed" id="page-cabin" hidden>
+      <div class="hero cabin-hero">
+        <div class="sky" aria-hidden="true"><i class="star" style="left:12%;top:18%"></i><i class="star" style="left:30%;top:8%;animation-delay:.7s"></i><i class="star" style="left:55%;top:14%;animation-delay:1.3s"></i><i class="star" style="left:72%;top:6%;animation-delay:.4s"></i><i class="star" style="left:88%;top:22%;animation-delay:1.9s"></i><i class="star" style="left:42%;top:28%;animation-delay:2.4s"></i><span class="moon"></span></div>
+        <svg class="ridge" viewBox="0 0 400 90" preserveAspectRatio="none" aria-hidden="true"><path class="far" d="M0 90V60L35 38l30 14 40-30 35 24 40-20 30 18 45-28 35 22 40-16 35 20 35-12v60z"/><path class="near" d="M0 90V74l28-14 24 10 36-22 30 18 34-12 30 16 44-20 30 14 36-10 30 16 38-8 40 14v10z"/></svg>
+        <div class="lodge" aria-hidden="true"><i class="smoke"></i><i class="smoke s2"></i><span class="roof"></span><span class="wall"><b class="win"></b></span></div>
+        <div class="eyebrow" id="cabin-countdown">Winter Park, Colorado</div>
+        <h1>The cabin</h1>
+        <p class="lede">WP Resort Home 2225 · hot tub, bunks, great view. Hosted by Winter Park Escapes.</p>
+      </div>
 
       <div class="carousel" id="carousel" aria-label="Cabin photos"></div>
       <div class="dots" id="dots"></div>
@@ -200,9 +213,13 @@
       </div>
     </section>
 
-    <section class="page" id="page-games" hidden>
-      <h1>Games</h1>
-      <p class="lede">Air hockey and mini golf are hidden on the name screen. Tap <b>Not you?</b> and poke around.</p>
+    <section class="page themed" id="page-games" hidden>
+      <div class="hero arcade-hero">
+        <div class="dice" aria-hidden="true">🎲</div>
+        <div class="eyebrow">Insert coin</div>
+        <h1 class="neon">Game<br>night</h1>
+        <p class="lede">Air hockey and mini golf are hidden on the name screen. Tap <b>Not you?</b> and poke around.</p>
+      </div>
       <div class="boards">
         <div class="board-card" id="hockeyboard"><div class="bc-title">🏒 Air hockey</div><div class="bc-sub" id="hockeyboard-status"></div><div id="hockeyboard-body"></div></div>
         <div class="board-card" id="golfboard"><div class="bc-title">⛳ Mini golf</div><div class="bc-sub" id="golfboard-status"></div><div id="golfboard-body"></div></div>
@@ -241,9 +258,13 @@
       </div>
     </section>
 
-    <section class="page" id="page-money" hidden>
-      <h1>Money</h1>
-      <p class="lede">Paid for something for the group? Put it in. At the end it squares everyone up with the fewest payments possible.</p>
+    <section class="page themed" id="page-money" hidden>
+      <div class="hero cash-hero">
+        <div class="bills" aria-hidden="true"><span>💵</span><span>💸</span><span>💵</span></div>
+        <div class="eyebrow">The tab</div>
+        <h1>Square<br>up</h1>
+        <p class="lede">Paid for something for the group? Put it in. At the end it squares everyone up with the fewest payments possible.</p>
+      </div>
       <form class="venmo" id="venmo-form">
         <label for="venmo-input">Your Venmo</label>
         <input type="text" id="venmo-input" placeholder="@your-handle" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false">

@@ -2377,7 +2377,7 @@
   var CHECK_IN = new Date(2026, 9, 23, 16, 0, 0);
   function renderCabin() {
     var days = Math.ceil((CHECK_IN - Date.now()) / 86400000);
-    $('cabin-countdown').textContent = days > 1 ? 'Winter Park, Colorado \u00b7 ' + days + ' days out' : days === 1 ? 'Winter Park, Colorado \u00b7 tomorrow' : days === 0 ? 'Winter Park, Colorado \u00b7 today' : 'Winter Park, Colorado';
+    $('cabin-countdown').textContent = days > 1 ? 'Winter Park \u00b7 ' + days + ' days out' : days === 1 ? 'Winter Park \u00b7 tomorrow' : days === 0 ? 'Winter Park \u00b7 today' : 'Winter Park, Colorado';
     var car = $('carousel');
     if (!CABIN_PHOTOS.length) {
       car.innerHTML = '<div class="slide placeholder">Listing photos go here. Swipe through them once they\'re in.</div>';
