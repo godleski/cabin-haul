@@ -562,16 +562,15 @@
     --surface: #fbf6ea; --bg: #f1e9d6; --fg: #1b2a22; --muted: #5e6b62; --line: #e0d6c0; --pine: #2d6a4f; --pine-soft: #e3efe8; --pine-ink: #fff; --ember: #c8641e; --ember-soft: #fbe9db;
     background: linear-gradient(180deg, #0b1f18 0%, #12332a 45%, #1a4634 100%); color: #f3efe3;
   }
-  .cabin-hero { padding-bottom: 150px; padding-right: 110px; }
+  .cabin-hero { padding-bottom: 86px; padding-right: 110px; }
   .cabin-hero .eyebrow { color: #a9d6b8; }
   .cabin-hero h1 { color: #fbf6ea; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35); }
   .cabin-hero .lede { color: rgba(243, 239, 227, 0.82); }
   .cabin-hero .sky { position: absolute; inset: 0; pointer-events: none; }
   .cabin-hero .star { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff; box-shadow: 0 0 6px #fff; animation: twinkle 2.6s ease-in-out infinite; }
   .cabin-hero .moon { position: absolute; right: 18px; top: -2px; width: 34px; height: 34px; border-radius: 50%; background: #f7f0d8; box-shadow: inset -9px -5px 0 0 #12332a, 0 0 18px rgba(247, 240, 216, 0.45); }
-  .cabin-hero .ridge { position: absolute; left: -16px; right: -16px; bottom: 0; width: calc(100% + 32px); height: 150px; }
+  .cabin-hero .ridge { position: absolute; left: -16px; right: -16px; bottom: 0; width: calc(100% + 32px); height: 90px; }
   .cabin-hero .ridge .far { fill: #163c2f; } .cabin-hero .ridge .near { fill: #0f2a21; }
-  .cabin-hero .ridge .snowfar { fill: #d9e6ea; opacity: 0.85; } .cabin-hero .ridge .snownear { fill: #f1f6f8; }
   .cabin-hero .lodge { position: absolute; right: 26px; bottom: 16px; width: 54px; height: 44px; }
   .cabin-hero .lodge .roof { position: absolute; left: -6px; bottom: 22px; width: 0; height: 0; border-left: 33px solid transparent; border-right: 33px solid transparent; border-bottom: 22px solid #4a2d1c; }
   .cabin-hero .lodge .wall { position: absolute; left: 0; bottom: 0; width: 54px; height: 24px; background: #5e3a24; border-radius: 0 0 3px 3px; }
