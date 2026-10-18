@@ -2753,6 +2753,9 @@
       votes = votes.filter(function (v) { return !(v.voter === me && v.question_id === HIBACHI_Q); });
       votes.push({ question_id: HIBACHI_Q, voter: me, pick: json });
       hibDraft = null; buzz([8, 30, 8]); renderHibachi();
+      // the form collapses into the locked card, so bring the pay prompt (or the card, for Jess) into view
+      var focusEl = document.querySelector('#hibachi .hib-mine-locked');
+      if (focusEl) { var top = focusEl.getBoundingClientRect().top + window.scrollY - 90; window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' }); }
       var left = NAMES.filter(function (nm) { var o = hibOrders()[nm]; return !(o && o.locked); }).length;
       toast(me === HIBACHI_PAYEE.name ? (left ? 'Locked in. ' + left + ' to go.' : 'Locked in. That’s everyone!') : 'Locked in. Now Venmo ' + HIBACHI_PAYEE.name + ' ' + money(hibPrice(order)) + '.');
       return;
