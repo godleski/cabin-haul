@@ -2165,6 +2165,11 @@
     var cents = parseAmount();
     el.textContent = cents && expSplit.length ? dollars(cents / expSplit.length) + ' each' : '';
   }
+  var AV_COLORS = ['#008cff', '#7c4dff', '#ff6d3a', '#00b887', '#ff3d8f', '#f5a623', '#2bb3c0', '#8e5ad9'];
+  function avatar(name) {   // Venmo-style initial bubble, colour fixed per person
+    var h = 0; for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return '<span class="av" style="background:' + AV_COLORS[h % AV_COLORS.length] + '">' + esc(name.charAt(0)) + '</span>';
+  }
   function renderMoney() {
     var list = $('expenses'), sum = $('money-summary'); if (!list || !me) return;
     if (!expLoaded) { list.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
@@ -2176,14 +2181,15 @@
     html += '<div class="settle"><h3>Settle up <small>' + (pays.length ? pays.length + (pays.length === 1 ? ' payment' : ' payments') + ' and everyone’s even' : 'all even') + '</small></h3>';
     html += pays.length ? pays.map(function (p) {
       var inv = p.from === me || p.to === me;
-      return '<div class="pay' + (inv ? ' me' : '') + '"><span><b>' + esc(p.from === me ? 'You' : p.from) + '</b><span class="arrow">→</span><b>' + esc(p.to === me ? 'you' : p.to) + '</b>' + (venmoLink(p.to) || '<span class="vm">no Venmo yet</span>') + '</span><span class="amt">' + dollars(p.amount) + '</span></div>';
+      return '<div class="pay' + (inv ? ' me' : '') + '">' + avatar(p.from === me ? p.to : p.from) + '<span><b>' + esc(p.from === me ? 'You' : p.from) + '</b><span class="arrow">→</span><b>' + esc(p.to === me ? 'you' : p.to) + '</b>' + (venmoLink(p.to) || '<span class="vm">no Venmo yet</span>') + '</span><span class="amt">' + dollars(p.amount) + '</span></div>';
     }).join('') : '<div class="info-sub">Nobody owes anybody.</div>';
     html += '</div>';
     sum.innerHTML = html;
     list.innerHTML = '<div class="exp-head">Everything so far <small>' + dollars(total) + '</small></div><div class="exp-list">' + expenses.map(function (e) {
       var sp = expSplitOf(e);
-      return '<div class="exp"><span class="t">' + esc(e.title) + '</span><span class="amt">' + dollars(+e.amount || 0) + '</span>' +
-        '<span class="sub"><span>' + esc(e.paid_by === me ? 'You' : e.paid_by) + ' paid · split ' + (sp.length === NAMES.length ? 'with everyone' : sp.length + ' ways') + ' · ' + esc(agoText(e.created_at)) + '</span>' +
+      return '<div class="exp">' + avatar(e.paid_by) + '<span class="t"><b>' + esc(e.paid_by === me ? 'You' : e.paid_by) + '</b> paid <b>' + (sp.length === NAMES.length ? 'everyone' : sp.length + ' people') + '</b><small>' + esc(agoText(e.created_at)) + '</small></span><span class="amt">' + dollars(+e.amount || 0) + '</span>' +
+        '<span class="note">' + esc(e.title) + '</span>' +
+        '<span class="sub"><span class="rx">\u2661 \u00b7 \uD83D\uDCAC</span>' +
         (e.paid_by === me ? '<button type="button" class="linkbtn" data-del-exp="' + esc(e.id) + '">Remove</button>' : '') + '</span></div>';
     }).join('') + '</div>';
   }
