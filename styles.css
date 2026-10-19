@@ -612,12 +612,13 @@
   #predict .dk-slipbtn.static { cursor: default; box-shadow: none; }
   #predict .intro { padding-top: 0; }
   /* the dinner question: two big cards, themed by whichever predictions look the person gets */
-  #predict .dinner { padding-top: 12vh; }
-  #predict .dinner .eyebrow { color: var(--dkg); }
+  #predict.dinner-open .dk-head { display: none; }   /* no sportsbook header: it's a vote on dinner, not a bet */
+  #predict .dinner { padding-top: 14vh; }
+  #predict .dinner .eyebrow { color: rgba(255, 255, 255, 0.8); }
   #predict .dinner h1 { font-size: 2.4rem; margin-top: 8px; }
   #predict .dinner .lede { max-width: 32ch; }
   .dinner-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
-  .dinner-opt { display: grid; justify-items: center; gap: 10px; padding: 28px 10px 22px; border-radius: 18px; background: var(--surface); border: 2px solid var(--line); color: var(--fg); font: 800 1.3rem var(--display); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 120ms; }
+  .dinner-opt { display: grid; justify-items: center; gap: 10px; padding: 28px 10px 22px; border-radius: 18px; background: #fff; border: 2px solid #fff; color: #141414; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35); font: 800 1.3rem var(--display); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 120ms; }
   .dinner-opt .em { font-size: 3rem; line-height: 1; }
   .dinner-opt:active { transform: scale(0.96); }
   .dinner-opt[aria-pressed="true"] { background: var(--pine); border-color: var(--pine); color: var(--pine-ink); }
