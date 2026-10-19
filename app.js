@@ -210,7 +210,6 @@
         t.stroke();
       });
       t.restore();
-      t.strokeStyle = 'rgba(214,236,170,0.35)'; t.lineWidth = 1.5; t.strokeRect(ring + 0.75, ring + 0.75, W - 2 * ring - 1.5, H - 2 * ring - 1.5);   // the collar
       turfCache = { key: key, canvas: off }; turf.getContext('2d').drawImage(off, 0, 0);
     }
     resize();
