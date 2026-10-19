@@ -1594,15 +1594,15 @@
   });
 
   // ---- Games: Mitch vs Luke Smash tally ----
-  var smash = null, smashLoaded = false, smashSub = false, smashAnim = null, charge = null, smashDirty = false, smashPending = null;
+  var smash = null, smashLoaded = false, smashSub = false, smashAnim = null, charge = null, smashDirty = false, smashInflight = 0;
   var SMASH_P = { p1: 'Mitch', p2: 'Luke' };
   function subscribeSmash() {
     if (smashSub || !store || !store.game) return;
     smashSub = true;
     store.game('smash', function (doc) {
       var incoming = (doc && doc.log) || [];
-      if (smashPending && sameDoc(incoming, smashPending)) return;   // a read that raced our own write: the server hasn't caught up yet, don't yank the number back
       var same = smashLoaded && sameDoc(incoming, (smash && smash.log) || []);
+      if (smashInflight > 0 && !same) return;   // our own write is still landing and will overwrite whatever this read saw; its echo brings the truth
       smash = doc; smashLoaded = true;
       if (!same) renderSmash();                       // our own write echoing back shouldn't restart the KO animation
     });
@@ -1646,19 +1646,23 @@
     smashAnim = null;
   }
   function smashWin(side) {
-    var log = ((smash && smash.log) || []).slice(-199);
-    var before = { n: smashCounts()[side], log: (smash && smash.log) || [] };
+    var log = ((smash && smash.log) || []).slice(-199), prevDoc = smash;
+    var before = { n: smashCounts()[side] };
     log.push({ w: side, by: me, at: new Date().toISOString() });
     var doc = { log: log, updated_at: new Date().toISOString() };
     smash = doc; smashAnim = { side: side, from: before.n };
     renderSmash();
     var card = $('smash-body').querySelector('.smash'); if (card) { card.classList.add('shake'); }
     try { if (navigator.vibrate) navigator.vibrate([30, 40, 60]); } catch (e) { /* ignore */ }
-    smashWrite(doc, before.log).catch(function (e) { toast('Couldn’t save that win: ' + ((e && e.message) || e)); });
+    smashWrite(doc, prevDoc).catch(function (e) { toast('Couldn’t save that win: ' + ((e && e.message) || e)); });
   }
-  function smashWrite(doc, prevLog) {   // remember what the server still has until this lands, so a stale read can be told apart from a real change
-    smashPending = prevLog;
-    return store.setGame('smash', doc).then(function () { smashPending = null; }, function (e) { smashPending = null; throw e; });
+  function smashWrite(doc, prevDoc) {   // optimistic: the card already shows doc; count the write as in flight, and put prevDoc back if it fails
+    smashInflight++;
+    return store.setGame('smash', doc).then(function () { smashInflight--; }, function (e) {
+      smashInflight--;
+      if (smash === doc) { smash = prevDoc; renderSmash(); }
+      throw e;
+    });
   }
   function chargeStart(e) {
     var btn = e.target.closest('.fighter[data-side]'); if (!btn || charge) return;
@@ -1687,7 +1691,7 @@
   $('smash-body').addEventListener('contextmenu', function (e) { if (e.target.closest('.fighter')) e.preventDefault(); });
   $('smash-body').addEventListener('click', function (e) {
     if (e.target.closest('#smash-undo') && smash && smash.log && smash.log.length) {
-      var doc = { log: smash.log.slice(0, -1), updated_at: new Date().toISOString() }, prev = smash.log;
+      var doc = { log: smash.log.slice(0, -1), updated_at: new Date().toISOString() }, prev = smash;
       smash = doc; renderSmash();
       smashWrite(doc, prev).catch(function (err) { toast('Couldn’t undo: ' + ((err && err.message) || err)); });
     }
