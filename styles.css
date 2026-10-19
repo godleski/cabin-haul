@@ -50,6 +50,7 @@
   body.playing { padding: calc(4px + env(safe-area-inset-top, 0px)) 6px calc(4px + env(safe-area-inset-bottom, 0px)); }
   body.playing #pick > :not(.arena-wrap) { display: none !important; }
   body.playing .bubbles { margin-top: 0; height: calc(100dvh - 8px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); min-height: 0; border-radius: 14px; }
+  body.playing .bubbles.hockey { border-color: #15161a; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }   /* the table's rail runs out to the frame */
   /* experiment: the back of a trunk instead of a green */
   .bubbles.trunk {
     border: 10px solid #15171a;

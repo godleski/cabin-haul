@@ -139,6 +139,7 @@
     function setPlaying(on) {
       if (playing === on) return;
       playing = on;
+      if (!on) box.classList.remove('hockey');
       document.body.classList.toggle('playing', on);
       if (on) window.scrollTo(0, 0);
       void box.offsetHeight;   // force layout so the new size is read now
@@ -150,7 +151,7 @@
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
       cv.style.width = W + 'px'; cv.style.height = H + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      dimpleTile = null; layerCache = {}; scriptCache = {};
+      dimpleTile = null; layerCache = {}; scriptCache = {}; tableCache = null;
     }
     resize();
     var colors = {};
@@ -900,6 +901,7 @@
         puck: { x: W / 2, y: H / 2, vx: 0, vy: 0, r: 12 }, kickoff: true, humanHits: 0, cpuHits: 0 };
       paddle.held = true; paddle.tx = paddle.x; paddle.ty = Math.max(H / 2 + paddle.r, paddle.y);
       paddle.targetR = 28; paddle.bubbleR = paddle.r;
+      box.classList.add('hockey');
       balls.forEach(function (b) { if (b !== paddle) b.fade = true; });
       boardShown = true; renderScores();
     }
@@ -1017,20 +1019,58 @@
       }
       if (label) { ctx.fillStyle = colors.muted; ctx.font = '600 11px ' + fontFamily; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, x, y + r + 12); }
     }
+    // The table: an arcade air hockey table, pre-rendered once per size. Black rail with corner bolts, white playfield with
+    // the air-hole grid and a sheen, red centre line, circle and goal creases, and lit goal mouths (Claude's orange, yours green).
+    var tableCache = null;
+    var TABLE = { rail: 10, field: '#f4f4ef', red: '#d9382f', railCol: '#15161a' };
+    function tableLayer(g) {
+      if (tableCache && tableCache.w === W && tableCache.h === H && tableCache.dpr === dpr) return tableCache.c;
+      var off = document.createElement('canvas'); off.width = Math.round(W * dpr); off.height = Math.round(H * dpr);
+      var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var r = TABLE.rail, fx = r, fy = r, fw = W - 2 * r, fh = H - 2 * r;
+      function rr(x, y, w, h, rad) { o.beginPath(); o.moveTo(x + rad, y); o.arcTo(x + w, y, x + w, y + h, rad); o.arcTo(x + w, y + h, x, y + h, rad); o.arcTo(x, y + h, x, y, rad); o.arcTo(x, y, x + w, y, rad); o.closePath(); }
+      // rail
+      var rg = o.createLinearGradient(0, 0, W, H); rg.addColorStop(0, '#24262c'); rg.addColorStop(0.5, TABLE.railCol); rg.addColorStop(1, '#1d1f24');
+      o.fillStyle = rg; o.fillRect(0, 0, W, H);
+      rr(fx - 2, fy - 2, fw + 4, fh + 4, 12); o.strokeStyle = 'rgba(255,255,255,0.10)'; o.lineWidth = 2; o.stroke();   // bevel highlight
+      // playfield with a soft sheen
+      rr(fx, fy, fw, fh, 10); o.save(); o.clip();
+      var fg = o.createLinearGradient(0, fy, 0, fy + fh); fg.addColorStop(0, '#f8f8f3'); fg.addColorStop(0.5, TABLE.field); fg.addColorStop(1, '#ecece6');
+      o.fillStyle = fg; o.fillRect(fx, fy, fw, fh);
+      // air holes
+      o.fillStyle = 'rgba(70,80,92,0.20)';
+      for (var y = fy + 12; y < fy + fh - 6; y += 14) for (var x = fx + 12 + ((Math.round((y - fy) / 14) % 2) ? 7 : 0); x < fx + fw - 6; x += 14) { o.beginPath(); o.arc(x, y, 1.1, 0, Math.PI * 2); o.fill(); }
+      // markings
+      o.strokeStyle = TABLE.red; o.lineWidth = 3; o.lineCap = 'butt';
+      o.beginPath(); o.moveTo(fx, H / 2); o.lineTo(fx + fw, H / 2); o.stroke();
+      o.beginPath(); o.arc(W / 2, H / 2, 46, 0, Math.PI * 2); o.stroke();
+      o.beginPath(); o.arc(W / 2, H / 2, 5, 0, Math.PI * 2); o.fillStyle = TABLE.red; o.fill();
+      var gw = g.goal.x2 - g.goal.x1, cr = gw / 2 + 14;
+      o.lineWidth = 2.5; o.beginPath(); o.arc(W / 2, fy, cr, 0, Math.PI); o.stroke();                 // goal creases
+      o.beginPath(); o.arc(W / 2, fy + fh, cr, Math.PI, Math.PI * 2); o.stroke();
+      o.beginPath(); o.arc(W / 2, fy + 54, 3.5, 0, Math.PI * 2); o.fill(); o.beginPath(); o.arc(W / 2, fy + fh - 54, 3.5, 0, Math.PI * 2); o.fill();   // face-off dots
+      var sheen = o.createLinearGradient(fx, fy, fx + fw, fy + fh * 0.6); sheen.addColorStop(0, 'rgba(255,255,255,0)'); sheen.addColorStop(0.45, 'rgba(255,255,255,0.22)'); sheen.addColorStop(0.55, 'rgba(255,255,255,0)');
+      o.fillStyle = sheen; o.fillRect(fx, fy, fw, fh);
+      var vig = o.createRadialGradient(W / 2, H / 2, W * 0.4, W / 2, H / 2, W * 1.3); vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.10)');
+      o.fillStyle = vig; o.fillRect(fx, fy, fw, fh);
+      o.restore();
+      // goal mouths: a dark slot in the rail, lit in each side's colour
+      [[fy - r, colors.claude], [fy + fh, colors.pine[0]]].forEach(function (gl) {
+        o.fillStyle = '#07080a'; o.fillRect(g.goal.x1, gl[0], gw, r);
+        o.save(); o.shadowColor = gl[1]; o.shadowBlur = 14; o.fillStyle = gl[1];
+        o.fillRect(g.goal.x1, gl[0] === fy - r ? fy - 3 : fy + fh, gw, 3); o.restore();
+      });
+      // bolts
+      o.fillStyle = '#3a3d45'; [[6, 6], [W - 6, 6], [6, H - 6], [W - 6, H - 6]].forEach(function (b) { o.beginPath(); o.arc(b[0], b[1], 2.6, 0, Math.PI * 2); o.fill(); o.fillStyle = '#5b5f69'; o.beginPath(); o.arc(b[0] - 0.7, b[1] - 0.7, 1.1, 0, Math.PI * 2); o.fill(); o.fillStyle = '#3a3d45'; });
+      tableCache = { w: W, h: H, dpr: dpr, c: off };
+      return off;
+    }
     function drawGame(now) {
       var g = game, p = g.puck, c = g.cpu, me = g.me;
       var fade = Math.min(1, (now - g.t0) / 500);
-      // rink: lay ice over the green
-      ctx.globalAlpha = fade * 0.92; ctx.fillStyle = colors.bg; ctx.fillRect(0, 0, W, H);
-      ctx.globalAlpha = fade;
-      ctx.strokeStyle = colors.line; ctx.lineWidth = 2; ctx.setLineDash([8, 8]);
-      ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke(); ctx.setLineDash([]);
-      circle(W / 2, H / 2, 46, null, colors.line, 2);
-      ctx.lineWidth = 6; ctx.lineCap = 'round';
-      ctx.strokeStyle = colors.claude; ctx.beginPath(); ctx.moveTo(g.goal.x1, 3); ctx.lineTo(g.goal.x2, 3); ctx.stroke();
-      ctx.strokeStyle = colors.pine[0]; ctx.beginPath(); ctx.moveTo(g.goal.x1, H - 3); ctx.lineTo(g.goal.x2, H - 3); ctx.stroke();
-      ctx.font = '600 11px ' + fontFamily; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = colors.muted;
-      ctx.fillText('SHOOT HERE', W / 2, 18); ctx.fillText('DEFEND', W / 2, H - 18);
+      ctx.globalAlpha = fade; ctx.drawImage(tableLayer(g), 0, 0, W, H);
+      ctx.font = '700 10px ' + fontFamily; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillText('S H O O T', W / 2, 5.5); ctx.fillText('D E F E N D', W / 2, H - 5);   // on the rails
       ctx.globalAlpha = 1;
       // fading bubbles
       balls.forEach(function (b) { if (b.fade) { b.alpha = Math.max(0, 1 - fade); if (b.alpha > 0) drawBubble(b, now); } });
@@ -1038,24 +1078,25 @@
       mallet(c.x, c.y, c.r, colors.claude, 'Claude', true);
       // puck
       if (g.kickoff && !g.over) {
-        ctx.globalAlpha = 0.6 + 0.4 * Math.sin(now / 300); ctx.fillStyle = colors.muted; ctx.font = '600 13px ' + fontFamily;
+        ctx.globalAlpha = 0.6 + 0.4 * Math.sin(now / 300); ctx.fillStyle = '#5b6168'; ctx.font = '600 13px ' + fontFamily;
         ctx.fillText('hit the puck to start', W / 2, H / 2 + 64); ctx.globalAlpha = 1;
       }
       if (g.serveFlash && now - g.serveFlash < 900) {
-        ctx.globalAlpha = 1 - (now - g.serveFlash) / 900; ctx.fillStyle = colors.muted; ctx.font = '600 13px ' + fontFamily;
+        ctx.globalAlpha = 1 - (now - g.serveFlash) / 900; ctx.fillStyle = '#5b6168'; ctx.font = '600 13px ' + fontFamily;
         ctx.fillText('re-serve', W / 2, H / 2 + 64); ctx.globalAlpha = 1;
       }
-      circle(p.x, p.y + 2, p.r, colors.shadow); circle(p.x, p.y, p.r, colors.fg); circle(p.x, p.y, p.r * 0.5, null, colors.bg, 1.5);
+      circle(p.x + 1, p.y + 3, p.r, 'rgba(0,0,0,0.28)'); circle(p.x, p.y, p.r, '#1c1d22'); circle(p.x, p.y, p.r - 2.5, null, TABLE.red, 2);
+      circle(p.x - p.r * 0.3, p.y - p.r * 0.35, p.r * 0.28, 'rgba(255,255,255,0.35)');
       // player mallet (the bubble shrinks into it)
       var k2 = Math.min(1, (now - g.t0) / 450);
       if (k2 < 1) { me.alpha = 1; drawBubble(me, now); }
       ctx.globalAlpha = k2; mallet(me.x, me.y, me.r, colors.pine[0], me.name); ctx.globalAlpha = 1;
       if (g.over) {
         var k = Math.min(1, (now - g.over.t) / 300);
-        ctx.globalAlpha = 0.85 * k; ctx.fillStyle = colors.bg; ctx.fillRect(0, H / 2 - 60, W, 120); ctx.globalAlpha = k;
+        ctx.globalAlpha = 0.9 * k; ctx.fillStyle = '#15161a'; ctx.fillRect(0, H / 2 - 60, W, 120); ctx.globalAlpha = k;
         ctx.fillStyle = g.over.winner === 'human' ? colors.pine[0] : colors.claude;
         ctx.font = '800 34px ' + fontFamily; ctx.fillText(g.over.winner === 'human' ? 'GOAL!' : 'CLAUDE SCORES', W / 2, H / 2 - 14);
-        ctx.fillStyle = colors.fg; ctx.font = '600 15px ' + fontFamily;
+        ctx.fillStyle = '#f4f4ef'; ctx.font = '600 15px ' + fontFamily;
         ctx.fillText(g.over.winner === 'human' ? me.name + ' beats Claude' : 'Nice try, ' + me.name, W / 2, H / 2 + 22);
         ctx.globalAlpha = 1;
       }
