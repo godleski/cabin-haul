@@ -1123,7 +1123,7 @@
     if (picking) { renderRoster(); window.scrollTo(0, 0); return; }
     if (!booted) boot();
     if (me !== renderedFor) refreshForUser();
-    if (shouldAsk()) { askedThisVisit = true; openQuestionnaire(firstUnanswered()); return; }
+    if (shouldAsk()) { askedThisVisit = true; qAuto = true; openQuestionnaire(firstUnanswered()); return; }
     var partner = PARTIES.filter(function (p) { return p.indexOf(me) >= 0; })[0].filter(function (n) { return n !== me; })[0];
     $('me').innerHTML = 'Hey <b>' + esc(me) + '</b>' + (partner ? ' · with ' + esc(partner) : '');
     showTab(tab);
@@ -1942,7 +1942,7 @@
   function firstUnanswered() { var m = myVotes(); for (var i = 0; i < QUESTIONS.length; i++) if (!m[QUESTIONS[i].id]) return i; return 0; }
   // Only ever prompt someone who has made no picks at all, and only once their votes have actually loaded.
   // Anyone with picks (even partial) changes them from the Predictions tab instead.
-  var predLoaded = false, askedThisVisit = false;
+  var predLoaded = false, askedThisVisit = false, qAuto = false;   // qAuto: the questionnaire opened itself on first visit, so finishing it lands on the FAQ
   function shouldAsk() {
     if (!me || !store || !store.predictions || !predLoaded || askedThisVisit) return false;
     if (answeredCount() > 0) return false;
@@ -1955,7 +1955,7 @@
       votes = rows.slice();
       var first = !predLoaded; predLoaded = true;
       renderPredictions(); renderHibachi();
-      if (first && !$('main').hidden && shouldAsk()) { askedThisVisit = true; openQuestionnaire(0); }
+      if (first && !$('main').hidden && shouldAsk()) { askedThisVisit = true; qAuto = true; openQuestionnaire(0); }
     });
     if (store.comments) store.comments(function (rows) {
       comments = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? -1 : 1; });
@@ -2021,7 +2021,10 @@
     var slipNow = $('q-slip'); if (slipNow) slipNow.textContent = answeredCount() + '/' + QUESTIONS.length;
     setTimeout(function () {
       if (qIndex + 1 < QUESTIONS.length) { qIndex++; showQuestion(true); }
-      else { toast(plainPicks() ? 'Picks are in. You can change them any time.' : 'Slip placed. You can change a bet any time from the board.'); tab = 'home'; showScreen(); }
+      else {
+        toast(plainPicks() ? 'Picks are in. Change them any time on the Predictions tab.' : 'Slip placed. Change a bet any time on the Predictions tab.');
+        tab = qAuto ? 'cabin' : 'home'; qAuto = false; showScreen();   // first time through lands on the FAQ; edits go back to the board
+      }
     }, 260);
   });
   $('q-later').addEventListener('click', function () { lsSet('cabin-haul-pred-later-' + me, '1'); showScreen(); });
@@ -2414,7 +2417,7 @@
   function predClick(e) {
     var rx = e.target.closest('[data-react]'); if (rx) { toggleReaction(rx.getAttribute('data-cid'), rx.getAttribute('data-react')); return; }
     var pk = e.target.closest('[data-picker]'); if (pk) { var cid = pk.getAttribute('data-picker'); pickerFor = pickerFor === cid ? null : cid; renderSheet(); renderWall(); return; }
-    var open = e.target.closest('#pred-open, #dk-open'); if (open) { lsDel('cabin-haul-pred-later-' + me); openQuestionnaire(firstUnanswered(), answeredCount() >= QUESTIONS.length); return; }
+    var open = e.target.closest('#pred-open, #dk-open'); if (open) { lsDel('cabin-haul-pred-later-' + me); qAuto = false; openQuestionnaire(firstUnanswered(), answeredCount() >= QUESTIONS.length); return; }
     var ch = e.target.closest('#pred-change'); if (ch) { var qi = +ch.getAttribute('data-q'); closeSheet(); openQuestionnaire(qi, true); return; }
     if (e.target.closest('#pred-close') || e.target.id === 'sheet-back') { closeSheet(); return; }
     var card = e.target.closest('.pred-card'); if (card) { openSheet(+card.getAttribute('data-q')); }
