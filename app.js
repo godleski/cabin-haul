@@ -89,10 +89,10 @@
       '<div class="vs">vs</div>' +
       '<div class="side' + (c > h ? ' lead' : '') + '"><span class="num">' + c + '</span><span class="lbl">Claude</span></div>';
   }
-  var ARENA_THEME = 'box';   // 'box' (an opened dozen-pack), 'green' (the putting green; branch name-screen-green) or 'trunk'.
+  var ARENA_THEME = 'green';   // 'green' or 'trunk'. v1 (golf balls on the green) is branch v1-golf-green.
   function renderRoster() {
     if (sim) sim.stop();
-    $('roster').classList.toggle('trunk', ARENA_THEME === 'trunk'); $('roster').classList.toggle('box', ARENA_THEME === 'box');
+    $('roster').classList.toggle('trunk', ARENA_THEME === 'trunk');
     golfer = null; renderGolfPost(false);
     boardShown = false;
     subscribeBoards();
@@ -293,7 +293,7 @@
         circ(o, c, c, r, sh);
         o.save(); o.beginPath(); o.arc(c, c, r, 0, Math.PI * 2); o.clip();
         var bounce = o.createRadialGradient(c + r * 0.1, c + r * 1.05, r * 0.2, c + r * 0.1, c + r * 1.05, r * 1.1);
-        var bc = box.classList.contains('trunk') ? '60,62,64' : box.classList.contains('box') ? '201,176,138' : '70,150,85';   // bounce light off the surface under the ball
+        var bc = box.classList.contains('trunk') ? '60,62,64' : '70,150,85';
         bounce.addColorStop(0, 'rgba(' + bc + ',0.28)'); bounce.addColorStop(1, 'rgba(' + bc + ',0)');
         circ(o, c, c, r, bounce);
         o.restore();
@@ -308,7 +308,7 @@
       var shadow = make(function (o) {
         o.save(); o.translate(c, c + r * 0.92); o.scale(1, 0.3);
         var cs = o.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 1.05);
-        var sc = box.classList.contains('trunk') ? '0,0,0' : box.classList.contains('box') ? '55,35,12' : '5,30,12';
+        var sc = box.classList.contains('trunk') ? '0,0,0' : '5,30,12';
         cs.addColorStop(0, 'rgba(' + sc + ',0.55)'); cs.addColorStop(0.6, 'rgba(' + sc + ',0.25)'); cs.addColorStop(1, 'rgba(' + sc + ',0)');
         circ(o, 0, 0, r * 1.05, cs); o.restore();
       });
@@ -318,7 +318,6 @@
     // Grass stains: each ball keeps its own repeating stain tile, on the same lattice as the dimples so the two roll
     // together and the stain pools in the dimples the way it does on a real ball. A new smear is stamped every rotation or so.
     var STAIN_COLS = [[104, 146, 58], [122, 158, 62], [88, 128, 52], [140, 160, 70], [96, 138, 48]];
-    var KRAFT_COLS = [[150, 122, 84], [164, 138, 98], [130, 104, 70]];   // dusty kraft scuffs for the box tray, instead of grass
     // a hard knock against the rail or another ball leaves a scuff: a few fine scratches and a dull patch
     function knock(b, v, now) {
       if (!b.name || Math.abs(v) < 7.5 || (b.lastScuff && now - b.lastScuff < 1500)) return;
@@ -364,7 +363,7 @@
       var x = Math.random() * s.pw, y = Math.random() * s.ph;
       var ang = (b.rollDir || 0) + (Math.random() - 0.5) * 0.7;
       var len = sp * (1.3 + Math.random() * 2.2), wid = sp * (0.55 + Math.random() * 0.6);
-      var mud = Math.random() < 0.1, col = mud ? [112, 84, 46] : (box.classList.contains('box') ? KRAFT_COLS : STAIN_COLS)[Math.floor(Math.random() * 3)];
+      var mud = Math.random() < 0.1, col = mud ? [112, 84, 46] : STAIN_COLS[Math.floor(Math.random() * STAIN_COLS.length)];
       var a = (mud ? 0.16 : 0.2) + Math.random() * 0.16;
       var rgba = function (k) { return 'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',' + k.toFixed(3) + ')'; };
       var wraps = [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]];
