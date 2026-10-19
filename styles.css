@@ -299,7 +299,7 @@
     font: 700 0.82rem var(--body); padding: 8px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap;
   }
   .act.claim { background: var(--ember); border-color: var(--ember); color: #fff; box-shadow: 0 4px 12px rgba(210, 105, 30, 0.3); }
-  .act.unclaim { color: var(--muted); font-weight: 600; }
+  .act.unclaim { color: var(--muted); font-weight: 600; background: transparent; border-style: dashed; font-size: 0.76rem; padding: 6px 10px; }
   .act[disabled] { opacity: 0.6; cursor: wait; }
   .empty { margin-top: 12px; padding: 18px; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); font-size: 0.9rem; text-align: center; }
   .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--line); }

@@ -3000,8 +3000,8 @@
       meta = '<span class="nobody">Nobody yet</span>' + (it.added_by ? ' · flagged by ' + esc(it.added_by) : '');
       act = '<button type="button" class="act claim" data-claim="' + esc(it.id) + '">I\'ll bring it</button>';
     } else {
-      meta = '<span class="by">' + esc(it.party) + '</span>' + (mine ? ' (you)' : '');
-      if (mine) act = '<button type="button" class="act unclaim" data-unclaim="' + esc(it.id) + '">Not bringing</button>';
+      meta = mine ? '<span class="by">\u2713 You\u2019ve got it</span>' : '<span class="by">' + esc(it.party) + '</span>';
+      if (mine) act = '<button type="button" class="act unclaim" data-unclaim="' + esc(it.id) + '">Can\u2019t bring it</button>';
     }
     if (showCat) meta += ' · ' + esc(it.category);
     var canRemove = (it.adder_id && it.adder_id === myId()) || mine;
