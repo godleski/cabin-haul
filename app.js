@@ -1179,7 +1179,7 @@
     mafiaDraft = null; teamsDraft = null; teamsEdit = false; expanded = null; pickerFor = null; modReveal = false;
     renderPredictions(); renderSheet(); renderWall(); updateChatBadge();
     renderMafia(); renderTeams(); renderLiv(); renderSmash();
-    renderHockeyBoard(); renderGolfBoard(); renderArcadeCues(); hibDraft = null; renderHibachi(); renderDinnerTally();
+    renderHockeyBoard(); renderGolfBoard(); renderArcadeCues(); smashResetPair(); hibDraft = null; renderHibachi(); renderDinnerTally();
   }
 
   // ---- Bottom dock ----
@@ -1195,7 +1195,7 @@
       b.classList.remove('bump'); if (on && changed) { void b.offsetWidth; b.classList.add('bump'); }
     });
     document.body.classList.toggle('tab-home', tab === 'home');
-    if (tab === 'games') { golfScrollCue(); renderArcadeCues(); }   // the page was hidden until now, so the measurements were zero
+    if (tab === 'games') { golfScrollCue(); renderArcadeCues(); if (smashResetPair()) renderSmash(); }   // the page was hidden until now, so the measurements were zero; Smash opens on the main event
     moveNavInd();
     updateChatBadge();
     window.scrollTo(0, 0); lastY = 0; setNavAway(false);
@@ -1593,9 +1593,24 @@
     }
   });
 
-  // ---- Games: Mitch vs Luke Smash tally ----
+  // ---- Games: Smash tally. The main event is Mitch vs Luke; Drew and Joe can be swapped into either seat. ----
+  // One shared doc: { log: [{ p: [left, right], w: winnerName, by, at }], updated_at }. Older entries { w: 'p1'|'p2' } are Mitch vs Luke.
   var smash = null, smashLoaded = false, smashSub = false, smashAnim = null, charge = null, smashDirty = false, smashInflight = 0;
-  var SMASH_P = { p1: 'Mitch', p2: 'Luke' };
+  var SMASH_MAIN = ['Mitch', 'Luke'];
+  var SMASH_COLOR = { Mitch: '#d63a1f', Luke: '#2e9e44', Drew: '#6d4de0', Joe: '#1a8fd6' };
+  var SMASH_NAMES = Object.keys(SMASH_COLOR);
+  var smashPair = SMASH_MAIN.slice(), smashSwap = null;   // the two seats on this phone's screen (back to the main event whenever the tab opens), and which seat is picking a replacement
+  function smashEntry(e) {   // one shape for old and new log entries
+    if (e.p) return { p: e.p, w: e.w, by: e.by, at: e.at };
+    return { p: SMASH_MAIN.slice(), w: e.w === 'p2' ? SMASH_MAIN[1] : SMASH_MAIN[0], by: e.by, at: e.at };
+  }
+  function smashLog() { return ((smash && smash.log) || []).map(smashEntry); }
+  function samePair(a, b) { return (a[0] === b[0] && a[1] === b[1]) || (a[0] === b[1] && a[1] === b[0]); }
+  function smashPairLog(pair) { return smashLog().filter(function (e) { return samePair(e.p, pair); }); }
+  function smashCounts(pair) { var c = {}; c[pair[0]] = 0; c[pair[1]] = 0; smashPairLog(pair).forEach(function (e) { if (c[e.w] != null) c[e.w]++; }); return c; }
+  function smashStreak(pair, name) { var log = smashPairLog(pair), n = 0; for (var i = log.length - 1; i >= 0 && log[i].w === name; i--) n++; return n; }
+  function smashRecord(name) { var w = 0, l = 0; smashLog().forEach(function (e) { if (e.p.indexOf(name) < 0) return; if (e.w === name) w++; else l++; }); return { w: w, l: l }; }
+  function smashResetPair() { if (charge) return; var was = smashPair; smashPair = SMASH_MAIN.slice(); smashSwap = null; return !samePair(was, SMASH_MAIN); }
   function subscribeSmash() {
     if (smashSub || !store || !store.game) return;
     smashSub = true;
@@ -1607,48 +1622,52 @@
       if (!same) renderSmash();                       // our own write echoing back shouldn't restart the KO animation
     });
   }
-  function smashCounts() {
-    var log = (smash && smash.log) || [], c = { p1: 0, p2: 0 };
-    log.forEach(function (e) { if (c[e.w] != null) c[e.w]++; });
-    return c;
-  }
-  function smashStreak(side) {
-    var log = (smash && smash.log) || [], n = 0;
-    for (var i = log.length - 1; i >= 0 && log[i].w === side; i--) n++;
-    return n;
-  }
   function renderSmash() {
     var body = $('smash-body'), status = $('smash-status'); if (!body) return;
-    if (charge) { smashDirty = true; return; }   // never swap the card out from under a finger mid-hold; redraw when the hold ends
     if (!smashLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
-    var c = smashCounts(), log = (smash && smash.log) || [];
-    status.textContent = c.p1 + ' – ' + c.p2 + (c.p1 === c.p2 ? (log.length ? ' · tied' : '') : ' · ' + (c.p1 > c.p2 ? SMASH_P.p1 : SMASH_P.p2) + ' leads');
-    var html = '<p class="info-sub">Every Smash match, counted. Hold the winner’s card until it fills. Anyone can log a win, so no fudging.</p>';
-    html += '<div class="smash"><div class="smash-board">';
-    ['p1', 'p2'].forEach(function (side) {
-      var n = c[side], lead = n > c[side === 'p1' ? 'p2' : 'p1'], st = smashStreak(side);
+    if (charge) { smashDirty = true; return; }   // never swap the card out from under a finger mid-hold; redraw when the hold ends
+    var main = smashCounts(SMASH_MAIN), log = smashLog();
+    status.textContent = SMASH_MAIN[0] + ' ' + main[SMASH_MAIN[0]] + ' – ' + main[SMASH_MAIN[1]] + ' ' + SMASH_MAIN[1];   // the header always shows the main event
+    var pair = smashPair, c = smashCounts(pair), isMain = samePair(pair, SMASH_MAIN);
+    var html = '<p class="info-sub">Every Smash match, counted. Hold the winner’s card until it fills. Anyone can log a win, so no fudging. Tap <b>Swap</b> to put someone else in a seat.</p>';
+    html += '<div class="smash"><div class="smash-eyebrow">' + (isMain ? 'Main event' : 'Side match') + '</div><div class="smash-board">';
+    ['p1', 'p2'].forEach(function (side, i) {
+      var name = pair[i], n = c[name], lead = n > c[pair[1 - i]], st = smashStreak(pair, name), col = SMASH_COLOR[name];
       var rolling = smashAnim && smashAnim.side === side;
-      html += '<div class="fighter ' + side + (lead ? ' lead' : '') + '" data-side="' + side + '"><div class="fname">' + esc(SMASH_P[side]) + '</div>' +
-        '<div class="odo"><div class="roll' + (rolling ? ' spin' : '') + '">' + (rolling ? '<span>' + smashAnim.from + '</span>' : '') + '<span>' + n + '</span></div></div>' +
-        '<div class="streak">' + (st >= 2 ? st + ' in a row' : '') + '</div>' +
-        '<div class="ko-hint"><span>Hold to KO</span></div></div>';
+      if (smashSwap === side) {
+        var others = SMASH_NAMES.filter(function (x) { return pair.indexOf(x) < 0; });
+        html += '<div class="fighter swapping ' + side + '" style="--pc:' + col + '"><div class="fname">' + esc(name) + '</div><div class="swap-sub">Swap in</div><div class="swap-opts">' +
+          others.map(function (x) { return '<button type="button" class="swap-opt" data-swap="' + esc(x) + '" style="--pc:' + SMASH_COLOR[x] + '">' + esc(x) + '</button>'; }).join('') +
+          '</div><button type="button" class="linkbtn" data-swap-cancel="1">Cancel</button></div>';
+      } else {
+        html += '<div class="fighter ' + side + (lead ? ' lead' : '') + '" data-side="' + side + '" data-name="' + esc(name) + '" style="--pc:' + col + '"><div class="fname">' + esc(name) + '</div>' +
+          '<div class="odo"><div class="roll' + (rolling ? ' spin' : '') + '">' + (rolling ? '<span>' + smashAnim.from + '</span>' : '') + '<span>' + n + '</span></div></div>' +
+          '<div class="streak">' + (st >= 2 ? st + ' in a row' : '') + '</div>' +
+          '<div class="ko-hint"><span>Hold to KO</span></div><button type="button" class="swap-btn" data-swap-seat="' + side + '">⇄ Swap</button></div>';
+      }
       if (side === 'p1') html += '<div class="vs">VS</div>';
     });
     html += '</div>';
-    if (smashAnim) html += '<div class="ko-flash ' + smashAnim.side + '">GAME!</div>';
+    if (smashAnim) html += '<div class="ko-flash ' + smashAnim.side + '" style="--pc:' + SMASH_COLOR[pair[smashAnim.side === 'p1' ? 0 : 1]] + '">GAME!</div>';
     html += '</div>';
+    if (!isMain) html += '<div class="mafia-actions"><button type="button" class="linkbtn" id="smash-main">Back to ' + esc(SMASH_MAIN[0]) + ' vs ' + esc(SMASH_MAIN[1]) + '</button></div>';
+    // overall records across every pairing; the two regulars always show, the others once they've played
+    var played = SMASH_NAMES.filter(function (nm) { var r = smashRecord(nm); return SMASH_MAIN.indexOf(nm) >= 0 || r.w + r.l > 0; });
+    html += '<div class="standings">' + played.map(function (nm) { var r = smashRecord(nm); return '<span style="--pc:' + SMASH_COLOR[nm] + '"><i></i>' + esc(nm) + ' <b>' + r.w + '–' + r.l + '</b></span>'; }).join('') + '</div>';
     if (log.length) {
-      var last = log[log.length - 1];
-      html += '<div class="history">' + log.slice(-24).map(function (e) { return '<i class="' + e.w + '" title="' + esc(SMASH_P[e.w]) + '"></i>'; }).join('') + '<span style="margin-left:6px">last: ' + esc(SMASH_P[last.w]) + ', logged by ' + esc(last.by === me ? 'you' : last.by) + ' ' + esc(agoText(last.at)) + '</span></div>';
+      var last = log[log.length - 1], loser = last.p[0] === last.w ? last.p[1] : last.p[0];
+      var hist = smashPairLog(pair).slice(-24);   // this pairing's recent results, newest on the right
+      html += '<div class="history">' + hist.map(function (e) { return '<i style="background:' + SMASH_COLOR[e.w] + '" title="' + esc(e.w) + '"></i>'; }).join('') + '<span style="margin-left:6px">last: ' + esc(last.w) + ' beat ' + esc(loser) + ', logged by ' + esc(last.by === me ? 'you' : last.by) + ' ' + esc(agoText(last.at)) + '</span></div>';
       html += '<div class="mafia-actions"><button type="button" class="linkbtn" id="smash-undo">Undo last</button></div>';
     }
     body.innerHTML = html;
     smashAnim = null;
   }
   function smashWin(side) {
+    var pair = smashPair.slice(), winner = pair[side === 'p1' ? 0 : 1];
     var log = ((smash && smash.log) || []).slice(-199), prevDoc = smash;
-    var before = { n: smashCounts()[side] };
-    log.push({ w: side, by: me, at: new Date().toISOString() });
+    var before = { n: smashCounts(pair)[winner] };
+    log.push({ p: pair, w: winner, by: me, at: new Date().toISOString() });
     var doc = { log: log, updated_at: new Date().toISOString() };
     smash = doc; smashAnim = { side: side, from: before.n };
     renderSmash();
@@ -1665,6 +1684,7 @@
     });
   }
   function chargeStart(e) {
+    if (e.target.closest('.swap-btn')) return;   // the Swap pill is a tap, not a hold
     var btn = e.target.closest('.fighter[data-side]'); if (!btn || charge) return;
     e.preventDefault();
     try { btn.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
@@ -1690,6 +1710,12 @@
   window.addEventListener('pointerup', chargeEnd); window.addEventListener('pointercancel', chargeEnd);
   $('smash-body').addEventListener('contextmenu', function (e) { if (e.target.closest('.fighter')) e.preventDefault(); });
   $('smash-body').addEventListener('click', function (e) {
+    var seat = e.target.closest('[data-swap-seat]');
+    if (seat) { smashSwap = seat.getAttribute('data-swap-seat'); buzz(6); renderSmash(); return; }
+    var pick = e.target.closest('[data-swap]');
+    if (pick && smashSwap) { smashPair[smashSwap === 'p1' ? 0 : 1] = pick.getAttribute('data-swap'); smashSwap = null; buzz(6); renderSmash(); return; }
+    if (e.target.closest('[data-swap-cancel]')) { smashSwap = null; renderSmash(); return; }
+    if (e.target.closest('#smash-main')) { smashResetPair(); buzz(6); renderSmash(); return; }
     if (e.target.closest('#smash-undo') && smash && smash.log && smash.log.length) {
       var doc = { log: smash.log.slice(0, -1), updated_at: new Date().toISOString() }, prev = smash;
       smash = doc; renderSmash();
