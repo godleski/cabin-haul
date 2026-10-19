@@ -2451,7 +2451,13 @@
   ];
   var HIBACHI_PAYEE = { name: 'Jess', handle: 'Craftyj627' };   // fronts the chef; everyone Venmos her their plate
   var HIBACHI_HOST = 'Mitch';   // the host eats free: his plate and tip are split evenly across everyone else
-  var HIBACHI_HOST_DEFAULT = { picks: { plate: ['s-filet'] }, note: '', locked: true, preset: true };   // in by default (filet) until he changes it
+  var HIBACHI_GUESTS = ['Jessie', 'Conner'];   // hibachi only: not on the roster and not in the app; Mitch collects for them
+  var HIB_NAMES = NAMES.concat(HIBACHI_GUESTS);
+  var HIBACHI_PRESETS = {   // orders that are in from the start: the host's (he can change it) and the guests' (fixed, marked paid)
+    Mitch: { picks: { plate: ['s-filet'] }, note: '', locked: true, preset: true },
+    Jessie: { picks: { plate: ['c-fsh'] }, note: '', locked: true, paid: true, preset: true },
+    Conner: { picks: { plate: ['c-nc'] }, note: '', locked: true, paid: true, preset: true }
+  };
   var hibJustLocked = false;
   function hibPayUrl(amount, note) {   // Venmo's pay link: opens the app on a phone with recipient, amount and note filled in
     return 'https://venmo.com/' + encodeURIComponent(HIBACHI_PAYEE.handle) + '?txn=pay&amount=' + encodeURIComponent(Number(amount).toFixed(2)) + '&note=' + encodeURIComponent(note);
@@ -2461,7 +2467,7 @@
   function hibOrders() {
     var out = {};
     votes.forEach(function (v) { if (v.question_id !== HIBACHI_Q) return; try { var o = JSON.parse(v.pick); if (o && o.picks) out[v.voter] = o; } catch (e) { /* ignore */ } });
-    if (!out[HIBACHI_HOST]) out[HIBACHI_HOST] = JSON.parse(JSON.stringify(HIBACHI_HOST_DEFAULT));
+    Object.keys(HIBACHI_PRESETS).forEach(function (n) { if (!out[n]) out[n] = JSON.parse(JSON.stringify(HIBACHI_PRESETS[n])); });
     return out;
   }
   function hibOption(gid, oid) { var g = HIBACHI_MENU.filter(function (x) { return x.id === gid; })[0]; return g && g.options.filter(function (o) { return o.id && o.id === oid; })[0]; }
@@ -2489,7 +2495,7 @@
   function hibTip(order) { return Math.round(hibPrice(order) * HIBACHI_TIP * 100) / 100; }
   function hibTotal(order) { return Math.round((hibPrice(order) + hibTip(order)) * 100) / 100; }
   // the host's plate + tip, split evenly across everyone else and added to each of their Venmos
-  function hibSplitWays() { return NAMES.length - 1; }
+  function hibSplitWays() { return HIB_NAMES.length - 1; }
   function hibShare() { return Math.round(hibTotal(hibOrders()[HIBACHI_HOST]) / hibSplitWays() * 100) / 100; }
   function hibShareOf(n) { return n === HIBACHI_HOST ? 0 : hibShare(); }
   function hibOwed(n, order) { return n === HIBACHI_HOST ? 0 : Math.round((hibTotal(order) + hibShare()) * 100) / 100; }
@@ -2504,11 +2510,11 @@
   function money(n) { return '$' + (Math.round(n * 100) / 100).toFixed(n % 1 ? 2 : 0); }
   function renderHibachi() {
     var mine = $('hib-mine'); if (!mine || !me) return;
-    var orders = hibOrders(), locked = NAMES.filter(function (n) { return orders[n] && orders[n].locked; }), waiting = NAMES.filter(function (n) { return locked.indexOf(n) < 0; });
+    var orders = hibOrders(), locked = HIB_NAMES.filter(function (n) { return orders[n] && orders[n].locked; }), waiting = HIB_NAMES.filter(function (n) { return locked.indexOf(n) < 0; });
     var done = waiting.length === 0;
     $('hib-light').classList.toggle('on', done);
     var st = $('hib-status'); st.classList.toggle('done', done);
-    st.innerHTML = done ? '<span class="st-ico">🔥</span><span><b>Grill’s hot.</b> All ' + NAMES.length + ' orders are in. Jess, send the ticket.</span>' : '<span class="st-ico">🥢</span><span><b>' + locked.length + ' of ' + NAMES.length + '</b> at the table. Still need ' + waiting.map(function (n) { return n === me ? 'you' : esc(n); }).join(', ') + '.</span>';
+    st.innerHTML = done ? '<span class="st-ico">🔥</span><span><b>Grill’s hot.</b> All ' + HIB_NAMES.length + ' orders are in. Jess, send the ticket.</span>' : '<span class="st-ico">🥢</span><span><b>' + locked.length + ' of ' + HIB_NAMES.length + '</b> at the table. Still need ' + waiting.map(function (n) { return n === me ? 'you' : esc(n); }).join(', ') + '.</span>';
     // my order
     var my = orders[me], editing = hibDraft || !(my && my.locked);
     if (!editing) {
@@ -2550,7 +2556,7 @@
     }
     // everyone, for Jess
     var all = $('hib-all'), rows = '', counts = {}, plates = 0, tips = 0;
-    NAMES.forEach(function (n) {
+    HIB_NAMES.forEach(function (n) {
       var o = orders[n];
       if (o && o.locked) {
         var isH = n === HIBACHI_HOST, p = isH ? hibTotal(o) : hibOwed(n, o); plates += hibPrice(o); tips += hibTip(o);
@@ -2561,7 +2567,7 @@
       }
     });
     var tally = Object.keys(counts).map(function (k) { return counts[k] + '× ' + k; });
-    all.innerHTML = '<div class="hib-all ticket"><div class="ah"><b>Order ticket</b><span class="tk-sub">' + locked.length + ' of ' + NAMES.length + ' plates</span>' + (me === HIBACHI_PAYEE.name ? '<button type="button" class="btn" id="hib-copy"' + (locked.length ? '' : ' disabled') + '>Copy the order</button>' : '') + '</div><div class="hib-rows">' + rows + '</div>' +
+    all.innerHTML = '<div class="hib-all ticket"><div class="ah"><b>Order ticket</b><span class="tk-sub">' + locked.length + ' of ' + HIB_NAMES.length + ' plates</span>' + (me === HIBACHI_PAYEE.name ? '<button type="button" class="btn" id="hib-copy"' + (locked.length ? '' : ' disabled') + '>Copy the order</button>' : '') + '</div><div class="hib-rows">' + rows + '</div>' +
       (tally.length ? '<div class="hib-totals">' + esc(tally.join(' · ')) + '</div>' : '') +
       '<div class="hib-sub"><span>Plates</span><span>' + money(plates) + '</span></div><div class="hib-sub"><span>Tip (20%)</span><span>' + money(tips) + '</span></div>' +
       '<div class="hib-sub split"><span>' + esc(HIBACHI_HOST) + '’s ' + money(hibTotal(orders[HIBACHI_HOST])) + ', in everyone else’s amount</span><span>' + money(hibShare()) + ' × ' + hibSplitWays() + '</span></div>' +
@@ -2569,7 +2575,7 @@
   }
   function hibCopyText() {   // just the menu items and how many of each, in menu order, for Jess to hand to the company
     var orders = hibOrders(), counts = {};
-    NAMES.forEach(function (nm) {
+    HIB_NAMES.forEach(function (nm) {
       var o = orders[nm]; if (!o || !o.locked) return;
       HIBACHI_MENU.forEach(function (g) { (o.picks[g.id] || []).forEach(function (oid) { counts[g.id + '/' + oid] = (counts[g.id + '/' + oid] || 0) + 1; }); });
     });
@@ -2603,8 +2609,8 @@
       // the form collapses into the locked card, so bring the pay prompt (or the card, for Jess) into view
       var focusEl = document.querySelector('#hibachi .hib-mine-locked');
       if (focusEl) { var top = focusEl.getBoundingClientRect().top + window.scrollY - 90; window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' }); }
-      var left = NAMES.filter(function (nm) { var o = hibOrders()[nm]; return !(o && o.locked); }).length;
-      var paidAlready = NAMES.filter(function (nm) { var o = hibOrders()[nm]; return nm !== HIBACHI_HOST && o && o.locked && o.paid; }).length;
+      var left = HIB_NAMES.filter(function (nm) { var o = hibOrders()[nm]; return !(o && o.locked); }).length;
+      var paidAlready = HIB_NAMES.filter(function (nm) { var o = hibOrders()[nm]; return nm !== HIBACHI_HOST && o && o.locked && o.paid; }).length;
       toast(me === HIBACHI_PAYEE.name ? (left ? 'Locked in. ' + left + ' to go.' : 'Locked in. That’s everyone!') : me === HIBACHI_HOST ? (paidAlready && prev && hibTotal(prev) !== hibTotal(order) ? 'Locked in. ' + paidAlready + ' already paid at the old split; they’ll see the difference.' : 'Locked in. The group’s got your plate.') : 'Locked in. Now Venmo ' + HIBACHI_PAYEE.name + ' ' + money(hibOwed(me, order)) + ' (plate, tip and ' + money(hibShare()) + ' for ' + HIBACHI_HOST + '’s).');
       return;
     }
