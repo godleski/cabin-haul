@@ -2866,8 +2866,8 @@
 
   // ---- Data ----
   var store = window.STORE, booted = false, items = [], busy = {}, live = false, itemsLoaded = false;
-  var view = lsGet('cabin-haul-view') || 'items';
-  var mode = 'bring';
+  var view = { all: 'all', open: 'open', mine: 'mine' }[lsGet('cabin-haul-view')] || 'all';
+  var mode = 'bring', expandedItem = null, adding = false, catTouched = false;
 
   function boot() {
     booted = true;
@@ -2888,73 +2888,54 @@
   function showSetup(html) { $('setup').hidden = false; $('setup').innerHTML = html; $('groups').innerHTML = ''; }
 
   // ---- Render ----
-  function metaTags(it) {
+  function metaLine(it) {   // "Seltzer · 12-pack", the paperwork answers in one quiet line
     var m = it.meta, p = PANELS[it.category]; if (!m || !p) return '';
-    var tags = p.order.filter(function (k) { return m[k]; }).map(function (k) { return '<span class="tag' + (k === 'grade' ? ' ' + esc(m[k]) : '') + '">' + optLabel(it.category, k, m[k]) + '</span>'; });
-    return tags.length ? '<div class="tags">' + tags.join('') + '</div>' : '';
+    return p.order.filter(function (k) { return m[k]; }).map(function (k) { return optLabel(it.category, k, m[k]); }).join(' · ');
   }
+  function initials(party) { return party.split('&').map(function (s) { return s.trim().charAt(0); }).join('').toUpperCase().slice(0, 2); }
   function itemRow(it, showCat) {
-    var mine = it.party && it.party === myParty;
-    var cls = 'item' + (!it.party ? ' need' : '') + (mine ? ' mine' : '');
-    var meta, act = '';
-    if (!it.party) {
-      meta = '<span class="nobody">Nobody yet</span>' + (it.added_by ? ' · flagged by ' + esc(it.added_by) : '');
-      act = '<button type="button" class="act claim" data-claim="' + esc(it.id) + '">I\'ll bring it</button>';
-    } else {
-      meta = mine ? '<span class="by">\u2713 You\u2019ve got it</span>' : '<span class="by">' + esc(it.party) + '</span>';
-      if (mine) act = '<button type="button" class="act unclaim" data-unclaim="' + esc(it.id) + '">Can\u2019t bring it</button>';
-    }
-    if (showCat) meta += ' · ' + esc(it.category);
+    var mine = !!it.party && it.party === myParty, open = !it.party, exp = expandedItem === it.id;
     var canRemove = (it.adder_id && it.adder_id === myId()) || mine;
-    if (canRemove) meta += '<button type="button" class="rm" data-rm="' + esc(it.id) + '">remove</button>';
-    return '<div class="' + cls + '" data-id="' + esc(it.id) + '">' +
-      '<span class="ico">' + (CAT_ICON[it.category] || CAT_ICON.Other) + '</span>' +
-      '<div class="title">' + esc(it.name) + (it.note ? ' <span class="note">· ' + esc(it.note) + '</span>' : '') + '</div>' +
-      act + '<div class="meta">' + meta + '</div>' + metaTags(it) + '</div>';
+    var bits = [];
+    if (!open) bits.push('<span class="hl-who">' + esc(mine ? 'You' : it.party) + '</span>');
+    var ml = metaLine(it); if (ml) bits.push(esc(ml));
+    if (showCat) bits.push(esc(it.category));
+    if (open && it.added_by) bits.push('flagged by ' + esc(it.added_by === me ? 'you' : it.added_by));
+    var acts = '';
+    if (exp) {
+      if (open) acts = '<button type="button" class="hl-pill go" data-claim="' + esc(it.id) + '">I\u2019ll bring it</button>';
+      else if (mine) acts = '<button type="button" class="hl-pill" data-unclaim="' + esc(it.id) + '">Can\u2019t bring it</button>';
+      if (canRemove) acts += '<button type="button" class="hl-pill quiet" data-rm="' + esc(it.id) + '">Remove</button>';
+      if (it.added_by && !mine) acts += '<span class="hl-added">added by ' + esc(it.added_by) + '</span>';
+    }
+    var tick = open ? '' : mine ? '\u2713' : esc(initials(it.party));
+    return '<div class="hl-row' + (open ? ' open' : mine ? ' mine' : '') + (exp ? ' exp' : '') + '" data-id="' + esc(it.id) + '">' +
+      '<button type="button" class="hl-tick" data-tick="' + esc(it.id) + '" aria-label="' + (open ? 'I\u2019ll bring it' : mine ? 'Your item' : esc(it.party)) + '">' + tick + '</button>' +
+      '<div class="hl-body"><div class="hl-title">' + esc(it.name) + (it.note ? ' <span class="hl-note">\u00b7 ' + esc(it.note) + '</span>' : '') + '</div>' +
+      '<div class="hl-meta">' + bits.join(' <i>\u00b7</i> ') + '</div>' + (acts ? '<div class="hl-acts">' + acts + '</div>' : '') + '</div></div>';
   }
-  function groupHead(icon, title, k, cls) {
-    return '<section class="group' + (cls ? ' ' + cls : '') + '"><div class="group-head"><span class="gico">' + icon + '</span><h2>' + esc(title) + '</h2><span class="k">' + k + '</span></div>';
-  }
+  function subHead(title, n, cls) { return '<div class="hl-sub' + (cls ? ' ' + cls : '') + '"><span>' + esc(title) + '</span><span>' + n + '</span></div>'; }
   function render() {
     if (!me) return;
-    $('tab-items').setAttribute('aria-selected', String(view === 'items'));
-    $('tab-people').setAttribute('aria-selected', String(view === 'people'));
+    Array.prototype.forEach.call(document.querySelectorAll('#haul-filters [data-view]'), function (b) { b.setAttribute('aria-selected', String(b.getAttribute('data-view') === view)); });
     var needed = items.filter(function (it) { return !it.party; });
-    $('tab-items').textContent = 'By item'; $('tab-people').textContent = 'By person';
     var html = '';
     if (!items.length) {
-      html = itemsLoaded ? '<div class="empty">Nothing on the list yet. Add the first thing above.</div>' : '<p class="skeleton">Loading the list\u2026</p>';
-    } else if (view === 'items') {
-      if (needed.length) {
-        html += groupHead('\uD83D\uDEA9', 'Still needed', plural(needed.length, 'item', 'items'), 'needed') + '<div class="list">';
-        needed.forEach(function (it) { html += itemRow(it, true); });
-        html += '</div></section>';
-      }
+      html = itemsLoaded ? '<div class="pad-empty">Nothing on the pad yet. Add the first thing above.</div>' : '<p class="skeleton">Loading the list\u2026</p>';
+    } else if (view === 'open') {
+      html = needed.length ? '<div class="hl-hint">Tap a circle to grab one.</div>' + needed.map(function (it) { return itemRow(it, true); }).join('') : '<div class="pad-empty">Everything\u2019s covered. Nice.</div>';
+    } else if (view === 'mine') {
+      var mineRows = items.filter(function (it) { return it.party === myParty; });
+      html = mineRows.length ? mineRows.map(function (it) { return itemRow(it, true); }).join('') : '<div class="pad-empty">You haven\u2019t called anything yet. Tap a circle to grab something.</div>';
+    } else {
+      if (needed.length) html += subHead('Needs someone', 'tap a circle to grab one', 'need') + needed.map(function (it) { return itemRow(it, true); }).join('');
       var cats = CATEGORIES.slice();
       items.forEach(function (it) { if (cats.indexOf(it.category) < 0) cats.push(it.category); });
       cats.forEach(function (cat) {
         var rows = items.filter(function (it) { return it.party && it.category === cat; });
         if (!rows.length) return;
-        html += groupHead(CAT_ICON[cat] || CAT_ICON.Other, cat, plural(rows.length, 'item', 'items')) + '<div class="list">';
-        rows.forEach(function (it) { html += itemRow(it, false); });
-        html += '</div></section>';
+        html += subHead(cat, rows.length) + rows.map(function (it) { return itemRow(it, false); }).join('');
       });
-    } else {
-      var parties = PARTIES.map(function (p) { return p.join(' & '); });
-      items.forEach(function (it) { if (it.party && parties.indexOf(it.party) < 0) parties.push(it.party); });
-      parties.sort(function (a, b) { return (b === myParty) - (a === myParty); });
-      parties.forEach(function (party) {
-        var rows = items.filter(function (it) { return it.party === party; });
-        html += groupHead(party === myParty ? '\uD83D\uDC4B' : '\uD83C\uDFE0', party + (party === myParty ? ' (you)' : ''), plural(rows.length, 'item', 'items'));
-        if (rows.length) { html += '<div class="list">'; rows.forEach(function (it) { html += itemRow(it, true); }); html += '</div>'; }
-        else html += '<div class="empty">Nothing yet</div>';
-        html += '</section>';
-      });
-      if (needed.length) {
-        html += groupHead('\uD83D\uDEA9', 'Still needed', plural(needed.length, 'item', 'items'), 'needed') + '<div class="list">';
-        needed.forEach(function (it) { html += itemRow(it, true); });
-        html += '</div></section>';
-      }
     }
     $('groups').innerHTML = html;
     updateStatus();
@@ -2962,11 +2943,10 @@
 
   function updateStatus() {
     var el = $('haul-stats'); if (!el) return;
-    var needed = items.filter(function (it) { return !it.party; }).length;
-    var mine = items.filter(function (it) { return it.party === myParty; }).length;
-    el.innerHTML = '<div class="stat"><div class="n">' + items.length + '</div><div class="l"><span class="dot' + (live ? ' live' : '') + '"></span>on the list</div></div>' +
-      '<div class="stat' + (needed ? ' need' : '') + '"><div class="n">' + needed + '</div><div class="l">still needed</div></div>' +
-      '<div class="stat mine"><div class="n">' + mine + '</div><div class="l">yours</div></div>';
+    var n = items.length, needed = items.filter(function (it) { return !it.party; }).length, covered = n - needed;
+    if (!n) { el.innerHTML = '<div class="txt">' + (itemsLoaded ? 'Nothing on the pad yet.' : 'Loading\u2026') + '</div>'; return; }
+    el.innerHTML = '<div class="bar"><i style="width:' + Math.round(covered / n * 100) + '%"></i></div>' +
+      '<div class="txt">' + (needed ? '<b>' + covered + ' of ' + n + '</b> covered \u00b7 <span class="need">' + plural(needed, 'thing needs', 'things need') + ' someone</span>' : '<b>All ' + n + '</b> covered. Nice.') + '</div>';
   }
 
   // ---- Actions ----
@@ -2980,11 +2960,15 @@
   }
   function setBusy(id, on) {
     busy[id] = on;
-    var el = document.querySelector('.item[data-id="' + id + '"] .act');
+    var el = document.querySelector('.hl-row[data-id="' + id + '"] .hl-tick');
     if (el) el.disabled = on;
   }
   function fail(prefix) { return function (e) { toast(prefix + ': ' + ((e && e.message) || e)); }; }
   function patchLocal(row) { items = items.map(function (it) { return it.id === row.id ? row : it; }); render(); }
+  document.addEventListener('click', function (e) {   // tap anywhere off the add form with nothing typed and it folds back up
+    if (!adding || e.target.closest('#adder')) return;
+    if (!$('new-name').value.trim() && !$('new-note').value.trim()) closeAdd();
+  });
 
   function addItem() {
     var nameEl = $('new-name'), noteEl = $('new-note');
@@ -3018,28 +3002,32 @@
     $('addbtn').disabled = true;
     store.add(row).then(function (saved) {
       if (!items.some(function (it) { return it.id === saved.id; })) items.push(saved);
-      nameEl.value = ''; noteEl.value = ''; extra = {}; renderExtraPanel();
-      render();
-      toast((mode === 'bring' ? 'On the list: ' : 'Flagged: ') + name + '.');
+      nameEl.value = ''; noteEl.value = ''; extra = {}; catTouched = false; newCat = 'Food'; renderCatRow(); renderExtraPanel(); syncMode();
+      expandedItem = null; render(); nameEl.focus();
+      toast((mode === 'bring' ? 'On the pad: ' : 'Flagged: ') + name + '.');
     }).catch(fail('Couldn\'t add that')).then(function () { $('addbtn').disabled = false; });
   }
 
   function claim(id) {
     if (busy[id]) return;
     setBusy(id, true);
-    store.update(id, { party: myParty, claimed_by: me }).then(patchLocal)
+    var it = items.filter(function (x) { return x.id === id; })[0];
+    expandedItem = null; buzz([8, 30, 8]);
+    store.update(id, { party: myParty, claimed_by: me }).then(function (row) { patchLocal(row); toast((it ? it.name : 'That') + ' is yours.'); })
       .catch(fail('Couldn\'t claim that')).then(function () { setBusy(id, false); });
   }
   function unclaim(id) {
     if (busy[id]) return;
     setBusy(id, true);
+    expandedItem = null;
     store.update(id, { party: null, claimed_by: null }).then(function (row) {
-      patchLocal(row); toast('Moved to "Still needed" so someone else can grab it.');
+      patchLocal(row); toast('Back on the pad for someone else to grab.');
     }).catch(fail('Couldn\'t update that')).then(function () { setBusy(id, false); });
   }
   function removeItem(id) {
     var it = items.filter(function (x) { return x.id === id; })[0];
     if (!it) return;
+    expandedItem = null;
     store.remove(id).then(function () {
       items = items.filter(function (x) { return x.id !== id; });
       render();
@@ -3048,13 +3036,41 @@
   }
 
   $('adder').addEventListener('submit', function (e) { e.preventDefault(); addItem(); });
+  function openAdd() { if (adding) return; adding = true; $('add-more').hidden = false; $('add-cancel').hidden = false; $('adder').classList.add('on'); }
+  function closeAdd() {
+    adding = false; $('add-more').hidden = true; $('add-cancel').hidden = true; $('adder').classList.remove('on');
+    $('new-name').value = ''; $('new-note').value = ''; mode = 'bring'; newCat = 'Food'; extra = {}; catTouched = false;
+    renderCatRow(); renderExtraPanel(); syncMode(); $('new-name').blur();
+  }
+  $('new-name').addEventListener('focus', openAdd);
+  $('new-name').addEventListener('input', function () {
+    if (catTouched) return;
+    var g = guessCat($('new-name').value) || 'Food';
+    if (g !== newCat) { newCat = g; extra = {}; renderCatRow(); renderExtraPanel(); syncMode(); }
+  });
+  $('add-cancel').addEventListener('click', closeAdd);
   $('mode-bring').addEventListener('click', function () { mode = 'bring'; syncMode(); });
   $('mode-need').addEventListener('click', function () { mode = 'need'; syncMode(); });
   function syncMode() {
     $('mode-bring').setAttribute('aria-pressed', String(mode === 'bring'));
     $('mode-need').setAttribute('aria-pressed', String(mode === 'need'));
     $('addbtn').textContent = mode === 'bring' ? 'Add it' : 'Flag it';
-    $('new-name').placeholder = PANELS[newCat] ? PANELS[newCat].placeholder : mode === 'bring' ? 'What are you bringing?' : 'What do we still need?';
+    $('new-name').placeholder = adding ? (PANELS[newCat] ? PANELS[newCat].placeholder : mode === 'bring' ? 'What are you bringing?' : 'What do we still need?') : 'Add something\u2026';
+  }
+  // a rough guess at the category from the name, so most people never touch the chips
+  var CAT_WORDS = [
+    ['Booze', /\b(beer|ipa|lager|pilsner|seltzer|claw|high noon|noon|truly|vodka|tequila|whisk|bourbon|rum|gin|wine|champagne|prosecco|fireball|tito|jager|mezcal|cider|twisted tea|modelo|coors|bud|miller|busch|pbr|stella|corona|keg|shooters|handle|booze|liquor|shots?|margarita|mimosa|spiked|hard)\b/],
+    ['Weed', /\b(weed|flower|pre[- ]?rolls?|joints?|edibles?|gummies|carts?|dabs?|pen|indica|sativa|hybrid|blunts?|zip|eighth|quarter|oz|thc)\b/],
+    ['Drinks', /\b(coffee|creamer|water|soda|pop|coke|diet|sprite|pepsi|gatorade|juice|red ?bull|celsius|energy|tea|milk|mixers?|tonic|ginger ale|lemonade|croix|kombucha|cocoa|hot chocolate|oj)\b/],
+    ['Snacks', /\b(chips?|salsa|pretzels?|popcorn|candy|cookies?|trail mix|jerky|nuts|crackers|dip|guac|hummus|granola|oreos?|goldfish|cheez|snacks?|gummy|bars?|puffs)\b/],
+    ['Supplies', /\b(ice|paper towels?|toilet paper|tp|plates?|cups?|solo|napkins?|utensils?|forks?|spoons?|knives|trash|garbage|foil|ziploc|sponge|soap|sunscreen|bug spray|lighters?|matches|firewood|wood|charcoal|propane|batteries|first aid|advil|tylenol|cooler|koozies?|tupperware|plastic|bags?)\b/],
+    ['Gear', /\b(speaker|cards|games?|board game|cornhole|spikeball|football|frisbee|skis?|snowboard|sled|poles|helmet|goggles|boots|projector|hdmi|extension cord|chargers?|dice|poker|uno|jenga|catan|guitar|tent|lantern|headlamp|blankets?|pillows?|towels?|sleeping bag|chairs?|bluetooth|aux)\b/],
+    ['Food', /\b(burgers?|buns|hot ?dogs?|eggs?|bacon|bread|cheese|butter|pancake|syrup|chicken|steaks?|tortillas?|tacos?|pasta|sauce|rice|veggies|vegetables|fruit|bananas?|apples?|lettuce|tomato|onions?|pizza|breakfast|dinner|lunch|sandwich|deli|ham|turkey|yogurt|cereal|bagels?|cream cheese|ketchup|mustard|condiments|oil|spices?|salt|pepper|marshmallows?|s'?mores|graham|chocolate|hershey|potatoes|chili|wings|ribs|brisket|sausage|avocado|salad)\b/]
+  ];
+  function guessCat(name) {
+    var s = String(name || '').toLowerCase();
+    for (var i = 0; i < CAT_WORDS.length; i++) if (CAT_WORDS[i][1].test(s)) return CAT_WORDS[i][0];
+    return null;
   }
   var newCat = 'Food', extra = {};
   function renderCatRow() {
@@ -3075,7 +3091,7 @@
   }
   $('cat-row').addEventListener('click', function (e) {
     var b = e.target.closest('[data-cat]'); if (!b) return;
-    var was = newCat; newCat = b.getAttribute('data-cat'); if (newCat !== was) extra = {};
+    var was = newCat; newCat = b.getAttribute('data-cat'); catTouched = true; if (newCat !== was) extra = {};
     renderCatRow(); renderExtraPanel(); syncMode();
     if (PANELS[newCat]) buzz(15);
   });
@@ -3089,10 +3105,16 @@
   $('groups').addEventListener('click', function (e) {
     var c = e.target.closest('[data-claim]'); if (c) { claim(c.getAttribute('data-claim')); return; }
     var u = e.target.closest('[data-unclaim]'); if (u) { unclaim(u.getAttribute('data-unclaim')); return; }
-    var r = e.target.closest('[data-rm]'); if (r) removeItem(r.getAttribute('data-rm'));
+    var r = e.target.closest('[data-rm]'); if (r) { removeItem(r.getAttribute('data-rm')); return; }
+    var row = e.target.closest('.hl-row'); if (!row) return;
+    var id = row.getAttribute('data-id'), it = items.filter(function (x) { return x.id === id; })[0]; if (!it) return;
+    if (e.target.closest('[data-tick]') && !it.party) { claim(id); return; }   // an open circle: tap it and it's yours
+    expandedItem = expandedItem === id ? null : id; buzz(6); render();
   });
-  $('tab-items').addEventListener('click', function () { view = 'items'; lsSet('cabin-haul-view', view); render(); });
-  $('tab-people').addEventListener('click', function () { view = 'people'; lsSet('cabin-haul-view', view); render(); });
+  $('haul-filters').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-view]'); if (!b) return;
+    view = b.getAttribute('data-view'); lsSet('cabin-haul-view', view); expandedItem = null; buzz(6); render();
+  });
 
   function listText() {
     var lines = ['Cabin haul · ' + new Date().toLocaleDateString()];
