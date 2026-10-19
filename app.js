@@ -2892,7 +2892,7 @@
       : '<span class="lbl none">' + (itemsLoaded ? 'Nothing from you yet.' : 'Loading\u2026') + '</span>';
     $('br-needs-k').textContent = needed.length ? plural(needed.length, 'thing', 'things') : '';
     $('br-needs').innerHTML = needed.length ? needed.map(function (it) {
-      var own = it.adder_id && it.adder_id === myId();
+      var own = (it.adder_id && it.adder_id === myId()) || it.added_by === me;
       return '<div class="need" data-id="' + esc(it.id) + '"><span class="nm">' + esc(it.name) + (it.added_by ? '<small>' + (own ? 'you asked' : esc(it.added_by) + ' asked') + '</small>' : '') + '</span>' +
         (own ? '<button type="button" class="rm" data-rm="' + esc(it.id) + '" aria-label="Remove ' + esc(it.name) + '">\u00d7</button>' : '') +
         '<button type="button" class="btn primary" data-claim="' + esc(it.id) + '">I got it</button></div>';
