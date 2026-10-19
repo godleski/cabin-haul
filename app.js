@@ -42,7 +42,7 @@
 
   // ---- Identity ----
   // Bump RESET_STAMP to send every phone back to the name screen once (used for clean-slate testing and before go-live).
-  var RESET_STAMP = '2026-10-19a';
+  var RESET_STAMP = '2026-10-19-live';
   if (lsGet('cabin-haul-reset') !== RESET_STAMP) { lsDel('cabin-haul-me'); lsSet('cabin-haul-reset', RESET_STAMP); }
   var me = lsGet('cabin-haul-me');
   if (me && !partyOf(me)) me = null;           // roster changed; ask again
