@@ -2058,6 +2058,8 @@
     return Object.keys(g).sort(function (a, b) { return g[b].length - g[a].length; }).map(function (e) { return e + (g[e].length > 1 ? g[e].length : ''); }).join(' ');
   }
   var SEG_COLORS = ['#d2691e', '#2d6a4f', '#3f7cae', '#8e44ad', '#b7950b', '#c0392b', '#7f8c8d'];
+  var PLAIN_SEG = ['#7b3fe4', '#f5b942', '#3bb2e0', '#ff6b9a', '#38c7a0', '#ff8c42'];   // the plain page: violet first, so the leader matches the name above
+  function segColor(k) { var c = plainPicks() ? PLAIN_SEG : SEG_COLORS; return c[k % c.length]; }
   function renderPredictions() {
     var el = $('pred'); if (!el || !me) return;
     if (!store || !store.predictions) { el.hidden = true; return; }
@@ -2078,7 +2080,7 @@
         html += '<button type="button" class="pred-card plain" data-q="' + i + '">' +
           '<div class="pq">' + esc(q.text) + '</div>' +
           '<div class="lead-row"><span class="lead' + (lead ? '' : ' none') + '">' + (lead ? esc(lead.pick) : 'No picks yet') + '</span>' + (lead ? '<span class="share">' + lead.n + ' <small>of ' + total + '</small></span>' : '') + '</div>' +
-          (total ? '<div class="seg">' + t.rows.map(function (r, k) { return '<span style="width:' + (100 * r.n / total) + '%;background:' + SEG_COLORS[k % SEG_COLORS.length] + '"></span>'; }).join('') + '</div>' : '') +
+          (total ? '<div class="seg">' + t.rows.map(function (r, k) { return '<span style="width:' + (100 * r.n / total) + '%;background:' + segColor(k) + '"></span>'; }).join('') + '</div>' : '') +
           '<div class="sub"><span>' + t.voted + ' of ' + NAMES.length + ' have picked</span>' + (cc ? '<span class="k">\uD83D\uDCAC ' + cc + '</span>' : '') + (my ? '<span class="you">You picked ' + esc(my) + '</span>' : '<span class="you no">You haven\u2019t picked</span>') + '</div>';
         var th = comments.filter(function (c) { return c.question_id === q.id; }), l2 = th.slice(-2);
         if (!th.length) html += '<div class="pred-chat none"><span class="line"><span class="t">No comments yet. Tap to add one.</span></span></div>';
@@ -2366,7 +2368,7 @@
     var html = '<div class="poll">';
     if (!t.rows.length) html += '<div class="poll-empty">No calls yet. Be first.</div>';
     t.rows.forEach(function (r, k) {
-      html += '<div class="poll-row' + (k === 0 ? ' top' : '') + '"><div class="poll-top"><span class="poll-name">' + esc(r.pick) + '</span><span class="poll-n"><b>' + r.n + '</b> · ' + Math.round(100 * r.n / total) + '% <span class="odds">' + oddsFor(r.n, total) + '</span></span></div>' +
+      html += '<div class="poll-row' + (k === 0 ? ' top' : '') + '"><div class="poll-top"><span class="poll-name">' + esc(r.pick) + '</span><span class="poll-n"><b>' + r.n + '</b> · ' + Math.round(100 * r.n / total) + '% <span class="odds">' + oddsForQ(q, r.n) + '</span></span></div>' +
         '<div class="poll-track"><span style="width:' + Math.round(100 * r.n / total) + '%"></span></div>' +
         '<div class="poll-who">' + r.who.map(function (n) { return '<span' + (n === me ? ' class="me"' : '') + '>' + esc(n === me ? 'you' : n) + '</span>'; }).join('') + '</div></div>';
     });
