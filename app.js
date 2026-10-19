@@ -1136,6 +1136,7 @@
   var renderedFor = null;
   function refreshForUser() {
     renderedFor = me;
+    askedDinnerThisVisit = false;   // a new name on this phone gets its own dinner question
     document.body.classList.toggle('plain-picks', plainPicks());
     mafiaDraft = null; teamsDraft = null; teamsEdit = false; expanded = null; pickerFor = null; modReveal = false;
     renderPredictions(); renderSheet(); renderWall(); updateChatBadge();
@@ -1960,7 +1961,13 @@
   // Saturday dinner: one anonymous tap per phone, asked before the predictions. The vote is keyed by the phone's
   // random id, never a name, so nothing in the database says who picked what.
   var DINNER_Q = 'dinner', askedDinnerThisVisit = false, dinnerBusy = false;
-  function dinnerVoter() { return 'dev-' + myId(); }
+  var DINNER_PER_NAME = true;   // TEMPORARY for testing: every name on a phone gets asked. Set false to go back to once per phone.
+  function dinnerVoter() {
+    if (!DINNER_PER_NAME) return 'dev-' + myId();
+    var k = 'cabin-haul-dinner-' + me, v = lsGet(k);   // a random id per name on this phone; still no names in the database
+    if (!v) { v = 'anon-' + ((window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)); lsSet(k, v); }
+    return v;
+  }
   function myDinner() { var id = dinnerVoter(), v = votes.filter(function (x) { return x.question_id === DINNER_Q && x.voter === id; })[0]; return v ? v.pick : null; }
   function shouldAskDinner() { return !!(me && store && store.predictions && predLoaded && !askedDinnerThisVisit && !myDinner()); }
   function openDinner() {
