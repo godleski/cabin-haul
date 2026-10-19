@@ -63,11 +63,10 @@
       '<div class="vs">vs</div>' +
       '<div class="side' + (c > h ? ' lead' : '') + '"><span class="num">' + c + '</span><span class="lbl">Claude</span></div>';
   }
-  var ARENA_THEME = 'green';   // 'green', 'trunk' or 'pool'. v1 (golf balls on the green) is branch v1-golf-green.
-  var BALL_STYLE = 'golf';     // 'golf' or 'pool'
+  var ARENA_THEME = 'green';   // 'green' or 'trunk'. v1 (golf balls on the green) is branch v1-golf-green.
   function renderRoster() {
     if (sim) sim.stop();
-    $('roster').classList.toggle('trunk', ARENA_THEME === 'trunk'); $('roster').classList.toggle('pool', ARENA_THEME === 'pool');
+    $('roster').classList.toggle('trunk', ARENA_THEME === 'trunk');
     golfer = null; renderGolfPost(false);
     boardShown = false;
     subscribeBoards();
@@ -114,7 +113,6 @@
       if (playing === on) return;
       playing = on;
       document.body.classList.toggle('playing', on);
-      if (!on) document.body.classList.remove('pool-on');
       if (on) window.scrollTo(0, 0);
       void box.offsetHeight;   // force layout so the new size is read now
       resize();
@@ -125,7 +123,7 @@
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
       cv.style.width = W + 'px'; cv.style.height = H + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      dimpleTile = null; layerCache = {}; scriptCache = {}; poolCache = {}; speckTile = null; carpetTile = null;
+      dimpleTile = null; layerCache = {}; scriptCache = {};
     }
     resize();
     var colors = {};
@@ -293,7 +291,6 @@
     // Grass stains: each ball keeps its own repeating stain tile, on the same lattice as the dimples so the two roll
     // together and the stain pools in the dimples the way it does on a real ball. A new smear is stamped every rotation or so.
     var STAIN_COLS = [[104, 146, 58], [122, 158, 62], [88, 128, 52], [140, 160, 70], [96, 138, 48]];
-    var CHALK_COLS = [[64, 118, 205], [88, 140, 220], [52, 98, 180], [110, 150, 225]];   // cue chalk, for pool balls
     // a hard knock against the rail or another ball leaves a scuff: a few fine scratches and a dull patch
     function knock(b, v, now) {
       if (!b.name || Math.abs(v) < 7.5 || (b.lastScuff && now - b.lastScuff < 1500)) return;
@@ -339,8 +336,7 @@
       var x = Math.random() * s.pw, y = Math.random() * s.ph;
       var ang = (b.rollDir || 0) + (Math.random() - 0.5) * 0.7;
       var len = sp * (1.3 + Math.random() * 2.2), wid = sp * (0.55 + Math.random() * 0.6);
-      var pool = BALL_STYLE === 'pool', cols = pool ? CHALK_COLS : STAIN_COLS;
-      var mud = !pool && Math.random() < 0.1, col = mud ? [112, 84, 46] : cols[Math.floor(Math.random() * cols.length)];
+      var mud = Math.random() < 0.1, col = mud ? [112, 84, 46] : STAIN_COLS[Math.floor(Math.random() * STAIN_COLS.length)];
       var a = (mud ? 0.16 : 0.2) + Math.random() * 0.16;
       var rgba = function (k) { return 'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',' + k.toFixed(3) + ')'; };
       var wraps = [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]];
@@ -396,104 +392,7 @@
       var sp = scriptSprite(text, px);
       ctx.drawImage(sp.canvas, x - sp.w / 2, y - sp.h / 2, sp.w, sp.h);
     }
-    // ---- Pool balls (experiment) ----
-    var POOL_COLORS = ['#f4c419', '#1d4fb5', '#d9262b', '#5b2d85', '#ef7a18', '#1a7a3c', '#7e1f2b', '#161616'];
-    function poolNum(name) { var i = NAMES.indexOf(name); return i < 0 ? 0 : i + 1; }      // 0 = cue ball
-    function poolInfo(num) { if (!num) return { color: '#f6f2e8', stripe: false }; var n = num > 8 ? num - 8 : num; return { color: POOL_COLORS[n - 1], stripe: num > 8 }; }
-    var poolCache = {}, speckTile = null, SPECK = 48;
-    function buildSpeckTile() {
-      var off = document.createElement('canvas'); off.width = Math.round(SPECK * dpr); off.height = Math.round(SPECK * dpr);
-      var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
-      var seed = 7; function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
-      for (var i = 0; i < 28; i++) { o.fillStyle = i % 3 ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.12)'; o.beginPath(); o.arc(rnd() * SPECK, rnd() * SPECK, 0.5 + rnd() * 0.9, 0, Math.PI * 2); o.fill(); }
-      speckTile = ctx.createPattern(off, 'repeat');
-      try { speckTile.setTransform(new DOMMatrix().scale(1 / dpr)); } catch (e) { /* ignore */ }
-    }
-    function poolLayers(r, num) {
-      var key = Math.round(r * 2) + '@' + num + '@' + dpr;
-      if (poolCache[key]) return poolCache[key];
-      var size = Math.ceil(r * 2 + 4), c = size / 2, info = poolInfo(num);
-      function make(draw) { var off = document.createElement('canvas'); off.width = Math.round(size * dpr); off.height = Math.round(size * dpr); var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0); draw(o); return off; }
-      function circ(o, x, y, rr, fill) { o.beginPath(); o.arc(x, y, rr, 0, Math.PI * 2); o.fillStyle = fill; o.fill(); }
-      var under = make(function (o) {
-        if (info.stripe) {
-          circ(o, c, c, r, '#f6f2e8');
-          o.save(); o.beginPath(); o.arc(c, c, r, 0, Math.PI * 2); o.clip();
-          o.fillStyle = info.color; o.fillRect(0, c - r * 0.6, size, r * 1.2);                 // the band
-          o.fillStyle = 'rgba(0,0,0,0.08)'; o.fillRect(0, c - r * 0.6, size, 1.2); o.fillRect(0, c + r * 0.6 - 1.2, size, 1.2);
-          o.restore();
-        } else circ(o, c, c, r, info.color);
-        var tone = o.createRadialGradient(c - r * 0.25, c - r * 0.3, r * 0.1, c, c, r * 1.05);   // body shading, colour kept
-        tone.addColorStop(0, 'rgba(255,255,255,0.18)'); tone.addColorStop(0.55, 'rgba(255,255,255,0)'); tone.addColorStop(0.85, 'rgba(0,0,0,0.18)'); tone.addColorStop(1, 'rgba(0,0,0,0.45)');
-        circ(o, c, c, r, tone);
-      });
-      var over = make(function (o) {
-        var hl = o.createRadialGradient(c - r * 0.42, c - r * 0.45, 0, c - r * 0.42, c - r * 0.45, r * 0.5);   // broad gloss
-        hl.addColorStop(0, 'rgba(255,255,255,0.55)'); hl.addColorStop(0.5, 'rgba(255,255,255,0.12)'); hl.addColorStop(1, 'rgba(255,255,255,0)');
-        circ(o, c - r * 0.42, c - r * 0.45, r * 0.5, hl);
-        o.save(); o.translate(c - r * 0.45, c - r * 0.5); o.rotate(-0.6); o.scale(1, 0.55);           // hot specular
-        var hot = o.createRadialGradient(0, 0, 0, 0, 0, r * 0.22); hot.addColorStop(0, 'rgba(255,255,255,0.95)'); hot.addColorStop(1, 'rgba(255,255,255,0)');
-        circ(o, 0, 0, r * 0.22, hot); o.restore();
-        o.save(); o.beginPath(); o.arc(c, c, r, 0, Math.PI * 2); o.clip();
-        var bounce = o.createRadialGradient(c + r * 0.2, c + r * 1.1, r * 0.2, c + r * 0.2, c + r * 1.1, r * 1.0);   // felt bounce light
-        bounce.addColorStop(0, 'rgba(200,170,120,0.25)'); bounce.addColorStop(1, 'rgba(200,170,120,0)');
-        circ(o, c, c, r, bounce); o.restore();
-        o.beginPath(); o.arc(c, c, r - 0.5, 0, Math.PI * 2); o.lineWidth = 1; o.strokeStyle = 'rgba(0,0,0,0.35)'; o.stroke();
-      });
-      var shadow = make(function (o) {
-        o.save(); o.translate(c, c + r * 0.92); o.scale(1, 0.3);
-        var cs = o.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 1.05);
-        cs.addColorStop(0, 'rgba(0,0,0,0.5)'); cs.addColorStop(0.6, 'rgba(0,0,0,0.22)'); cs.addColorStop(1, 'rgba(0,0,0,0)');
-        circ(o, 0, 0, r * 1.05, cs); o.restore();
-      });
-      poolCache[key] = { under: under, over: over, shadow: shadow, size: size, info: info };
-      return poolCache[key];
-    }
-    function drawPoolBall(b, now) {
-      var r = b.r * b.scale, num = b.pool != null ? b.pool : (b.name ? poolNum(b.name) : 0);
-      if (r < 1.5) return;
-      if (!speckTile) buildSpeckTile();
-      var L = poolLayers(r, num), half = L.size / 2;
-      ctx.globalAlpha = b.alpha;
-      ctx.drawImage(L.shadow, b.x - half, b.y - half, L.size, L.size);
-      ctx.drawImage(L.under, b.x - half, b.y - half, L.size, L.size);
-      ctx.save(); ctx.beginPath(); ctx.arc(b.x, b.y, r - 0.5, 0, Math.PI * 2); ctx.clip();   // specks and chalk roll with the surface
-      var ox = (((b.ox || 0) % SPECK) + SPECK) % SPECK, oy = (((b.oy || 0) % SPECK) + SPECK) % SPECK;
-      ctx.translate(b.x - r + ox, b.y - r + oy); ctx.fillStyle = speckTile; ctx.fillRect(-SPECK * 2, -SPECK * 2, r * 2 + SPECK * 4, r * 2 + SPECK * 4);
-      ctx.restore();
-      if (b.stain && b.stain.pat) {
-        var s = b.stain, sx = (((b.ox || 0) % s.pw) + s.pw) % s.pw, sy = (((b.oy || 0) % s.ph) + s.ph) % s.ph;
-        ctx.save(); ctx.beginPath(); ctx.arc(b.x, b.y, r - 0.5, 0, Math.PI * 2); ctx.clip();
-        ctx.translate(b.x - r + sx, b.y - r + sy); ctx.fillStyle = s.pat; ctx.fillRect(-s.pw, -s.ph, r * 2 + s.pw * 2, r * 2 + s.ph * 2);
-        ctx.restore();
-      }
-      var k = (b.r / 40) * b.scale;
-      if (num) {                                                                   // number spot and the name
-        var cr = r * 0.46;
-        var spot = ctx.createRadialGradient(b.x - cr * 0.3, b.y - cr * 0.3, cr * 0.1, b.x, b.y, cr);
-        spot.addColorStop(0, '#ffffff'); spot.addColorStop(1, '#e6e2d6');
-        ctx.beginPath(); ctx.arc(b.x, b.y - r * 0.08, cr, 0, Math.PI * 2); ctx.fillStyle = spot; ctx.fill();
-        ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.stroke();
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#111'; ctx.font = '800 ' + Math.max(6, Math.round(cr * 1.15)) + 'px ' + fontFamily;
-        ctx.fillText(String(num), b.x, b.y - r * 0.08 + cr * 0.04);
-        if (b.name && r >= 20) {
-          var dark = L.info.stripe || num === 1 || num === 5 || num === 9 || num === 13;
-          ctx.fillStyle = dark ? '#111' : '#fff'; ctx.font = '800 ' + Math.round(9.4 * k) + 'px ' + fontFamily;
-          ctx.fillText(b.name, b.x, b.y + r * 0.7);
-        }
-      }
-      ctx.drawImage(L.over, b.x - half, b.y - half, L.size, L.size);
-      if (opts.current && opts.current === b.name) circle(b.x, b.y, r + 4, null, colors.pine[0], 3);
-      if (opts.games && b.held && !game && now - holdStart >= HOLD_SHOW_MS) {
-        var frac = Math.min(1, (now - holdStart - HOLD_SHOW_MS) / (HOLD_MS - HOLD_SHOW_MS));
-        ctx.beginPath(); ctx.arc(b.x, b.y, r + 5, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
-        ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-    }
     function drawBubble(b, now) {
-      if (BALL_STYLE === 'pool') { drawPoolBall(b, now); return; }
       var r = b.r * b.scale, col = colors.ball;
       if (r < 1.5) return;
       if (!dimpleTile) buildDimpleTile();
@@ -961,331 +860,6 @@
       }
     }
 
-    // ---- Pool: break the rack, then 8-ball against Claude ----
-    var pool = null;
-    box.__pool = function () { return pool; };
-    var RACK = [1, 9, 2, 10, 8, 3, 11, 7, 14, 4, 5, 13, 15, 6, 12];
-    function startPool() {
-      golf = null; setPlaying(true); document.body.classList.add('pool-on');
-      var rail = 26, tw = Math.round(W * 0.92), tx0 = Math.round((W - tw) / 2), x0 = tx0 + rail, x1 = tx0 + tw - rail, cx = (x0 + x1) / 2;
-      var th = Math.min(H - 40, (x1 - x0) * 1.6 + rail * 2), ty0 = Math.max(32, Math.round((H - th) / 2) + 8);   // a bar box: shorter than a real table, chunky balls
-      var y0 = ty0 + rail, y1 = ty0 + th - rail;
-      var R = Math.max(7, Math.min(11, (x1 - x0) * 0.034)), pr = R * 1.5;   // balls about 7% of the cloth width, pockets about two balls wide
-      var g = { R: R, x0: x0, y0: y0, x1: x1, y1: y1, balls: [], turn: 'you', phase: 'aim', groups: { you: null, cpu: null },
-        aim: -Math.PI / 2, power: 0, drag: null, broken: false, msg: null, msgT: 0, shot: null, winner: null, cpuT: 0, cpuPlan: null, t0: performance.now(),
-        pockets: [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x0, y: (y0 + y1) / 2 }, { x: x1, y: (y0 + y1) / 2 }, { x: x0, y: y1 }, { x: x1, y: y1 }].map(function (p) { p.r = pr; return p; }),
-        kitchen: { x: cx, y: y0 + (y1 - y0) * 0.76 }, ty0: ty0, ty1: ty0 + th, tx0: tx0, tx1: tx0 + tw };
-      var apexY = y0 + (y1 - y0) * 0.27, k = 0;
-      for (var row = 0; row < 5; row++) for (var i = 0; i <= row; i++) {
-        g.balls.push({ n: RACK[k++], x: cx + (i - row / 2) * (2 * R + 0.6), y: apexY - row * (2 * R * 0.875), vx: 0, vy: 0, r: R, alive: true, scale: 1, alpha: 1, ox: 0, oy: 0 });
-      }
-      g.cue = { n: 0, x: g.kitchen.x, y: g.kitchen.y, vx: 0, vy: 0, r: R, alive: true, scale: 1, alpha: 1, ox: 0, oy: 0 };
-      g.balls.push(g.cue);
-      pool = g; poolSay('Break it', 1400);
-    }
-    function poolSay(m, ms) { pool.msg = m; pool.msgT = performance.now() + (ms || 1400); }
-    function poolAlive(g) { return g.balls.filter(function (b) { return b.alive && b.n; }); }
-    function groupOf(n) { return n === 8 ? 'eight' : n < 8 ? 'solid' : 'stripe'; }
-    function leftIn(g, group) { return poolAlive(g).filter(function (b) { return groupOf(b.n) === group; }).length; }
-    function poolMoving(g) { return g.balls.some(function (b) { return b.alive && (Math.abs(b.vx) > 0.02 || Math.abs(b.vy) > 0.02); }); }
-    function shoot(g, angle, power) {
-      var v = 4 + power * 22, brk = !g.broken;
-      if (brk) { v *= 2; g.broken = true; }   // the break hits twice as hard: send them everywhere
-      g.cue.vx = Math.cos(angle) * v; g.cue.vy = Math.sin(angle) * v;
-      g.phase = 'rolling'; g.shot = { by: g.turn, potted: [], scratch: false, firstHit: null }; g.power = 0;
-      buzz(brk ? 30 : 12);
-    }
-    function poolPhysics(dt, now) {
-      var g = pool, R = g.R;
-      // sinking animation
-      g.balls.forEach(function (b) { if (b.sinking) { var t = (now - b.sinking) / 260; b.scale = Math.max(0, 1 - t); b.alpha = Math.max(0, 1 - t); } });
-      if (g.phase === 'rolling') {
-        var maxV = 0; g.balls.forEach(function (b) { if (b.alive) maxV = Math.max(maxV, Math.hypot(b.vx, b.vy)); });
-        var steps = Math.max(1, Math.ceil(maxV * dt / (R * 0.6))), sdt = dt / steps;
-        for (var s = 0; s < steps; s++) poolStep(g, sdt, now);
-        if (!poolMoving(g)) { g.balls.forEach(function (b) { b.vx = 0; b.vy = 0; }); resolveShot(g, now); }
-      } else if (g.phase === 'cpu') {
-        if (!g.cpuPlan && now - g.cpuT > 600) { g.cpuPlan = cpuPlanShot(g); g.aim = g.cpuPlan.angle; g.cpuT = now; }
-        else if (g.cpuPlan) {
-          var t = (now - g.cpuT) / 1100; g.power = Math.min(1, t) * g.cpuPlan.power;
-          if (t >= 1.15) { shoot(g, g.cpuPlan.angle, g.cpuPlan.power); g.cpuPlan = null; }
-        }
-      } else if (g.phase === 'over' && now - g.msgT > 2400) { pool = null; }
-    }
-    function poolStep(g, dt, now) {
-      var R = g.R, live = g.balls.filter(function (b) { return b.alive; });
-      live.forEach(function (b) {
-        b.x += b.vx * dt; b.y += b.vy * dt;
-        var sp = Math.hypot(b.vx, b.vy);
-        if (sp > 0) { var fr = Math.pow(sp > 4 ? 0.992 : 0.975, dt); b.vx *= fr; b.vy *= fr; if (sp < 0.06) { b.vx = 0; b.vy = 0; } }
-        if (sp > 0) rollBy(b, b.vx * dt, b.vy * dt);
-        // pockets
-        for (var p = 0; p < g.pockets.length; p++) {
-          var pk = g.pockets[p], pd = Math.hypot(b.x - pk.x, b.y - pk.y);
-          if (pd < pk.r - R * 0.15) { potBall(g, b, now); return; }
-          if (pd < pk.r + R * 0.7 && sp < 2.5) { var pull = 0.09 * dt; b.vx += (pk.x - b.x) / pd * pull; b.vy += (pk.y - b.y) / pd * pull; }   // the pocket slopes: a ball hanging in the jaws drops in
-        }
-        // cushions, with a gap at each pocket mouth
-        var nearPocketY = Math.abs(b.y - g.y0) < R * 1.9 || Math.abs(b.y - (g.y0 + g.y1) / 2) < R * 2.0 || Math.abs(b.y - g.y1) < R * 1.9;
-        var nearPocketX = Math.abs(b.x - g.x0) < R * 1.9 || Math.abs(b.x - g.x1) < R * 1.9;
-        if (b.x - R < g.x0 && !nearPocketY) { b.x = g.x0 + R; b.vx = Math.abs(b.vx) * 0.72; }
-        if (b.x + R > g.x1 && !nearPocketY) { b.x = g.x1 - R; b.vx = -Math.abs(b.vx) * 0.72; }
-        if (b.y - R < g.y0 && !nearPocketX) { b.y = g.y0 + R; b.vy = Math.abs(b.vy) * 0.72; }
-        if (b.y + R > g.y1 && !nearPocketX) { b.y = g.y1 - R; b.vy = -Math.abs(b.vy) * 0.72; }
-        if (b.x < g.x0 - R || b.x > g.x1 + R || b.y < g.y0 - R || b.y > g.y1 + R) potBall(g, b, now);   // fell through a pocket mouth
-      });
-      for (var i = 0; i < live.length; i++) for (var k = i + 1; k < live.length; k++) {
-        var a = live[i], c = live[k]; if (!a.alive || !c.alive) continue;
-        var dx = c.x - a.x, dy = c.y - a.y, d = Math.hypot(dx, dy) || 0.01;
-        if (d >= 2 * R) continue;
-        var nx = dx / d, ny = dy / d, ov = (2 * R - d) / 2;
-        a.x -= nx * ov; a.y -= ny * ov; c.x += nx * ov; c.y += ny * ov;
-        var rel = (c.vx - a.vx) * nx + (c.vy - a.vy) * ny;
-        if (rel > 0) continue;
-        var jimp = -(1 + 0.94) * rel / 2;
-        a.vx -= jimp * nx; a.vy -= jimp * ny; c.vx += jimp * nx; c.vy += jimp * ny;
-        if (g.shot && !g.shot.firstHit) g.shot.firstHit = a.n === 0 ? c.n : c.n === 0 ? a.n : null;
-        if (Math.abs(rel) > 3) buzz(4);
-      }
-    }
-    function potBall(g, b, now) {
-      b.alive = false; b.sinking = now; b.vx = 0; b.vy = 0;
-      if (g.shot) { if (b.n === 0) g.shot.scratch = true; else g.shot.potted.push(b.n); }
-    }
-    function respotCue(g) {
-      var c = g.cue, R = g.R; c.alive = true; c.sinking = null; c.scale = 1; c.alpha = 1; c.x = g.kitchen.x; c.y = g.kitchen.y; c.vx = 0; c.vy = 0;
-      var tries = 0;
-      while (tries++ < 40 && g.balls.some(function (b) { return b !== c && b.alive && Math.hypot(b.x - c.x, b.y - c.y) < 2 * R + 1; })) c.y += (tries % 2 ? 1 : -1) * tries * R * 0.6;
-    }
-    function resolveShot(g, now) {
-      var sh = g.shot, me = sh.by, other = me === 'you' ? 'cpu' : 'you', mine = g.groups[me];
-      var hadLeft = mine ? leftIn(g, mine) + sh.potted.filter(function (n) { return groupOf(n) === mine; }).length : 99;
-      var eight = sh.potted.indexOf(8) >= 0;
-      if (eight) {
-        var cleared = mine && hadLeft === sh.potted.filter(function (n) { return groupOf(n) === mine; }).length;
-        g.winner = cleared && !sh.scratch ? me : other;
-        g.phase = 'over'; poolSay(g.winner === 'you' ? 'YOU WIN' : 'CLAUDE WINS', 2400);
-        if (store && store.setGame) recordPoolWin(g.winner);
-        return;
-      }
-      var own = sh.potted.filter(function (n) { return n !== 8; });
-      if (!mine && own.length) { mine = groupOf(own[0]); g.groups[me] = mine; g.groups[other] = mine === 'solid' ? 'stripe' : 'solid'; poolSay((me === 'you' ? 'You’re ' : 'Claude’s ') + mine + 's', 1500); }
-      var keep = !sh.scratch && own.some(function (n) { return groupOf(n) === mine; });
-      if (sh.scratch) { respotCue(g); poolSay('Scratch', 1300); }
-      g.turn = keep ? me : other;
-      g.phase = g.turn === 'you' ? 'aim' : 'cpu'; g.cpuT = now; g.cpuPlan = null; g.shot = null;
-      if (!keep && !sh.scratch) poolSay(g.turn === 'you' ? 'Your shot' : 'Claude’s shot', 1100);
-      if (g.turn === 'you' && !g.aim) g.aim = -Math.PI / 2;
-    }
-    function recordPoolWin(winner) {
-      var doc = Object.assign({ humans: 0, cpu: 0 }, poolScores || {});
-      if (winner === 'you') doc.humans++; else doc.cpu++;
-      poolScores = doc; store.setGame('pool', doc).catch(function () { /* best effort */ });
-    }
-    // where the cue ball meets the first ball or cushion along an angle: used for the guide and for Claude
-    function pathClear(g, from, to, ignore, R) {
-      var dx = to.x - from.x, dy = to.y - from.y, L = Math.hypot(dx, dy) || 0.01, ux = dx / L, uy = dy / L;
-      return !g.balls.some(function (b) {
-        if (!b.alive || b === ignore || b.n === 0 && from === g.cue) return false;
-        if (ignore && ignore.indexOf && ignore.indexOf(b) >= 0) return false;
-        var t = (b.x - from.x) * ux + (b.y - from.y) * uy; if (t < 0 || t > L) return false;
-        var px = from.x + ux * t, py = from.y + uy * t;
-        return Math.hypot(b.x - px, b.y - py) < 2 * R - 0.5;
-      });
-    }
-    function firstContact(g, angle) {
-      var c = g.cue, R = g.R, ux = Math.cos(angle), uy = Math.sin(angle), best = null;
-      g.balls.forEach(function (b) {
-        if (!b.alive || b === c) return;
-        var rx = b.x - c.x, ry = b.y - c.y, t = rx * ux + ry * uy; if (t < 0) return;
-        var d2 = rx * rx + ry * ry - t * t, rr = (2 * R) * (2 * R); if (d2 > rr) return;
-        var hit = t - Math.sqrt(rr - d2); if (hit < 0) return;
-        if (!best || hit < best.t) best = { t: hit, ball: b };
-      });
-      var tx = ux > 0 ? (g.x1 - R - c.x) / ux : ux < 0 ? (g.x0 + R - c.x) / ux : Infinity;
-      var ty = uy > 0 ? (g.y1 - R - c.y) / uy : uy < 0 ? (g.y0 + R - c.y) / uy : Infinity;
-      var tw = Math.min(tx, ty);
-      if (!best || tw < best.t) return { t: tw, ball: null, x: c.x + ux * tw, y: c.y + uy * tw };
-      return { t: best.t, ball: best.ball, x: c.x + ux * best.t, y: c.y + uy * best.t };
-    }
-    function cpuPlanShot(g) {
-      var R = g.R, c = g.cue, mine = g.groups.cpu, cands = [];
-      var targets = poolAlive(g).filter(function (b) { return mine ? (leftIn(g, mine) ? groupOf(b.n) === mine : b.n === 8) : b.n !== 8; });
-      targets.forEach(function (b) {
-        g.pockets.forEach(function (pk) {
-          var dx = pk.x - b.x, dy = pk.y - b.y, L = Math.hypot(dx, dy) || 0.01, ux = dx / L, uy = dy / L;
-          var gx = b.x - ux * 2 * R, gy = b.y - uy * 2 * R;
-          var ax = gx - c.x, ay = gy - c.y, A = Math.hypot(ax, ay) || 0.01;
-          var cut = Math.acos(Math.max(-1, Math.min(1, (ax * ux + ay * uy) / A)));
-          if (cut > 1.25) return;
-          if (!pathClear(g, c, { x: gx, y: gy }, b, R)) return;
-          if (!pathClear(g, b, pk, b, R)) return;
-          var score = A + L * 0.8 + cut * 160 + (Math.abs(ux) > 0.9 || Math.abs(uy) > 0.9 ? 0 : 20);
-          cands.push({ angle: Math.atan2(ay, ax), power: Math.max(0.32, Math.min(0.85, 0.22 + (A + L) / 520 + cut * 0.15)), score: score });
-        });
-      });
-      cands.sort(function (a, b) { return a.score - b.score; });
-      var pick = cands[0];
-      if (!pick) {   // nothing on: nudge the nearest legal ball
-        var near = targets.slice().sort(function (a, b) { return Math.hypot(a.x - c.x, a.y - c.y) - Math.hypot(b.x - c.x, b.y - c.y); })[0] || poolAlive(g)[0];
-        pick = { angle: Math.atan2(near.y - c.y, near.x - c.x), power: 0.3 };
-      }
-      pick.angle += (Math.random() - 0.5) * 0.02;   // Claude is good, not perfect
-      return pick;
-    }
-    // the table never moves, so it's painted once into an offscreen canvas and blitted each frame
-    function buildTableImage(g) {
-      var off = document.createElement('canvas'); off.width = Math.round(W * dpr); off.height = Math.round(H * dpr);
-      var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
-      var X0 = g.tx0, X1 = g.tx1, T0 = g.ty0, T1 = g.ty1, TW = X1 - X0, TH = T1 - T0, rail = g.x0 - X0;
-      function rr(x, y, w, h, r) { o.beginPath(); o.moveTo(x + r, y); o.arcTo(x + w, y, x + w, y + h, r); o.arcTo(x + w, y + h, x, y + h, r); o.arcTo(x, y + h, x, y, r); o.arcTo(x, y, x + w, y, r); o.closePath(); }
-      function circ(x, y, r, fill, stroke, lw) { o.beginPath(); o.arc(x, y, r, 0, Math.PI * 2); if (fill) { o.fillStyle = fill; o.fill(); } if (stroke) { o.lineWidth = lw || 1; o.strokeStyle = stroke; o.stroke(); } }
-      // carpet
-      if (!carpetTile) buildCarpetTile();
-      o.fillStyle = carpetTile; o.fillRect(0, 0, W, H);
-      var vig = o.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.75); vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.35)');
-      o.fillStyle = vig; o.fillRect(0, 0, W, H);
-      // shadow, then the apron (outer, darker) and the rail top (inner, lighter) as two stepped pieces of wood
-      o.fillStyle = 'rgba(0,0,0,0.38)'; rr(X0 + 4, T0 + 9, TW - 2, TH, 18); o.fill();
-      var apron = o.createLinearGradient(X0, T0, X1, T1); apron.addColorStop(0, '#4a2a12'); apron.addColorStop(0.5, '#2e1808'); apron.addColorStop(1, '#3f2410');
-      o.fillStyle = apron; rr(X0, T0, TW, TH, 18); o.fill();
-      var top = o.createLinearGradient(X0, T0, X1, T1); top.addColorStop(0, '#8a5a30'); top.addColorStop(0.45, '#5c3717'); top.addColorStop(1, '#7a4c27');
-      o.fillStyle = top; rr(X0 + 7, T0 + 7, TW - 14, TH - 14, 13); o.fill();
-      // grain on the rail top
-      o.save(); rr(X0 + 7, T0 + 7, TW - 14, TH - 14, 13); o.clip();
-      o.strokeStyle = 'rgba(0,0,0,0.14)'; o.lineWidth = 1;
-      for (var gi = 0; gi < 12; gi++) {
-        var gx = X0 + 9 + gi * 1.5, gx2 = X1 - 9 - gi * 1.5, wob = Math.sin(gi * 1.7) * 3;
-        o.beginPath(); o.moveTo(gx, T0); o.bezierCurveTo(gx + wob, T0 + TH * 0.35, gx - wob, T0 + TH * 0.7, gx, T1); o.stroke();
-        o.beginPath(); o.moveTo(gx2, T0); o.bezierCurveTo(gx2 - wob, T0 + TH * 0.35, gx2 + wob, T0 + TH * 0.7, gx2, T1); o.stroke();
-        var gy = T0 + 9 + gi * 1.5; o.beginPath(); o.moveTo(X0, gy); o.bezierCurveTo(X0 + TW * 0.3, gy + wob, X0 + TW * 0.7, gy - wob, X1, gy); o.stroke();
-        gy = T1 - 9 - gi * 1.5; o.beginPath(); o.moveTo(X0, gy); o.bezierCurveTo(X0 + TW * 0.3, gy - wob, X0 + TW * 0.7, gy + wob, X1, gy); o.stroke();
-      }
-      // lacquer sheen across the rails
-      var sheen = o.createLinearGradient(X0, T0, X1, T1); sheen.addColorStop(0, 'rgba(255,255,255,0)'); sheen.addColorStop(0.35, 'rgba(255,255,255,0.12)'); sheen.addColorStop(0.5, 'rgba(255,255,255,0)'); sheen.addColorStop(0.8, 'rgba(255,255,255,0.07)'); sheen.addColorStop(1, 'rgba(255,255,255,0)');
-      o.fillStyle = sheen; o.fillRect(X0, T0, TW, TH);
-      o.restore();
-      // bevels: light edge on the apron and rail top, brass inlay line between them
-      o.lineWidth = 1.5; o.strokeStyle = 'rgba(255,255,255,0.12)'; rr(X0 + 2, T0 + 2, TW - 4, TH - 4, 16); o.stroke();
-      o.lineWidth = 1; o.strokeStyle = 'rgba(0,0,0,0.5)'; rr(X0 + 7, T0 + 7, TW - 14, TH - 14, 13); o.stroke();
-      o.lineWidth = 1.2; o.strokeStyle = 'rgba(224,186,110,0.55)'; rr(X0 + 5, T0 + 5, TW - 10, TH - 10, 14); o.stroke();
-      o.lineWidth = 1; o.strokeStyle = 'rgba(255,255,255,0.14)'; rr(X0 + 8.5, T0 + 8.5, TW - 17, TH - 17, 12); o.stroke();
-      // cushion band, then the cloth
-      o.fillStyle = '#8f7a55'; o.fillRect(g.x0 - 8, g.y0 - 8, g.x1 - g.x0 + 16, g.y1 - g.y0 + 16);
-      o.fillStyle = 'rgba(0,0,0,0.18)'; o.fillRect(g.x0 - 8, g.y0 - 8, g.x1 - g.x0 + 16, 2); o.fillRect(g.x0 - 8, g.y0 - 8, 2, g.y1 - g.y0 + 16);
-      o.fillStyle = 'rgba(255,255,255,0.10)'; o.fillRect(g.x0 - 8, g.y1 + 6, g.x1 - g.x0 + 16, 2); o.fillRect(g.x1 + 6, g.y0 - 8, 2, g.y1 - g.y0 + 16);
-      o.strokeStyle = 'rgba(0,0,0,0.35)'; o.lineWidth = 1; o.strokeRect(g.x0 - 8.5, g.y0 - 8.5, g.x1 - g.x0 + 17, g.y1 - g.y0 + 17);
-      var felt = o.createRadialGradient(W / 2, (g.y0 + g.y1) / 2, 20, W / 2, (g.y0 + g.y1) / 2, TH * 0.7);
-      felt.addColorStop(0, '#c9a97a'); felt.addColorStop(1, '#ad8d5f');
-      o.fillStyle = felt; o.fillRect(g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
-      o.strokeStyle = 'rgba(0,0,0,0.12)'; o.lineWidth = 1; o.beginPath(); o.moveTo(g.x0, g.kitchen.y); o.lineTo(g.x1, g.kitchen.y); o.stroke();
-      circ(W / 2, g.y0 + (g.y1 - g.y0) * 0.27, 1.6, 'rgba(0,0,0,0.25)');
-      // pockets: leather boot, brass rim, dark hole
-      g.pockets.forEach(function (pk) {
-        circ(pk.x, pk.y, pk.r + 7, '#1e1208'); circ(pk.x, pk.y, pk.r + 5.5, '#3a2412');
-        var brass = o.createRadialGradient(pk.x - 2, pk.y - 2, pk.r, pk.x, pk.y, pk.r + 4); brass.addColorStop(0, '#e2c27a'); brass.addColorStop(1, '#8a6a30');
-        circ(pk.x, pk.y, pk.r + 3.2, brass); circ(pk.x, pk.y, pk.r, '#050505');
-        var inner = o.createRadialGradient(pk.x, pk.y, pk.r * 0.3, pk.x, pk.y, pk.r); inner.addColorStop(0, 'rgba(0,0,0,0)'); inner.addColorStop(1, 'rgba(40,30,20,0.6)'); circ(pk.x, pk.y, pk.r, inner);
-      });
-      // mother-of-pearl diamond sights, with a tiny brass screw beside each corner
-      function diamond(x, y) {
-        o.save(); o.translate(x, y); o.rotate(Math.PI / 4);
-        var mop = o.createLinearGradient(-3, -3, 3, 3); mop.addColorStop(0, '#fff8e6'); mop.addColorStop(0.5, '#d9c9b0'); mop.addColorStop(1, '#f6ecd8');
-        o.fillStyle = mop; o.fillRect(-2.8, -2.8, 5.6, 5.6); o.strokeStyle = 'rgba(0,0,0,0.35)'; o.lineWidth = 0.6; o.strokeRect(-2.8, -2.8, 5.6, 5.6); o.restore();
-      }
-      var railMid = rail / 2 + 2;
-      [0.125, 0.25, 0.375, 0.625, 0.75, 0.875].forEach(function (f) { diamond(X0 + railMid, g.y0 + (g.y1 - g.y0) * f); diamond(X1 - railMid, g.y0 + (g.y1 - g.y0) * f); });
-      [0.25, 0.5, 0.75].forEach(function (f) { diamond(g.x0 + (g.x1 - g.x0) * f, T0 + railMid); diamond(g.x0 + (g.x1 - g.x0) * f, T1 - railMid); });
-      [[X0 + 11, T0 + 11], [X1 - 11, T0 + 11], [X0 + 11, T1 - 11], [X1 - 11, T1 - 11]].forEach(function (s) { circ(s[0], s[1], 1.6, '#c9a85c', 'rgba(0,0,0,0.5)', 0.6); });
-      g.tableImg = { c: off, w: W, h: H, dpr: dpr };
-    }
-    var carpetTile = null;
-    function buildCarpetTile() {
-      var size = 64, off = document.createElement('canvas'); off.width = Math.round(size * dpr); off.height = Math.round(size * dpr);
-      var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
-      o.fillStyle = '#4a2a2e'; o.fillRect(0, 0, size, size);
-      var seed = 3; function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
-      var cols = ['#5a3338', '#3d2124', '#6a3d42', '#2f1a1d', '#55303a'];
-      for (var i = 0; i < 420; i++) { o.fillStyle = cols[Math.floor(rnd() * cols.length)]; o.globalAlpha = 0.55 + rnd() * 0.45; o.fillRect(rnd() * size, rnd() * size, 1.4, 1.4); }
-      o.globalAlpha = 1;
-      carpetTile = ctx.createPattern(off, 'repeat');
-      try { carpetTile.setTransform(new DOMMatrix().scale(1 / dpr)); } catch (e) { /* ignore */ }
-    }
-    function drawPool(now) {
-      var g = pool, R = g.R;
-      if (!g.tableImg || g.tableImg.w !== W || g.tableImg.h !== H || g.tableImg.dpr !== dpr) buildTableImage(g);
-      ctx.drawImage(g.tableImg.c, 0, 0, W, H);
-      // aiming guide
-      var aiming = (g.phase === 'aim') || (g.phase === 'cpu' && g.cpuPlan);
-      if (aiming && g.cue.alive) {
-        var fc = firstContact(g, g.aim), c = g.cue;
-        ctx.save(); ctx.setLineDash([5, 5]); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(fc.x, fc.y); ctx.stroke(); ctx.setLineDash([]);
-        ctx.beginPath(); ctx.arc(fc.x, fc.y, R, 0, Math.PI * 2); ctx.stroke();
-        if (fc.ball) {
-          var b = fc.ball, nx = (b.x - fc.x) / (2 * R), ny = (b.y - fc.y) / (2 * R);
-          ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x + nx * 46, b.y + ny * 46); ctx.stroke();
-          var ux = Math.cos(g.aim), uy = Math.sin(g.aim), dot = ux * nx + uy * ny, tx = ux - nx * dot, ty = uy - ny * dot, tl = Math.hypot(tx, ty) || 1;
-          ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.moveTo(fc.x, fc.y); ctx.lineTo(fc.x + tx / tl * 26, fc.y + ty / tl * 26); ctx.stroke();
-        }
-        ctx.restore();
-      }
-      // balls
-      g.balls.forEach(function (b) { if (b.alpha > 0 && (b.alive || b.sinking)) drawPoolBall({ x: b.x, y: b.y, r: b.r, scale: b.scale, alpha: b.alpha, ox: b.ox, oy: b.oy, name: '', num: '', pool: b.n, stain: b.stain }, now); });
-      // cue stick
-      if (aiming && g.cue.alive) {
-        var back = 10 + g.power * 42, ca = g.aim + Math.PI;
-        ctx.save(); ctx.translate(g.cue.x + Math.cos(ca) * (R + back), g.cue.y + Math.sin(ca) * (R + back)); ctx.rotate(ca);
-        var sg = ctx.createLinearGradient(0, -4, 0, 4); sg.addColorStop(0, '#e8c48a'); sg.addColorStop(0.5, '#b8814a'); sg.addColorStop(1, '#6b4423');
-        ctx.fillStyle = 'rgba(0,0,0,0.25)'; roundRect(0, -2 + 3, 170, 6, 3); ctx.fill();
-        ctx.fillStyle = sg; ctx.beginPath(); ctx.moveTo(0, -2.2); ctx.lineTo(170, -4.5); ctx.lineTo(170, 4.5); ctx.lineTo(0, 2.2); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#4a90c8'; ctx.fillRect(-3, -2.2, 3, 4.4); ctx.fillStyle = '#f1e9d8'; ctx.fillRect(0, -2.2, 8, 4.4);
-        ctx.restore();
-      }
-      // power slider on the right rail
-      if (g.phase === 'aim') {
-        var sx = g.tx1 - 11, top = g.y0 + 16, bot = g.y1 - 16;
-        ctx.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(sx - 6, top - 6, 12, bot - top + 12, 6); ctx.fill();
-        var pg = ctx.createLinearGradient(0, top, 0, bot); pg.addColorStop(0, '#ffd166'); pg.addColorStop(1, '#ef476f');
-        ctx.fillStyle = pg; roundRect(sx - 4, top, 8, (bot - top) * g.power, 4); ctx.fill();
-        circle(sx, top + (bot - top) * g.power, 9, '#fff', 'rgba(0,0,0,0.3)', 1);
-        if (g.power < 0.02 && !g.drag) { ctx.save(); ctx.globalAlpha = 0.6 + 0.4 * Math.sin(now / 300); ctx.fillStyle = '#fff'; ctx.font = '600 10px ' + fontFamily; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText('drag down to shoot', sx - 14, top + 4); ctx.restore(); }
-      }
-      // HUD
-      var yl = g.groups.you ? leftIn(g, g.groups.you) + ' ' + g.groups.you + 's' : 'open', cl = g.groups.cpu ? leftIn(g, g.groups.cpu) + ' ' + g.groups.cpu + 's' : 'open';
-      ctx.fillStyle = g.turn === 'you' ? colors.pine[0] : 'rgba(0,20,8,0.55)'; roundRect(8, 4, 118, 22, 8); ctx.fill();
-      ctx.fillStyle = g.turn === 'cpu' ? colors.claude : 'rgba(0,20,8,0.55)'; roundRect(W - 126 - 58, 4, 118, 22, 8); ctx.fill();
-      ctx.fillStyle = 'rgba(0,20,8,0.55)'; roundRect(W - 58, 4, 50, 22, 8); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.font = '700 11px ' + fontFamily; ctx.textBaseline = 'middle';
-      ctx.textAlign = 'left'; ctx.fillText('You · ' + yl, 16, 15);
-      ctx.textAlign = 'right'; ctx.fillText('Claude · ' + cl, W - 66, 15);
-      ctx.textAlign = 'center'; ctx.fillText('quit', W - 33, 15);
-      if (g.msg && now < g.msgT) {
-        var kk = Math.min(1, (g.msgT - now) / 300);
-        ctx.globalAlpha = kk; ctx.fillStyle = 'rgba(0,0,0,0.45)'; roundRect(W / 2 - 90, H / 2 - 22, 180, 44, 12); ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.font = '800 20px ' + fontFamily; ctx.textAlign = 'center'; ctx.fillText(g.msg, W / 2, H / 2); ctx.globalAlpha = 1;
-      }
-    }
-    function poolPointerDown(p, e) {
-      var g = pool;
-      if (p.x > W - 58 && p.y < 30) { pool = null; return; }
-      if (g.phase !== 'aim') return;
-      if (p.x > g.tx1 - 26 && p.y > g.y0) { g.drag = { type: 'power', y0: p.y, p0: g.power }; }
-      else { g.drag = { type: 'aim', a: Math.atan2(p.y - g.cue.y, p.x - g.cue.x) }; }
-      try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-    }
-    function poolPointerMove(p) {
-      var g = pool; if (!g.drag || g.phase !== 'aim') return;
-      if (g.drag.type === 'power') { var top = g.y0 + 16, bot = g.y1 - 16; g.power = Math.max(0, Math.min(1, (p.y - top) / (bot - top))); return; }
-      var a = Math.atan2(p.y - g.cue.y, p.x - g.cue.x), da = Math.atan2(Math.sin(a - g.drag.a), Math.cos(a - g.drag.a));
-      g.aim += da; g.drag.a = a;
-    }
-    function poolPointerUp() {
-      var g = pool; if (!g.drag) return;
-      var d = g.drag; g.drag = null;
-      if (d.type === 'power' && g.phase === 'aim') { if (g.power > 0.04) shoot(g, g.aim, g.power); else g.power = 0; }
-    }
-
     // ---- Air hockey ----
     function startGame(paddle) {
       setPlaying(true);
@@ -1443,14 +1017,8 @@
     function step(now) {
       if (!running) return;
       checkWake(now);
-      if (playing && !pool && !golf && !game) setPlaying(false);
+      if (playing && !golf && !game) setPlaying(false);
       var dt = Math.min(32, now - last) / 16.67; last = now;
-      if (pool) {
-        poolPhysics(dt, now);
-        ctx.clearRect(0, 0, W, H);
-        if (pool) drawPool(now); else { balls.forEach(function (b) { drawBubble(b, now); }); }
-        next(); return;
-      }
       if (golf) {
         golfPhysics(dt, now);
         ctx.clearRect(0, 0, W, H);
@@ -1488,7 +1056,6 @@
     cv.addEventListener('pointerdown', function (e) {
       if (popping) return;
       var p = pos(e);
-      if (pool) { poolPointerDown(p, e); e.preventDefault(); return; }
       if (golf) {
         if (p.x > W - 58 && p.y < 34) { golf = null; return; }                 // quit
         if (golfCanPutt(golf)) { golf.drag = { x: p.x, y: p.y }; golf.aim = null; try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ } }
@@ -1507,7 +1074,6 @@
       e.preventDefault();
     });
     cv.addEventListener('pointermove', function (e) {
-      if (pool) { poolPointerMove(pos(e)); return; }
       if (golf) {
         if (golf.drag) golfAim(golf, pos(e));
         return;
@@ -1518,7 +1084,6 @@
       trail.push(p); if (trail.length > 6) trail.shift();
     });
     function release(e) {
-      if (pool) { poolPointerUp(); return; }
       if (golf) { if (golf.drag) golfPutt(golf, performance.now()); return; }
       if (!held) return;
       if (game) { held = null; return; }               // paddle stays where you left it
@@ -1544,12 +1109,10 @@
     }
     function finishPick() { opts.onPick(pendingPick); }
     box.__golf = function () { return golf; };
-    return { stop: function () { running = false; if (ro) ro.disconnect(); setPlaying(false); }, startGolf: startGolf, startPool: startPool, setCurrent: function (n) { opts.current = n; } };
+    return { stop: function () { running = false; if (ro) ro.disconnect(); setPlaying(false); }, startGolf: startGolf, setCurrent: function (n) { opts.current = n; } };
   }
   $('switch').addEventListener('click', function () { me = null; myParty = null; lsDel('cabin-haul-me'); showScreen(); });
   $('golfword').addEventListener('click', function () { if (sim && sim.startGolf && !me) renderGolfPost(true); });
-  var poolScores = null;
-  $('poolword').addEventListener('click', function () { if (sim && sim.startPool && !me) { renderGolfPost(false); sim.startPool(); window.scrollTo({ top: $('roster').offsetTop - 12, behavior: 'smooth' }); } });
 
   function showScreen() {
     var picking = !me;
