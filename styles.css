@@ -46,8 +46,6 @@
     overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
   }
   .bubbles canvas { display: block; width: 100%; height: 100%; cursor: grab; -webkit-tap-highlight-color: transparent; }
-  .bubbles canvas.turf { position: absolute; inset: 0; pointer-events: none; cursor: default; }   /* the painted grass; the ball canvas sits on top */
-  .bubbles canvas.arena { position: relative; z-index: 1; }
   /* a game is on: the arena takes the screen and the words get out of the way */
   body.playing { padding: calc(4px + env(safe-area-inset-top, 0px)) 6px calc(4px + env(safe-area-inset-bottom, 0px)); }
   body.playing #pick > :not(.arena-wrap) { display: none !important; }

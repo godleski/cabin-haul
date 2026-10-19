@@ -54,7 +54,7 @@
 
   // ---- Bubble physics on a canvas: grab, fling, collide. A quick tap picks the name.
   //      Air hockey is played from the Games tab; mini golf is the one hidden game (the word "putt"). ----
-  var sim = null, scores = null, scoresSub = false, boardShown = false, turfCache = {};
+  var sim = null, scores = null, scoresSub = false, boardShown = false;
   // Air hockey is always open from the Games tab. Mini golf is hidden on the name screen; once this phone has found it,
   // its board on the Games tab becomes a play button too.
   function foundGame(k) { return k === 'hockey' || lsGet('cabin-haul-found-' + k) === '1'; }
@@ -131,9 +131,9 @@
   function renderArena(opts) {
     var box = opts.box, names = opts.names;
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    box.innerHTML = '<canvas class="turf" aria-hidden="true"></canvas><canvas class="arena" aria-hidden="true"></canvas><div class="sr-list">' +
+    box.innerHTML = '<canvas class="arena" aria-hidden="true"></canvas><div class="sr-list">' +
       names.map(function (n) { return '<button type="button" data-me="' + esc(n) + '">' + esc(n) + '</button>'; }).join('') + '</div>';
-    var cv = box.querySelector('canvas.arena'), ctx = cv.getContext('2d'), turf = box.querySelector('canvas.turf');
+    var cv = box.querySelector('canvas'), ctx = cv.getContext('2d');
     var W = 0, H = 0, dpr = 1;
     var playing = false;
     function setPlaying(on) {
@@ -151,66 +151,6 @@
       cv.style.width = W + 'px'; cv.style.height = H + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       dimpleTile = null; layerCache = {}; scriptCache = {};
-      paintTurf();
-    }
-    // The grass under the balls: painted once per size at full device resolution (SVG/CSS noise goes soft on iPhone Safari).
-    // Base green, mow stripes with wandering edges and a lit leading edge, warm/cool patches, tens of thousands of short blade
-    // strokes leaning with the nap, morning sun from the upper left, a vignette, then a first-cut rough ring and a light collar.
-    function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-    function paintTurf() {
-      if (!turf || !W || !H) return;
-      var key = W + 'x' + H + '@' + dpr + (cssVar('--grass-a') || '');
-      turf.width = Math.round(W * dpr); turf.height = Math.round(H * dpr); turf.style.width = W + 'px'; turf.style.height = H + 'px';
-      if (turfCache.key === key) { turf.getContext('2d').drawImage(turfCache.canvas, 0, 0); return; }   // painted this size before: just copy it over
-      var off = document.createElement('canvas'); off.width = turf.width; off.height = turf.height;
-      var t = off.getContext('2d'); t.setTransform(dpr, 0, 0, dpr, 0, 0);
-      var rnd = mulberry32(7), ga = cssVar('--grass-a') || '#2f6b45', gb = cssVar('--grass-b') || '#357a4e', fr = cssVar('--fringe') || '#1f4a30';
-      var base = t.createLinearGradient(0, 0, 0, H); base.addColorStop(0, gb); base.addColorStop(1, ga); t.fillStyle = base; t.fillRect(0, 0, W, H);
-      var sw = 46, n = Math.ceil(W / sw) + 1, i, j, s, y, wob;
-      var edge = function (k, yy) { return Math.sin(yy / 90 + k * 1.7) * 2.5 + Math.sin(yy / 37 + k) * 1.2; };
-      for (i = 0; i < n; i++) {   // mow stripes
-        var x0 = i * sw, lit = i % 2 === 0, steps = 14;
-        t.beginPath();
-        for (s = 0; s <= steps; s++) { y = H * s / steps; wob = edge(i, y); if (s === 0) t.moveTo(x0 + wob, y); else t.lineTo(x0 + wob, y); }
-        for (s = steps; s >= 0; s--) { y = H * s / steps; t.lineTo(x0 + sw + edge(i + 1, y), y); }
-        t.closePath();
-        var g = t.createLinearGradient(x0, 0, x0 + sw, 0);
-        if (lit) { g.addColorStop(0, 'rgba(255,255,230,0.22)'); g.addColorStop(0.6, 'rgba(255,255,230,0.10)'); g.addColorStop(1, 'rgba(255,255,230,0.04)'); }
-        else { g.addColorStop(0, 'rgba(0,20,8,0.22)'); g.addColorStop(0.6, 'rgba(0,20,8,0.10)'); g.addColorStop(1, 'rgba(0,20,8,0.04)'); }
-        t.fillStyle = g; t.fill();
-      }
-      for (i = 0; i < 14; i++) {   // warm and cool patches
-        var mx = rnd() * W, my = rnd() * H, mr = 50 + rnd() * 110, warm = rnd() < 0.5;
-        var mg = t.createRadialGradient(mx, my, 0, mx, my, mr); mg.addColorStop(0, warm ? 'rgba(190,210,60,0.10)' : 'rgba(20,80,110,0.10)'); mg.addColorStop(1, 'rgba(0,0,0,0)');
-        t.fillStyle = mg; t.fillRect(mx - mr, my - mr, mr * 2, mr * 2);
-      }
-      var count = Math.round(W * H / 7), tones = [['rgba(120,190,110,0.5)', 0.26], ['rgba(70,140,80,0.45)', 0.38], ['rgba(10,45,22,0.45)', 0.36]];
-      t.lineCap = 'round'; t.lineWidth = 1;
-      tones.forEach(function (tone) {   // the blades, batched by tone
-        t.strokeStyle = tone[0]; t.beginPath();
-        for (j = Math.round(count * tone[1]); j > 0; j--) {
-          var bx = rnd() * W, by = rnd() * H, len = 2 + rnd() * 3.2, lean = (Math.floor(bx / sw) % 2 === 0 ? -0.22 : 0.22) + (rnd() - 0.5) * 0.6;
-          t.moveTo(bx, by); t.lineTo(bx + Math.sin(lean) * len, by - Math.cos(lean) * len);
-        }
-        t.stroke();
-      });
-      var sun = t.createRadialGradient(W * 0.08, -H * 0.08, 0, W * 0.08, -H * 0.08, W * 0.9); sun.addColorStop(0, 'rgba(248,252,200,0.20)'); sun.addColorStop(1, 'rgba(248,252,200,0)'); t.fillStyle = sun; t.fillRect(0, 0, W, H);
-      var vig = t.createRadialGradient(W * 0.4, H * 0.1, W * 0.3, W * 0.5, H * 0.6, W * 1.1); vig.addColorStop(0, 'rgba(0,16,6,0)'); vig.addColorStop(1, 'rgba(0,16,6,0.3)'); t.fillStyle = vig; t.fillRect(0, 0, W, H);
-      var ring = 9;   // first-cut rough around the edge: longer, darker, denser blades
-      t.save(); t.beginPath(); t.rect(0, 0, W, H); t.rect(ring, ring, W - 2 * ring, H - 2 * ring); t.clip('evenodd');
-      t.fillStyle = fr; t.globalAlpha = 0.85; t.fillRect(0, 0, W, H); t.globalAlpha = 1;
-      [['rgba(90,150,90,0.55)', 0.4], ['rgba(5,30,14,0.6)', 0.6]].forEach(function (tone) {
-        t.strokeStyle = tone[0]; t.beginPath();
-        for (j = Math.round((W + H) * ring * tone[1] / 2); j > 0; j--) {
-          var side = rnd(), rx, ry;
-          if (side < 0.5) { rx = rnd() * W; ry = (side < 0.25 ? 0 : H - ring) + rnd() * ring; } else { ry = rnd() * H; rx = (side < 0.75 ? 0 : W - ring) + rnd() * ring; }
-          var rl = 4 + rnd() * 6, rlean = (rnd() - 0.5) * 1.4;
-          t.moveTo(rx, ry); t.lineTo(rx + Math.sin(rlean) * rl, ry - Math.cos(rlean) * rl);
-        }
-        t.stroke();
-      });
-      t.restore();
-      turfCache = { key: key, canvas: off }; turf.getContext('2d').drawImage(off, 0, 0);
     }
     resize();
     var colors = {};
@@ -1169,7 +1109,7 @@
     var ro = null;
     if (window.ResizeObserver) { ro = new ResizeObserver(function () { resize(); }); ro.observe(box); }
     var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-    if (mq && mq.addEventListener) mq.addEventListener('change', function () { readColors(); paintTurf(); });
+    if (mq && mq.addEventListener) mq.addEventListener('change', readColors);
 
     // Pointer handling: drag to fling, tap to pick, hold for hockey. In a game, any touch steers the paddle.
     var trail = [], start = null, pendingPick = null;
