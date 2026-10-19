@@ -1615,6 +1615,7 @@
       b.classList.remove('bump'); if (on && changed) { void b.offsetWidth; b.classList.add('bump'); }
     });
     document.body.classList.toggle('tab-home', tab === 'home');
+    if (tab === 'games') golfScrollCue();   // the page was hidden until now, so the measurements were zero
     moveNavInd();
     updateChatBadge();
     window.scrollTo(0, 0); lastY = 0; setNavAway(false);
@@ -2115,12 +2116,26 @@
     var rows = Object.keys(by).map(function (n) { return { name: n, best: by[n].best, rounds: by[n].rounds || 0 }; })
       .sort(function (a, b) { return a.best - b.best || b.rounds - a.rounds || a.name.localeCompare(b.name); });
     st.innerHTML = 'Par ' + par + (rows.length ? ' · <b>' + esc(rows[0].name === me ? 'you lead' : rows[0].name + ' leads') + '</b>' : ' · best round');
-    if (!rows.length) { body.innerHTML = '<div class="lb-empty">Nobody yet</div>'; return; }
-    body.innerHTML = '<div class="lb">' + rows.slice(0, BOARD_MAX).map(function (r, i) {
+    if (!rows.length) { body.innerHTML = '<div class="lb-empty">Nobody yet</div>'; golfScrollCue(); return; }
+    body.innerHTML = '<div class="lb">' + rows.map(function (r, i) {
       var d = r.best - par, dtxt = d === 0 ? 'E' : d > 0 ? '+' + d : String(d);
       return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat">' + r.best + '<small>' + dtxt + '</small></span></div>';
-    }).join('') + '</div>' + (rows.length > BOARD_MAX ? '<div class="lb-more">+' + (rows.length - BOARD_MAX) + ' more</div>' : '');
+    }).join('') + '</div>';
+    golfScrollCue();
   }
+  // the golf card is pinned to the air hockey card's height, so the list scrolls inside it: say how many rows are below the fold
+  function golfScrollCue() {
+    var body = $('golfboard-body'), card = $('golfboard'), cue = $('golfboard-more'); if (!body || !cue) return;
+    var rows = body.querySelectorAll('.lb-row'), hidden = 0, bottom = body.scrollTop + body.clientHeight;
+    for (var i = 0; i < rows.length; i++) if (rows[i].offsetTop + rows[i].offsetHeight > bottom + 6) hidden++;
+    var scrolls = body.clientHeight > 0 && body.scrollHeight > body.clientHeight + 2;
+    card.classList.toggle('scrolls', scrolls);
+    card.classList.toggle('at-end', scrolls && !hidden);
+    cue.hidden = !scrolls || !hidden;
+    cue.textContent = '\u25BC ' + hidden + ' more';
+  }
+  $('golfboard-body').addEventListener('scroll', golfScrollCue, { passive: true });
+  window.addEventListener('resize', golfScrollCue);
 
   // ---- Games: Mafia dealer ----
   var mafia = null, mafiaLoaded = false, mafiaSub = false, mafiaDraft = null, revealHold = false, modReveal = false, mafiaDealAnim = false;

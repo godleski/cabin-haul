@@ -332,7 +332,14 @@
   #mafia { --ac: #8e2f44; --ac-soft: rgba(142, 47, 68, 0.14); }
   .section-lede { margin-top: 24px; font-weight: 600; color: var(--fg); }
   .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
-  .board-card { padding: 12px 12px 10px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); min-width: 0; }
+  .board-card { padding: 12px 12px 10px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); min-width: 0; display: flex; flex-direction: column; position: relative; }
+  .bc-title, .bc-sub { flex: none; }
+  #hockeyboard-body { flex: 1; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+  /* the golf list takes no part in sizing the row (contain: size), so both cards stay the air hockey card's height and the list scrolls inside */
+  #golfboard-body { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; contain: size; position: relative; }
+  #golfboard.scrolls:not(.at-end)::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 34px; background: linear-gradient(transparent, var(--surface)); pointer-events: none; z-index: 1; border-radius: 0 0 14px 14px; }
+  .lb-scroll { position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%); z-index: 2; pointer-events: none; font: 700 0.64rem var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ac); background: var(--surface); border: 1px solid var(--ac); border-radius: 999px; padding: 2px 8px; white-space: nowrap; animation: lbcue 1.2s ease-in-out infinite; }
+  @keyframes lbcue { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 3px); } }
   #hockeyboard { --ac: #d97757; } #golfboard { --ac: #2d6a4f; }
   .bc-title { font: 700 0.95rem var(--display); }
   .bc-sub { font-size: 0.74rem; color: var(--muted); margin: 2px 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -800,6 +807,9 @@
   #page-games .hb-side small, #page-games .hb-vs { font-family: var(--mono); color: #9aa3d6; }
   #page-games .lb-row { background: #0d0e24; border-radius: 0; font-family: var(--mono); } #page-games .lb-row .rank { color: #ffcc00; } #page-games .lb-row.me { box-shadow: inset 0 0 0 2px #ffcc00; }
   #page-games .lb-row .stat { background: transparent; border: 1px solid #3a3f7a; border-radius: 0; }
+  #page-games #golfboard.scrolls:not(.at-end)::before { background: linear-gradient(rgba(0, 0, 0, 0), #000 80%); border-radius: 0; }
+  #page-games .lb-scroll { font-family: var(--mono); color: #ffcc00; border-color: #ffcc00; background: #000; border-radius: 0; animation: lbcue 0.9s steps(2) infinite; }
+  @media (prefers-reduced-motion: reduce) { .lb-scroll { animation: none; } }
   #page-games .game-card { background: var(--surface); border: 0; border-radius: 0; box-shadow: 0 0 0 3px #fff, 0 0 0 6px #1a1c3a, 0 0 0 9px var(--ac); margin: 28px 8px 0; }
   #page-games .game-card:has(.game-head[aria-expanded="true"]) { box-shadow: 0 0 0 3px #ffcc00, 0 0 0 6px #1a1c3a, 0 0 0 9px var(--ac); }
   #page-games .game-head h2 { color: #fff; text-transform: uppercase; letter-spacing: 0.04em; font-size: 1rem; }
