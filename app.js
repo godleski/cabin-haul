@@ -2067,7 +2067,7 @@
   function secretsReady() { return !!(window.SECRETS && window.crypto && crypto.subtle); }
   function deriveSecretKey(pass) {
     var S = window.SECRETS, enc = new TextEncoder();
-    return crypto.subtle.importKey('raw', enc.encode(pass.normalize('NFKC')), 'PBKDF2', false, ['deriveKey']).then(function (base) {
+    return crypto.subtle.importKey('raw', enc.encode(pass.normalize('NFKC').trim().toLowerCase()), 'PBKDF2', false, ['deriveKey']).then(function (base) {
       return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b64bytes(S.salt), iterations: S.rounds || 300000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, true, ['decrypt']);
     });
   }

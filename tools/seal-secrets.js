@@ -11,7 +11,7 @@ if (!pass) { console.error('usage: node tools/seal-secrets.js "passphrase"'); pr
   JSON.parse(plain);   // must be valid JSON
   const enc = new TextEncoder();
   const salt = webcrypto.getRandomValues(new Uint8Array(16)), iv = webcrypto.getRandomValues(new Uint8Array(12));
-  const base = await webcrypto.subtle.importKey('raw', enc.encode(pass.normalize('NFKC')), 'PBKDF2', false, ['deriveKey']);
+  const base = await webcrypto.subtle.importKey('raw', enc.encode(pass.normalize('NFKC').trim().toLowerCase()), 'PBKDF2', false, ['deriveKey']);
   const key = await webcrypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 300000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
   const data = new Uint8Array(await webcrypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plain)));
   const b64 = (u) => Buffer.from(u).toString('base64');
