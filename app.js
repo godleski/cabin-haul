@@ -2676,21 +2676,20 @@
       }
     });
     var tally = Object.keys(counts).map(function (k) { return counts[k] + '× ' + k; });
-    all.innerHTML = '<div class="hib-all ticket"><div class="ah"><b>Order ticket</b><span class="tk-sub">' + locked.length + ' of ' + NAMES.length + ' plates</span><button type="button" class="btn" id="hib-copy"' + (locked.length ? '' : ' disabled') + '>Copy the ticket</button></div><div class="hib-rows">' + rows + '</div>' +
+    all.innerHTML = '<div class="hib-all ticket"><div class="ah"><b>Order ticket</b><span class="tk-sub">' + locked.length + ' of ' + NAMES.length + ' plates</span>' + (me === HIBACHI_PAYEE.name ? '<button type="button" class="btn" id="hib-copy"' + (locked.length ? '' : ' disabled') + '>Copy the order</button>' : '') + '</div><div class="hib-rows">' + rows + '</div>' +
       (tally.length ? '<div class="hib-totals">' + esc(tally.join(' · ')) + '</div>' : '') +
       '<div class="hib-sub"><span>Plates</span><span>' + money(plates) + '</span></div><div class="hib-sub"><span>Tip (20%)</span><span>' + money(tips) + '</span></div>' +
       '<div class="hib-grand"><span>Total' + (done ? '' : ' so far') + '</span><span>' + money(Math.round((plates + tips) * 100) / 100) + '</span></div></div>';
   }
-  function hibCopyText() {
-    var orders = hibOrders(), lines = [], counts = {}, plates = 0, tips = 0, n = 0;
+  function hibCopyText() {   // just the menu items and how many of each, in menu order, for Jess to hand to the company
+    var orders = hibOrders(), counts = {};
     NAMES.forEach(function (nm) {
       var o = orders[nm]; if (!o || !o.locked) return;
-      n++; var p = hibPrice(o); plates += p; tips += hibTip(o);
-      hibChefLines(o).forEach(function (l) { counts[l] = (counts[l] || 0) + 1; });
-      lines.push(nm + ': ' + hibChefLines(o).join(' + ') + (o.note ? ' (' + o.note + ')' : '') + ' - ' + money(p) + ' + ' + money(hibTip(o)) + ' tip' + (o.paid ? ' [paid]' : ''));
+      HIBACHI_MENU.forEach(function (g) { (o.picks[g.id] || []).forEach(function (oid) { counts[g.id + '/' + oid] = (counts[g.id + '/' + oid] || 0) + 1; }); });
     });
-    var out = 'Hibachi orders (' + n + ' of ' + NAMES.length + ')\n' + lines.join('\n') + '\n\nTotals: ' + Object.keys(counts).map(function (k) { return counts[k] + 'x ' + k; }).join(', ') + '\nPlates: ' + money(plates) + '\nTip (20%): ' + money(tips) + '\nGrand total: ' + money(Math.round((plates + tips) * 100) / 100);
-    return out;
+    var lines = [];
+    HIBACHI_MENU.forEach(function (g) { g.options.forEach(function (o) { var n = o.id && counts[g.id + '/' + o.id]; if (n) lines.push(n + 'x ' + o.name); }); });
+    return lines.join('\n');
   }
   $('hibachi').addEventListener('click', function (e) {
     var opt = e.target.closest('.opt');
@@ -2720,7 +2719,7 @@
       toast(me === HIBACHI_PAYEE.name ? (left ? 'Locked in. ' + left + ' to go.' : 'Locked in. That’s everyone!') : 'Locked in. Now Venmo ' + HIBACHI_PAYEE.name + ' ' + money(hibTotal(order)) + ' (plate + 20% tip).');
       return;
     }
-    if (e.target.closest('#hib-copy')) { copyText(hibCopyText(), 'Orders copied. Send them to the chef.'); buzz(6); return; }
+    if (e.target.closest('#hib-copy')) { copyText(hibCopyText(), 'Copied. Paste it to the hibachi company.'); buzz(6); return; }
     if (e.target.closest('#hib-venmo')) { buzz(6); return; }   // the link itself opens Venmo
     if (e.target.closest('#hib-paid') || e.target.closest('#hib-unpaid')) {
       var cur = hibOrders()[me]; if (!cur) return;
