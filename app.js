@@ -1961,7 +1961,7 @@
   // Saturday dinner: one anonymous tap per phone, asked before the predictions. The vote is keyed by the phone's
   // random id, never a name, so nothing in the database says who picked what.
   var DINNER_Q = 'dinner', askedDinnerThisVisit = false, dinnerBusy = false;
-  var DINNER_PER_NAME = true;   // TEMPORARY for testing: every name on a phone gets asked. Set false to go back to once per phone.
+  var DINNER_PER_NAME = false;   // true asks every name on a phone (handy for testing); false is once per phone, the real setting
   function dinnerVoter() {
     if (!DINNER_PER_NAME) return 'dev-' + myId();
     var k = 'cabin-haul-dinner-' + me, v = lsGet(k);   // a random id per name on this phone; still no names in the database
