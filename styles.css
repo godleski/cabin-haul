@@ -435,11 +435,11 @@
   .history i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
   .smash-eyebrow { margin-top: 12px; font: 700 0.62rem var(--body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); text-align: center; }
   .smash-eyebrow + .smash-board { margin-top: 6px; }
-  .swap-btn { display: block; margin: 8px auto 0; font: 700 0.62rem var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; cursor: pointer; touch-action: auto; }
-  .fighter.swapping { cursor: default; }
-  .fighter.swapping .fname { opacity: 0.6; }
+  .swap-row { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .swap-btn { font: 700 0.66rem var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; cursor: pointer; touch-action: auto; }
+  .swap-row .swap-sub { margin: 0; }
+  .swap-row .swap-opt { padding: 6px 14px; font-size: 0.9rem; }
   .swap-sub { margin-top: 6px; font: 700 0.62rem var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-  .swap-opts { display: grid; gap: 6px; margin: 8px 0; }
   .swap-opt { font: 800 0.95rem var(--display); color: var(--pc); background: var(--surface); border: 2px solid var(--pc); border-radius: 10px; padding: 9px 6px; cursor: pointer; touch-action: auto; }
   .standings { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 0.78rem; color: var(--muted); }
   .standings span { display: inline-flex; align-items: center; gap: 5px; } .standings i { width: 9px; height: 9px; border-radius: 2px; background: var(--pc); } .standings b { color: var(--fg); font-variant-numeric: tabular-nums; }

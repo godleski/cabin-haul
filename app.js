@@ -1709,20 +1709,22 @@
     ['p1', 'p2'].forEach(function (side, i) {
       var name = pair[i], n = c[name], lead = n > c[pair[1 - i]], st = smashStreak(pair, name), col = SMASH_COLOR[name];
       var rolling = smashAnim && smashAnim.side === side;
-      if (smashSwap === side) {
-        var others = SMASH_NAMES.filter(function (x) { return pair.indexOf(x) < 0; });
-        html += '<div class="fighter swapping ' + side + '" style="--pc:' + col + '"><div class="fname">' + esc(name) + '</div><div class="swap-sub">Swap in</div><div class="swap-opts">' +
-          others.map(function (x) { return '<button type="button" class="swap-opt" data-swap="' + esc(x) + '" style="--pc:' + SMASH_COLOR[x] + '">' + esc(x) + '</button>'; }).join('') +
-          '</div><button type="button" class="linkbtn" data-swap-cancel="1">Cancel</button></div>';
-      } else {
-        html += '<div class="fighter ' + side + (lead ? ' lead' : '') + '" data-side="' + side + '" data-name="' + esc(name) + '" style="--pc:' + col + '"><div class="fname">' + esc(name) + '</div>' +
-          '<div class="odo"><div class="roll' + (rolling ? ' spin' : '') + '">' + (rolling ? '<span>' + smashAnim.from + '</span>' : '') + '<span>' + n + '</span></div></div>' +
-          '<div class="streak">' + (st >= 2 ? st + ' in a row' : '') + '</div>' +
-          '<div class="ko-hint"><span>Hold to KO</span></div><button type="button" class="swap-btn" data-swap-seat="' + side + '">⇄ Swap</button></div>';
-      }
+      html += '<div class="fighter ' + side + (lead ? ' lead' : '') + '" data-side="' + side + '" data-name="' + esc(name) + '" style="--pc:' + col + '"><div class="fname">' + esc(name) + '</div>' +
+        '<div class="odo"><div class="roll' + (rolling ? ' spin' : '') + '">' + (rolling ? '<span>' + smashAnim.from + '</span>' : '') + '<span>' + n + '</span></div></div>' +
+        '<div class="streak">' + (st >= 2 ? st + ' in a row' : '') + '</div>' +
+        '<div class="ko-hint"><span>Hold to KO</span></div></div>';
       if (side === 'p1') html += '<div class="vs">VS</div>';
     });
     html += '</div>';
+    // swapping lives in its own row under the board, so it can never be confused with a hold
+    if (smashSwap) {
+      var seatName = pair[smashSwap === 'p1' ? 0 : 1], others = SMASH_NAMES.filter(function (x) { return pair.indexOf(x) < 0; });
+      html += '<div class="swap-row picking"><span class="swap-sub">Put in for ' + esc(seatName) + ':</span>' +
+        others.map(function (x) { return '<button type="button" class="swap-opt" data-swap="' + esc(x) + '" style="--pc:' + SMASH_COLOR[x] + '">' + esc(x) + '</button>'; }).join('') +
+        '<button type="button" class="linkbtn" data-swap-cancel="1">Cancel</button></div>';
+    } else {
+      html += '<div class="swap-row">' + ['p1', 'p2'].map(function (side, i) { return '<button type="button" class="swap-btn" data-swap-seat="' + side + '">⇄ Swap ' + esc(pair[i]) + '</button>'; }).join('') + '</div>';
+    }
     if (smashAnim) html += '<div class="ko-flash ' + smashAnim.side + '" style="--pc:' + SMASH_COLOR[pair[smashAnim.side === 'p1' ? 0 : 1]] + '">GAME!</div>';
     html += '</div>';
     if (!isMain) html += '<div class="mafia-actions"><button type="button" class="linkbtn" id="smash-main">Back to ' + esc(SMASH_MAIN[0]) + ' vs ' + esc(SMASH_MAIN[1]) + '</button></div>';
