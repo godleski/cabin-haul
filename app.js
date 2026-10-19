@@ -1723,7 +1723,7 @@
         others.map(function (x) { return '<button type="button" class="swap-opt" data-swap="' + esc(x) + '" style="--pc:' + SMASH_COLOR[x] + '">' + esc(x) + '</button>'; }).join('') +
         '<button type="button" class="linkbtn" data-swap-cancel="1">Cancel</button></div>';
     } else {
-      html += '<div class="swap-row">' + ['p1', 'p2'].map(function (side, i) { return '<button type="button" class="swap-btn" data-swap-seat="' + side + '">⇄ Swap ' + esc(pair[i]) + '</button>'; }).join('') + '</div>';
+      html += '<div class="swap-row seats"><button type="button" class="swap-btn" data-swap-seat="p1">⇄ Swap ' + esc(pair[0]) + '</button><span class="vs-gap" aria-hidden="true">VS</span><button type="button" class="swap-btn" data-swap-seat="p2">⇄ Swap ' + esc(pair[1]) + '</button></div>';   // one under each card
     }
     if (smashAnim) html += '<div class="ko-flash ' + smashAnim.side + '" style="--pc:' + SMASH_COLOR[pair[smashAnim.side === 'p1' ? 0 : 1]] + '">GAME!</div>';
     html += '</div>';

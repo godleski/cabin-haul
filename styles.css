@@ -438,6 +438,9 @@
   .swap-row { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .swap-btn { font: 700 0.66rem var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; cursor: pointer; touch-action: auto; }
   .swap-row .swap-sub { margin: 0; }
+  .swap-row.seats { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; }   /* same columns as the board, so each pill sits under its card */
+  .swap-row.seats .swap-btn { justify-self: center; }
+  .swap-row.seats .vs-gap { visibility: hidden; font: 800 1.1rem var(--display); letter-spacing: 0.04em; }
   .swap-row .swap-opt { padding: 6px 14px; font-size: 0.9rem; }
   .swap-sub { margin-top: 6px; font: 700 0.62rem var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
   .swap-opt { font: 800 0.95rem var(--display); color: var(--pc); background: var(--surface); border: 2px solid var(--pc); border-radius: 10px; padding: 9px 6px; cursor: pointer; touch-action: auto; }
