@@ -850,15 +850,6 @@
   #page-hibachi .ticket .hib-grand { border-top: 2px solid #1b1b1b; padding-top: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
   @media (prefers-reduced-motion: reduce) { .volcano .flame, .volcano .spark, .hib-mine-locked.sizzle, .hib-mine-locked.sizzle::before, .hib-mine-locked.sizzle::after { animation: none; } }
   /* ---- FAQ on the cabin page ---- */
-  .faq { margin-top: 10px; display: grid; gap: 6px; }
-  .faq-item { border: 1px solid var(--line); border-radius: 12px; background: var(--bg); padding: 0 12px; }
-  .faq-item summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; padding: 11px 0; font: 700 0.95rem var(--display); -webkit-tap-highlight-color: transparent; }
-  .faq-item summary::-webkit-details-marker { display: none; }
-  .faq-item summary::after { content: ""; margin-left: auto; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform 160ms; flex: none; }
-  .faq-item[open] summary::after { transform: rotate(-135deg); }
-  .faq-item ul { margin: 0; padding: 0 0 12px 18px; font-size: 0.9rem; color: var(--muted); display: grid; gap: 5px; }
-  .faq-item ul li::marker { color: var(--pine); }
-  .faq-item p { margin: 0; padding: 0 0 12px; font-size: 0.9rem; color: var(--muted); }
   /* ---- Hibachi orders ---- */
   .hib-title { display: flex; align-items: center; gap: 10px; }
   h1.hib-title .light { width: 14px; height: 14px; margin-top: 4px; }
