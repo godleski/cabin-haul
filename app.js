@@ -53,10 +53,11 @@
   PARTIES.forEach(function (p) { p.forEach(function (n) { if (NAMES.indexOf(n) < 0) NAMES.push(n); }); });
 
   // ---- Bubble physics on a canvas: grab, fling, collide. A quick tap picks the name.
-  //      Hold one for 5 seconds and it turns into air hockey against the CPU. ----
+  //      Air hockey is played from the Games tab; mini golf is the one hidden game (the word "putt"). ----
   var sim = null, scores = null, scoresSub = false, boardShown = false;
-  // Which hidden games this phone has found. Once found, the matching board on the Games tab becomes a replay button.
-  function foundGame(k) { return lsGet('cabin-haul-found-' + k) === '1'; }
+  // Air hockey is always open from the Games tab. Mini golf is hidden on the name screen; once this phone has found it,
+  // its board on the Games tab becomes a play button too.
+  function foundGame(k) { return k === 'hockey' || lsGet('cabin-haul-found-' + k) === '1'; }
   function markFound(k) { if (foundGame(k)) return; lsSet('cabin-haul-found-' + k, '1'); renderArcadeCues(); }
   var arcadeFrom = null;   // the tab that launched a replay, so the game can hand back to it when it ends
   function playAgain(kind) {
@@ -93,7 +94,7 @@
     boardShown = false;
     subscribeBoards();
     renderScores();
-    sim = renderArena({ box: $('roster'), names: NAMES, games: true, replay: !!arcadeFrom, onExit: arcadeExit, onPick: function (name) {
+    sim = renderArena({ box: $('roster'), names: NAMES, games: false, replay: !!arcadeFrom, onExit: arcadeExit, onPick: function (name) {
       me = name; myParty = partyOf(me); lsSet('cabin-haul-me', me);
       showScreen();
     }, onGolfDone: function (total) {
@@ -123,7 +124,7 @@
     }
     if (e.target.closest('#golf-skip')) renderGolfPost(false);
   });
-  // A physics arena of name balls. opts: box, names, onPick(name), games (hockey/golf easter eggs), current (ring this name).
+  // A physics arena of name balls. opts: box, names, onPick(name), games (hold a ball to start hockey; off, hockey starts from the Games tab), current (ring this name).
   function renderArena(opts) {
     var box = opts.box, names = opts.names;
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1770,10 +1771,8 @@
       if (x[1]) { x[0].setAttribute('role', 'button'); x[0].setAttribute('tabindex', '0'); x[0].setAttribute('aria-label', x[2]); }
       else { x[0].removeAttribute('role'); x[0].removeAttribute('tabindex'); x[0].removeAttribute('aria-label'); }
     });
-    if (lede) lede.innerHTML = h && g ? 'You’ve found both. Tap a board to <b>play again</b>.'
-      : h ? 'You found air hockey. Tap its board to <b>play again</b>. Mini golf is still hidden on the name screen.'
-      : g ? 'You found mini golf. Tap its board to <b>play again</b>. Air hockey is still hidden on the name screen.'
-      : 'Air hockey and mini golf are hidden on the name screen. Tap <b>Not you?</b> and poke around.';
+    if (lede) lede.innerHTML = g ? 'Tap a board to <b>play</b>. You found the hidden one too.'
+      : 'Tap the air hockey board to <b>play</b>. Mini golf is hidden on the name screen. Tap <b>Not you?</b> and poke around.';
   }
   [['hockeyboard', 'hockey'], ['golfboard', 'golf']].forEach(function (x) {
     var el = $(x[0]);
