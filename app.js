@@ -1980,7 +1980,7 @@
     var il = $('q-intro-list'); if (il) il.innerHTML = QUESTIONS.map(function (qq) {   // each market with the current favourite's price
       var t = tallyFor(qq), total = t.rows.reduce(function (a, r) { return a + r.n; }, 0), lead = t.rows[0];
       if (plainPicks()) return '<li><span>' + esc(qq.text) + '</span></li>';
-      return '<li><span>' + esc(qq.text) + (lead ? '<small>' + esc(lead.pick) + ' favoured</small>' : '<small>No action yet</small>') + '</span><b>' + oddsFor(lead ? lead.n : 0, total) + '</b></li>';
+      return '<li><span>' + esc(qq.text) + (lead ? '<small>' + esc(lead.pick) + ' favoured</small>' : '<small>No action yet</small>') + '</span><b>' + oddsForQ(qq, lead ? lead.n : 0) + '</b></li>';
     }).join('');
   }
   $('q-start').addEventListener('click', function () { $('q-intro').hidden = true; $('q-wrap').hidden = false; showQuestion(true); });
@@ -2002,7 +2002,7 @@
     if (animate) { wrap.classList.remove('slide'); void wrap.offsetWidth; wrap.classList.add('slide'); }
     var names = q.type === 'couple' ? COUPLES : NAMES.slice().sort();
     $('q-grid').innerHTML = names.map(function (n) {
-      return '<button type="button" class="pickbtn" data-pick="' + esc(n) + '" aria-pressed="' + (mine === n) + '"><span class="nm">' + esc(n) + '</span>' + (plain ? '' : '<span class="odds">' + oddsFor(byPick[n] || 0, total) + '</span>') + (mine === n ? '<span class="tick">\u2713' + (plain ? ' Your pick' : ' On slip') + '</span>' : '') + '</button>';
+      return '<button type="button" class="pickbtn" data-pick="' + esc(n) + '" aria-pressed="' + (mine === n) + '"><span class="nm">' + esc(n) + '</span>' + (plain ? '' : '<span class="odds">' + oddsForQ(q, byPick[n] || 0) + '</span>') + (mine === n ? '<span class="tick">\u2713' + (plain ? ' Your pick' : ' On slip') + '</span>' : '') + '</button>';
     }).join('');
     picking = false;
   }
@@ -2033,14 +2033,18 @@
     var rows = Object.keys(counts).map(function (k) { return { pick: k, n: counts[k], who: who[k].sort() }; }).sort(function (a, b) { return b.n - a.n || a.pick.localeCompare(b.pick); });
     return { rows: rows, voted: Object.keys(voters).length };
   }
-  // Fake book odds from the votes: a smoothed share over all 13 runners, shown American style.
-  function oddsFor(n, total) {
-    var k = NAMES.length, p = (n + 0.3) / (total + 0.3 * k);
-    p = Math.min(0.93, Math.max(0.02, p));
+  // Fake book odds from the votes, American style. Shares are sharpened (power 1.8) so the runner with the most
+  // bets prices like a real favourite (negative) while the rest of the field stays plus-money.
+  function oddsFor(n, rows, k) {
+    var w = function (c) { return Math.pow(c + 0.3, 1.8); };
+    var denom = rows.reduce(function (a, r) { return a + w(r.n); }, 0) + Math.max(0, k - rows.length) * w(0);
+    var p = w(n) / denom;
+    p = Math.min(0.85, Math.max(0.03, p));
     var a = p >= 0.5 ? -Math.round(100 * p / (1 - p)) : Math.round(100 * (1 - p) / p);
     a = Math.round(a / 5) * 5;
     return (a > 0 ? '+' : '') + a;
   }
+  function oddsForQ(q, n) { var t = tallyFor(q); return oddsFor(n, t.rows, q.type === 'couple' ? COUPLES.length : NAMES.length); }
   function reactionsFor(cid) {
     var out = {}; if (!cid) return out;
     reactions.forEach(function (r) { if (r.comment_id === cid) (out[r.emoji] = out[r.emoji] || []).push(r.reactor); });
@@ -2082,11 +2086,12 @@
       var rows = t.rows.slice(0, 3);
       if (!rows.length) rows = NAMES.filter(function (n) { return n !== me; }).slice(0, 3).map(function (n) { return { pick: n, n: 0 }; });
       if (my && !rows.some(function (r) { return r.pick === my; })) rows.push({ pick: my, n: (t.rows.filter(function (r) { return r.pick === my; })[0] || { n: 0 }).n });
-      var hot = cc >= 2;
+      var hot = cc >= 2, top = t.rows.length ? t.rows[0].n : 0;
       html += '<button type="button" class="pred-card dk" data-q="' + i + '">' +
         '<div class="dk-top">' + (total ? '<span class="live"><i></i>Live</span>' : '<span class="soon">Opens</span>') + '<span class="mk">' + esc(q.text) + '</span>' + (hot ? '<span class="boost">\u26A1 Boosted</span>' : '<span class="sgp">SGP</span>') + '</div>' +
         '<div class="dk-rows">' + rows.map(function (r) {
-          return '<div class="dk-row' + (r.pick === my ? ' picked' : '') + '"><span class="rn">' + esc(r.pick) + '<small>' + (r.n ? r.n + (r.n === 1 ? ' bet' : ' bets') : 'no action') + '</small></span><span class="odds">' + oddsFor(r.n, total) + '</span></div>';
+          var fav = top > 0 && r.n === top, picked = r.pick === my;
+          return '<div class="dk-row' + (fav ? ' fav' : '') + (picked ? ' picked' : '') + '"><span class="rn">' + esc(r.pick) + '<small>' + (r.n ? r.n + (r.n === 1 ? ' bet' : ' bets') : 'no action') + '</small>' + (fav ? '<em class="tag fav">Fav</em>' : '') + (picked ? '<em class="tag you">\u2713 Your bet</em>' : '') + '</span><span class="odds">' + oddsForQ(q, r.n) + '</span></div>';
         }).join('') + (t.rows.length > 3 ? '<div class="dk-more">+' + (t.rows.length - 3) + ' more wagers</div>' : '') + '</div>' +
         '<div class="dk-foot"><span>' + t.voted + ' of ' + NAMES.length + ' bets in</span>' + (cc ? '<span>\uD83D\uDCAC ' + cc + '</span>' : '') + (my ? '<span class="you">\u2713 Your bet: ' + esc(my) + '</span>' : '<span class="you no">No bet placed</span>') + '</div>';
       var thread = comments.filter(function (c) { return c.question_id === q.id; }), last2 = thread.slice(-2);

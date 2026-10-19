@@ -559,11 +559,17 @@
   .dk-row .rn { font: 600 0.95rem var(--body); color: #fff; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
   .dk-row .rn small { font: 500 0.72rem var(--body); color: var(--muted); }
   .dk-row .odds { flex: none; min-width: 72px; text-align: center; padding: 8px 10px; border-radius: 6px; background: #2c2c2c; border: 1px solid #3a3a3a; color: var(--dkg); font: 800 0.92rem var(--body); font-variant-numeric: tabular-nums; }
-  .dk-row.picked .odds { background: var(--dkg); border-color: var(--dkg); color: var(--dkg-ink); }
-  .dk-row.picked .rn { color: var(--dkg); }
+  .dk-row .rn { flex-wrap: wrap; row-gap: 2px; }
+  .dk-row .tag { font: 800 0.56rem var(--body); letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 5px; border-radius: 3px; white-space: nowrap; }
+  .dk-row .tag.fav { background: rgba(83, 211, 55, 0.18); color: var(--dkg); }
+  .dk-row .tag.you { background: #fff; color: #111; }
+  .dk-row.fav .odds { background: var(--dkg); border-color: var(--dkg); color: var(--dkg-ink); }   /* green = the favourite, the most bets */
+  .dk-row.fav .rn { color: var(--dkg); }
+  .dk-row.picked .odds { box-shadow: 0 0 0 2px #fff; }                                             /* white ring = your bet */
+  .dk-row.picked:not(.fav) .odds { color: #fff; border-color: #fff; }
   .dk-more { font: 600 0.76rem var(--body); color: var(--dkg); padding: 4px 0 6px; }
   .dk-foot { display: flex; gap: 12px; align-items: center; padding: 8px 12px 10px; font: 500 0.74rem var(--body); color: var(--muted); border-top: 1px solid var(--line); margin-top: 6px; }
-  .dk-foot .you { margin-left: auto; font-weight: 700; color: var(--dkg); }
+  .dk-foot .you { margin-left: auto; font-weight: 700; color: #fff; }
   .dk-foot .you.no { color: var(--ember); }
   .pred-card.dk .pred-chat { margin: 0 12px 12px; background: #161616; }
   .pred-card.dk .pred-chat .more { color: var(--dkg); }
