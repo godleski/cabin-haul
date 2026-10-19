@@ -1114,7 +1114,7 @@
     box.__golf = function () { return golf; };
     return { stop: function () { running = false; if (ro) ro.disconnect(); setPlaying(false); }, startGolf: startGolf, setCurrent: function (n) { opts.current = n; } };
   }
-  $('switch').addEventListener('click', function () { me = null; myParty = null; lsDel('cabin-haul-me'); showScreen(); });
+  $('switch').addEventListener('click', function () { me = null; myParty = null; tab = 'cabin'; lsDel('cabin-haul-me'); showScreen(); });
   $('golfword').addEventListener('click', function () { if (sim && sim.startGolf && !me) renderGolfPost(true); });
 
   function showScreen() {
@@ -1139,7 +1139,8 @@
   var renderedFor = null;
   function refreshForUser() {
     renderedFor = me;
-    askedDinnerThisVisit = false;   // a new name on this phone gets its own dinner question
+    askedDinnerThisVisit = false; askedThisVisit = false; qAuto = false; qSingle = false;   // a new name on this phone gets its own prompts
+    ['new-name', 'need-name', 'wall-input', 'exp-title'].forEach(function (id) { var el = $(id); if (el) el.value = ''; });   // no typed drafts carry over
     document.body.classList.toggle('plain-picks', plainPicks());
     mafiaDraft = null; teamsDraft = null; teamsEdit = false; expanded = null; pickerFor = null; modReveal = false;
     renderPredictions(); renderSheet(); renderWall(); updateChatBadge();
@@ -2004,7 +2005,7 @@
     toast(pick === 'pasta' ? 'Pasta. Counted, anonymously.' : 'Tacos. Counted, anonymously.');
     setTimeout(function () { dinnerBusy = false; $('dinner').hidden = true; $('predict').classList.remove('dinner-open'); tab = 'cabin'; showScreen(); }, 480);   // the vote always lands on the FAQ
   });
-  var predLoaded = false, askedThisVisit = false, qAuto = false;   // qAuto: the questionnaire opened itself on first visit, so finishing it lands on the FAQ
+  var predLoaded = false, askedThisVisit = false, qAuto = false, qSingle = false;   // qSingle: opened from a card's sheet for one question only   // qAuto: the questionnaire opened itself on first visit, so finishing it lands on the FAQ
   function shouldAsk() {
     if (!me || !store || !store.predictions || !predLoaded || askedThisVisit) return false;
     if (answeredCount() > 0) return false;
@@ -2048,7 +2049,7 @@
     }).join('');
   }
   $('q-start').addEventListener('click', function () { $('q-intro').hidden = true; $('q-wrap').hidden = false; showQuestion(true); });
-  $('q-intro-later').addEventListener('click', function () { lsSet('cabin-haul-pred-later-' + me, '1'); showScreen(); });
+  $('q-intro-later').addEventListener('click', function () { lsSet('cabin-haul-pred-later-' + me, '1'); qAuto = false; qSingle = false; showScreen(); });
   var picking = false;
   function showQuestion(animate) {
     var q = QUESTIONS[qIndex], mine = myVotes()[q.id] || null;
@@ -2084,6 +2085,7 @@
     votes.push({ question_id: q.id, voter: me, pick: pick, updated_at: new Date().toISOString() });
     var slipNow = $('q-slip'); if (slipNow) slipNow.textContent = answeredCount() + '/' + QUESTIONS.length;
     setTimeout(function () {
+      if (qSingle) { qSingle = false; tab = 'home'; showScreen(); toast(plainPicks() ? 'Changed.' : 'Bet changed.'); return; }   // one question from the sheet, then back to the board
       if (qIndex + 1 < QUESTIONS.length) { qIndex++; showQuestion(true); }
       else {
         toast(plainPicks() ? 'Picks are in. Change them any time on the Predictions tab.' : 'Slip placed. Change a bet any time on the Predictions tab.');
@@ -2091,8 +2093,8 @@
       }
     }, 260);
   });
-  $('q-later').addEventListener('click', function () { lsSet('cabin-haul-pred-later-' + me, '1'); showScreen(); });
-  $('q-back').addEventListener('click', function () { if (qIndex > 0) { qIndex--; showQuestion(true); } });
+  $('q-later').addEventListener('click', function () { lsSet('cabin-haul-pred-later-' + me, '1'); qAuto = false; qSingle = false; showScreen(); });
+  $('q-back').addEventListener('click', function () { if (qIndex > 0) { qIndex--; showQuestion(true); } else if (!qSingle) { openQuestionnaire(0); } });
 
   function tallyFor(q) {
     var counts = {}, voters = {}, who = {};
@@ -2161,7 +2163,7 @@
         '<div class="dk-rows">' + rows.map(function (r) {
           var fav = top > 0 && r.n === top, picked = r.pick === my;
           return '<div class="dk-row' + (fav ? ' fav' : '') + (picked ? ' picked' : '') + '"><span class="rn">' + esc(r.pick) + '<small>' + (r.n ? r.n + (r.n === 1 ? ' bet' : ' bets') : 'no action') + '</small>' + (fav ? '<em class="tag fav">Fav</em>' : '') + (picked ? '<em class="tag you">\u2713 Your bet</em>' : '') + '</span><span class="odds">' + oddsForQ(q, r.n) + '</span></div>';
-        }).join('') + (t.rows.length > 3 ? '<div class="dk-more">+' + (t.rows.length - 3) + ' more wagers</div>' : '') + '</div>' +
+        }).join('') + (function () { var hidden = t.rows.filter(function (r) { return !rows.some(function (x) { return x.pick === r.pick; }); }).length; return hidden ? '<div class="dk-more">+' + hidden + ' more ' + (hidden === 1 ? 'wager' : 'wagers') + '</div>' : ''; })() + '</div>' +
         '<div class="dk-foot"><span>' + t.voted + ' of ' + NAMES.length + ' bets in</span>' + (cc ? '<span>\uD83D\uDCAC ' + cc + '</span>' : '') + (my ? '<span class="you">\u2713 Your bet: ' + esc(my) + '</span>' : '<span class="you no">No bet placed</span>') + '</div>';
       var thread = comments.filter(function (c) { return c.question_id === q.id; }), last2 = thread.slice(-2);
       if (!thread.length) html += '<div class="pred-chat none"><span class="line"><span class="t">No trash talk yet. Start it.</span></span></div>';
@@ -2430,14 +2432,14 @@
     var q = QUESTIONS[expanded], t = tallyFor(q), total = t.rows.reduce(function (a, r) { return a + r.n; }, 0), mine = myVotes()[q.id];
     $('sheet-title').textContent = q.text;
     var html = '<div class="poll">';
-    if (!t.rows.length) html += '<div class="poll-empty">No calls yet. Be first.</div>';
+    if (!t.rows.length) html += '<div class="poll-empty">' + (plainPicks() ? 'No calls yet. Be first.' : 'No bets yet. Be first.') + '</div>';
     t.rows.forEach(function (r, k) {
       html += '<div class="poll-row' + (k === 0 ? ' top' : '') + '"><div class="poll-top"><span class="poll-name">' + esc(r.pick) + '</span><span class="poll-n"><b>' + r.n + '</b> · ' + Math.round(100 * r.n / total) + '% <span class="odds">' + oddsForQ(q, r.n) + '</span></span></div>' +
         '<div class="poll-track"><span style="width:' + Math.round(100 * r.n / total) + '%"></span></div>' +
         '<div class="poll-who">' + r.who.map(function (n) { return '<span' + (n === me ? ' class="me"' : '') + '>' + esc(n === me ? 'you' : n) + '</span>'; }).join('') + '</div></div>';
     });
     html += '</div>';
-    html += '<div class="sheet-actions"><span>' + t.voted + ' of ' + NAMES.length + ' have called it' + (mine ? ' · you said <b>' + esc(mine) + '</b>' : '') + '</span><button type="button" class="' + (mine ? 'linkbtn' : 'nudge') + '" id="pred-change" data-q="' + expanded + '">' + (mine ? 'Change mine' : 'Make my call') + '</button></div>';
+    html += '<div class="sheet-actions"><span>' + t.voted + ' of ' + NAMES.length + (plainPicks() ? ' have called it' : ' bets in') + (mine ? (plainPicks() ? ' · you said <b>' : ' · your bet <b>') + esc(mine) + '</b>' : '') + '</span><button type="button" class="' + (mine ? 'linkbtn' : 'nudge') + '" id="pred-change" data-q="' + expanded + '">' + (mine ? (plainPicks() ? 'Change mine' : 'Change my bet') : (plainPicks() ? 'Make my call' : 'Place a bet')) + '</button></div>';
     var thread = comments.filter(function (c) { return c.question_id === q.id; });
     html += '<div class="chat"><div class="chat-head">Trash talk' + (thread.length ? ' <span class="k">' + thread.length + '</span>' : '') + '</div>';
     if (!thread.length) html += '<div class="chat-empty">Nobody’s said anything yet. Stir the pot.</div>';
@@ -2448,7 +2450,7 @@
     wrap.hidden = false;
     if (atBottom) body.scrollTop = body.scrollHeight;
   }
-  function openSheet(i) { expanded = i; draft = ''; pickerFor = null; renderSheet(); var body = $('sheet-body'); if (body) body.scrollTop = body.scrollHeight; }
+  function openSheet(i) { expanded = i; draft = ''; pickerFor = null; renderSheet(); var body = $('sheet-body'); if (body) body.scrollTop = 0; }
   function closeSheet() { expanded = null; draft = ''; $('pred-sheet').hidden = true; }
   function agoText(iso) { var a = ago(iso); return !a || a === 'just now' ? a : a + ' ago'; }
   function ago(iso) {
@@ -2484,7 +2486,7 @@
     var rx = e.target.closest('[data-react]'); if (rx) { toggleReaction(rx.getAttribute('data-cid'), rx.getAttribute('data-react')); return; }
     var pk = e.target.closest('[data-picker]'); if (pk) { var cid = pk.getAttribute('data-picker'); pickerFor = pickerFor === cid ? null : cid; renderSheet(); renderWall(); return; }
     var open = e.target.closest('#pred-open, #dk-open'); if (open) { lsDel('cabin-haul-pred-later-' + me); qAuto = false; openQuestionnaire(firstUnanswered(), answeredCount() >= QUESTIONS.length); return; }
-    var ch = e.target.closest('#pred-change'); if (ch) { var qi = +ch.getAttribute('data-q'); closeSheet(); openQuestionnaire(qi, true); return; }
+    var ch = e.target.closest('#pred-change'); if (ch) { var qi = +ch.getAttribute('data-q'); closeSheet(); qAuto = false; qSingle = true; lsDel('cabin-haul-pred-later-' + me); openQuestionnaire(qi, true); return; }
     if (e.target.closest('#pred-close') || e.target.id === 'sheet-back') { closeSheet(); return; }
     var card = e.target.closest('.pred-card'); if (card) { openSheet(+card.getAttribute('data-q')); }
   }

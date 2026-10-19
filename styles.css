@@ -493,6 +493,7 @@
     color: var(--cw);
     background: radial-gradient(circle at 78% 10%, rgba(255, 140, 58, 0.28), transparent 32%), linear-gradient(180deg, #2a2a31 0%, #18181d 40%, #0f0f12 100%);
   }
+  #page-cabin { overflow-x: hidden; overflow-x: clip; }
   .cabin-hero { padding-right: 108px; }
   .cabin-hero .eyebrow { color: #ffb380; }
   .cabin-hero h1 { color: var(--cw); text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35); }
@@ -657,7 +658,7 @@
   #predict .pickbtn[aria-pressed="true"] .odds { background: var(--dkg-ink); border-color: var(--dkg-ink); color: var(--dkg); }
   #predict .q-foot .linkbtn { color: var(--muted); }
   body.picking:has(#predict:not([hidden])) { background: #0f0f0f; }
-  body.picking:has(#predict:not([hidden])) .toast { background: var(--dkg); color: #06200a; }
+  body.picking:has(#predict:not([hidden])) .toast { background: #53d337; color: #06200a; }
 
   /* ---- Plain picks: the simple, light version of Predictions for people who don't want a sportsbook ---- */
   .plain-head, .plain-only { display: none; }
