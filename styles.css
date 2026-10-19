@@ -528,6 +528,14 @@
   #page-cabin .key-card .unlock input { background: #fff; color: #18181d; border-color: #fff; }
   #page-cabin .key-card .unlock-msg { color: #ffb380; }
   #page-cabin .note-card { background: var(--ember-soft); }
+  /* the dinner tally */
+  #page-cabin .dinner-card { margin-top: 20px; }
+  .dt-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 12px; font: 800 1.05rem var(--display); color: var(--fg); }
+  .dt-row .dt-side b { font-size: 1.6rem; margin: 0 2px; font-variant-numeric: tabular-nums; }
+  .dt-row .dt-side.lead { color: var(--fire-deep); }
+  .dt-bar { display: flex; height: 10px; border-radius: 999px; background: #ece9e3; overflow: hidden; margin-top: 8px; }
+  .dt-bar i { display: block; height: 100%; transition: width 400ms cubic-bezier(0.2, 0.9, 0.3, 1); }
+  .dt-bar .p { background: #ffd166; } .dt-bar .t { background: var(--fire); }
 
   /* ---- Predictions: a mock sportsbook app. Black board, lime green odds, bet slip in the header. ---- */
   #page-home {
@@ -603,6 +611,19 @@
   }
   #predict .dk-slipbtn.static { cursor: default; box-shadow: none; }
   #predict .intro { padding-top: 0; }
+  /* the dinner question: two big cards, themed by whichever predictions look the person gets */
+  #predict .dinner { padding-top: 12vh; }
+  #predict .dinner .eyebrow { color: var(--dkg); }
+  #predict .dinner h1 { font-size: 2.4rem; margin-top: 8px; }
+  #predict .dinner .lede { max-width: 32ch; }
+  .dinner-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
+  .dinner-opt { display: grid; justify-items: center; gap: 10px; padding: 28px 10px 22px; border-radius: 18px; background: var(--surface); border: 2px solid var(--line); color: var(--fg); font: 800 1.3rem var(--display); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 120ms; }
+  .dinner-opt .em { font-size: 3rem; line-height: 1; }
+  .dinner-opt:active { transform: scale(0.96); }
+  .dinner-opt[aria-pressed="true"] { background: var(--pine); border-color: var(--pine); color: var(--pine-ink); }
+  body.plain-picks #predict .dinner .eyebrow { color: var(--gold); }
+  body.plain-picks #predict .dinner-opt { border-color: var(--surface); box-shadow: 0 8px 20px rgba(20, 8, 60, 0.3); }
+  body.plain-picks #predict .dinner-opt[aria-pressed="true"] { background: var(--vio); border-color: var(--vio); color: #fff; }
   #predict .intro .dk-promo { margin-top: 14px; }
   #predict .intro .eyebrow { margin-top: 20px; color: var(--dkg); }
   #predict h1 { color: #fff; font-size: 1.7rem; margin-top: 6px; }
