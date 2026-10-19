@@ -1893,22 +1893,36 @@
     var ws = $('wifi-sub'); if (ws) ws.textContent = secrets ? (secrets.wifiPass ? 'password: ' + secrets.wifiPass : 'no password') : '';
     var rn = $('res-no'); if (rn) rn.textContent = secrets ? (secrets.reservation || '—') : '•••••';
   }
-  function unlockWith(pass) {
-    var form = $('unlock'), msg = $('unlock-msg');
-    form.classList.add('busy'); msg.textContent = '';
+  function unlockCore(pass) {   // derive the key, open the codes, remember the key on this phone
     return deriveSecretKey(pass).then(function (key) {
       return openSecrets(key).then(function (data) {
         secrets = data;
         return crypto.subtle.exportKey('raw', key).then(function (raw) { lsSet('cabin-haul-key', bytes64(new Uint8Array(raw))); });
       });
-    }).then(function () { renderSecrets(); buzz([8, 30, 8]); toast('Unlocked. Codes stay on this phone.'); })
+    }).then(renderSecrets);
+  }
+  function unlockWith(pass) {
+    var form = $('unlock'), msg = $('unlock-msg');
+    form.classList.add('busy'); msg.textContent = '';
+    return unlockCore(pass).then(function () { buzz([8, 30, 8]); toast('Unlocked. Codes stay on this phone.'); })
       .catch(function () { msg.textContent = 'Not it. Check the group text.'; buzz(20); })
       .then(function () { form.classList.remove('busy'); });
   }
+  // The link in the group text carries the trip password after a #, e.g. ...#k=word-word-word-00. The fragment never
+  // leaves the phone (browsers don't send it to the server) and isn't in the repo, so nobody has to type anything.
+  function passFromLink() {
+    var m = /(?:^#|[#&])k=([^&]+)/.exec(location.hash || '');
+    if (!m) return null;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ }   // keep it out of the address bar and history
+    try { return decodeURIComponent(m[1]).trim(); } catch (e) { return m[1].trim(); }
+  }
   (function () {
     renderSecrets();
-    var saved = secretsReady() && lsGet('cabin-haul-key');
-    if (saved) {   // unlocked on this phone before: re-open with the stored key, no password needed
+    if (!secretsReady()) return;
+    var linkPass = passFromLink(), saved = lsGet('cabin-haul-key');
+    if (linkPass) {   // opened from the group-text link: unlock quietly, the form stays as the fallback if the link was stale
+      unlockCore(linkPass).catch(function () { /* wrong or old password in the link; the form below still works */ });
+    } else if (saved) {   // unlocked on this phone before: re-open with the stored key, no password needed
       crypto.subtle.importKey('raw', b64bytes(saved), { name: 'AES-GCM' }, false, ['decrypt']).then(openSecrets)
         .then(function (data) { secrets = data; renderSecrets(); })
         .catch(function () { lsDel('cabin-haul-key'); renderSecrets(); });   // secrets were re-sealed with a new password

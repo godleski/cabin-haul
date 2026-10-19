@@ -5,6 +5,10 @@
 - Prototype lives in the claude.ai artifact https://claude.ai/artifact/JiW8YZTxixgH29K1zrYQvv
   (capabilities db/user/assets). Publish `dist/artifact.html` after each change.
 - Don't touch Supabase SQL while prototyping. Go-live should need one SQL run.
+- Door codes live encrypted in `secrets.js` (sealed from the gitignored `secrets.json` by
+  `node tools/seal-secrets.js "<trip password>"`). The link sent to the group carries the password
+  after a hash, `<site url>#k=<trip password>`, so the page unlocks itself; the password form on the
+  FAQ page is only the fallback. Re-sealing with a new password means re-sending the link.
 - Everyone is on iPhone: send phone-width screenshots for visual changes, keep 60fps.
 
 ## Go-live reminder
