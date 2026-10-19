@@ -41,9 +41,10 @@
     predictions: function (onRows) {
       ensure().then(function () {
         if (!db) return;
-        db.collection('predictions').onSnapshot(function (qs) {
-          onRows(qs.docs.filter(function (d) { return d.exists; }).map(function (d) { return Object.assign({}, d.data()); }));
-        }, function () { /* ignore */ });
+        var ref = db.collection('predictions'), rows = function (qs) { return qs.docs.filter(function (d) { return d.exists; }).map(function (d) { return Object.assign({}, d.data()); }); };
+        ref.onSnapshot(function (qs) { onRows(rows(qs)); }, function () { /* ignore */ });
+        // belt and braces: the first-open prompts wait on this load, so do a one-off read in case the live stream is slow to start
+        setTimeout(function () { ref.get().then(function (qs) { onRows(rows(qs)); }).catch(function () { /* ignore */ }); }, 2000);
       });
     },
     vote: function (questionId, voter, pick) {
