@@ -41,6 +41,9 @@
   }
 
   // ---- Identity ----
+  // Bump RESET_STAMP to send every phone back to the name screen once (used for clean-slate testing and before go-live).
+  var RESET_STAMP = '2026-10-19a';
+  if (lsGet('cabin-haul-reset') !== RESET_STAMP) { lsDel('cabin-haul-me'); lsSet('cabin-haul-reset', RESET_STAMP); }
   var me = lsGet('cabin-haul-me');
   if (me && !partyOf(me)) me = null;           // roster changed; ask again
   var myParty = me ? partyOf(me) : null;
@@ -1123,8 +1126,8 @@
     if (picking) { renderRoster(); window.scrollTo(0, 0); return; }
     if (!booted) boot();
     if (me !== renderedFor) refreshForUser();
-    if (shouldAskDinner()) { askedDinnerThisVisit = true; openDinner(); return; }   // dinner first, then the predictions
-    if (shouldAsk()) { askedThisVisit = true; qAuto = true; openQuestionnaire(firstUnanswered()); return; }
+    if (shouldAsk()) { askedThisVisit = true; qAuto = true; openQuestionnaire(firstUnanswered()); return; }   // predictions first
+    if (shouldAskDinner()) { askedDinnerThisVisit = true; openDinner(); return; }                              // then the dinner vote, which lands on the FAQ
     var partner = PARTIES.filter(function (p) { return p.indexOf(me) >= 0; })[0].filter(function (n) { return n !== me; })[0];
     $('me').innerHTML = 'Hey <b>' + esc(me) + '</b>' + (partner ? ' · with ' + esc(partner) : '');
     showTab(tab);
@@ -1999,7 +2002,7 @@
     store.vote(DINNER_Q, id, pick).catch(function (err) { toast('That didn\'t save: ' + ((err && err.message) || err)); });
     renderDinnerTally();
     toast(pick === 'pasta' ? 'Pasta. Counted, anonymously.' : 'Tacos. Counted, anonymously.');
-    setTimeout(function () { dinnerBusy = false; $('dinner').hidden = true; $('predict').classList.remove('dinner-open'); showScreen(); }, 480);
+    setTimeout(function () { dinnerBusy = false; $('dinner').hidden = true; $('predict').classList.remove('dinner-open'); tab = 'cabin'; showScreen(); }, 480);   // the vote always lands on the FAQ
   });
   var predLoaded = false, askedThisVisit = false, qAuto = false;   // qAuto: the questionnaire opened itself on first visit, so finishing it lands on the FAQ
   function shouldAsk() {
@@ -2014,8 +2017,8 @@
       votes = rows.slice();
       var first = !predLoaded; predLoaded = true;
       renderPredictions(); renderHibachi(); renderDinnerTally();
-      if (first && !$('main').hidden && shouldAskDinner()) { askedDinnerThisVisit = true; openDinner(); }
-      else if (first && !$('main').hidden && shouldAsk()) { askedThisVisit = true; qAuto = true; openQuestionnaire(0); }
+      if (first && !$('main').hidden && shouldAsk()) { askedThisVisit = true; qAuto = true; openQuestionnaire(0); }
+      else if (first && !$('main').hidden && shouldAskDinner()) { askedDinnerThisVisit = true; openDinner(); }
     });
     if (store.comments) store.comments(function (rows) {
       comments = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? -1 : 1; });
