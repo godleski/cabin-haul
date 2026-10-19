@@ -55,6 +55,25 @@
   // ---- Bubble physics on a canvas: grab, fling, collide. A quick tap picks the name.
   //      Hold one for 5 seconds and it turns into air hockey against the CPU. ----
   var sim = null, scores = null, scoresSub = false, boardShown = false;
+  // Which hidden games this phone has found. Once found, the matching board on the Games tab becomes a replay button.
+  function foundGame(k) { return lsGet('cabin-haul-found-' + k) === '1'; }
+  function markFound(k) { if (foundGame(k)) return; lsSet('cabin-haul-found-' + k, '1'); renderArcadeCues(); }
+  var arcadeFrom = null;   // the tab that launched a replay, so the game can hand back to it when it ends
+  function playAgain(kind) {
+    if (!me || !foundGame(kind) || arcadeFrom) return;
+    arcadeFrom = tab; closeChat();
+    $('main').hidden = true; $('nav').hidden = true; $('chat-fab').hidden = true; $('pick').hidden = false;
+    renderRoster();
+    if (kind === 'golf') { golfer = me; sim.startGolf(); } else sim.startHockey(me);
+    buzz(6);
+  }
+  function arcadeExit() {   // a replay ended: back to the tab it came from
+    var back = arcadeFrom; arcadeFrom = null;
+    if (sim) sim.stop(); sim = null;
+    if (!me) { showScreen(); return; }
+    $('pick').hidden = true; tab = back || 'games'; showScreen();
+  }
+  function golfToPar(strokes, par) { var d = strokes - par; return d === 0 ? 'E' : d > 0 ? '+' + d : String(d); }
   var HOLD_MS = 5000, HOLD_SHOW_MS = 3000;
   function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
   function renderScores() {
@@ -74,13 +93,14 @@
     boardShown = false;
     subscribeBoards();
     renderScores();
-    sim = renderArena({ box: $('roster'), names: NAMES, games: true, onPick: function (name) {
+    sim = renderArena({ box: $('roster'), names: NAMES, games: true, replay: !!arcadeFrom, onExit: arcadeExit, onPick: function (name) {
       me = name; myParty = partyOf(me); lsSet('cabin-haul-me', me);
       showScreen();
     }, onGolfDone: function (total) {
       var who = golfer; golfer = null;
       if (!who || !store || !store.recordGolf) return;
-      store.recordGolf(who, total).then(function () { toast(who + ': ' + total + ' strokes, on the board.'); }).catch(function (err) { toast('Couldn\u2019t post that: ' + ((err && err.message) || err)); });
+      var par = 9, d = golfToPar(total, par);
+      store.recordGolf(who, total).then(function () { toast(who + ' finished ' + (d === 'E' ? 'even' : d) + '. On the board.'); }).catch(function (err) { toast('Couldn\u2019t post that: ' + ((err && err.message) || err)); });
     } });
   }
   // mini golf: say who's putting before the round so the board can keep score
@@ -464,6 +484,7 @@
     var GOLF_PAR = 3, GOLF_HOLES = 3;
     function pickOne(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
     function startGolf() {
+      markFound('golf');
       setPlaying(true);
       var order = COURSES.slice().sort(function () { return Math.random() - 0.5; }).slice(0, GOLF_HOLES);
       golf = { hole: 0, strokes: 0, total: 0, t0: performance.now(), msg: null, done: false, courses: order };
@@ -852,7 +873,8 @@
         var k = Math.min(1, (now - g.sunk) / 300);
         ctx.globalAlpha = 0.4 * k; ctx.fillStyle = '#0d2a10'; ctx.fillRect(0, H / 2 - 56, W, 112); ctx.globalAlpha = k;
         chunky(g.done ? 'ROUND OVER' : g.msg, W / 2, H / 2 - 14, 34, '#ffd23f', 'center');
-        chunky(g.done ? g.total + ' strokes on a par ' + GOLF_PAR * g.courses.length + ' course' : g.strokes + (g.strokes === 1 ? ' stroke' : ' strokes') + ' · par ' + GOLF_PAR, W / 2, H / 2 + 22, 14, '#fff', 'center');
+        var rp = golfToPar(g.total, GOLF_PAR * g.courses.length);
+        chunky(g.done ? (rp === 'E' ? 'EVEN PAR' : rp) + ' FOR THE ROUND' : g.strokes + (g.strokes === 1 ? ' stroke' : ' strokes') + ' · par ' + GOLF_PAR, W / 2, H / 2 + 22, 14, '#fff', 'center');
         ctx.globalAlpha = 1;
       }
       if (g.reliefFlash && now - g.reliefFlash < 1100) {
@@ -865,6 +887,7 @@
 
     // ---- Air hockey ----
     function startGame(paddle) {
+      markFound('hockey');
       setPlaying(true);
       var gw = Math.round(W * 0.42);
       game = { me: paddle, t0: performance.now(), over: null,
@@ -1021,6 +1044,7 @@
       if (!running) return;
       checkWake(now);
       if (playing && !golf && !game) setPlaying(false);
+      if (opts.replay && !golf && !game) { running = false; opts.onExit(); return; }   // launched from the Games tab: hand back when the game ends
       var dt = Math.min(32, now - last) / 16.67; last = now;
       if (golf) {
         golfPhysics(dt, now);
@@ -1030,7 +1054,10 @@
       }
       if (game) {
         gamePhysics(dt, now);
-        if (game.over && now - game.over.t > 2400) { running = false; renderRoster(); return; }   // back to the bubbles
+        if (game.over && now - game.over.t > 2400) {   // back to the bubbles, or back to the Games tab for a replay
+          if (opts.replay) { game = null; setPlaying(false); running = false; opts.onExit(); return; }
+          running = false; renderRoster(); return;
+        }
       } else {
         physics(dt, now);
         if (opts.games && held && now - holdStart >= HOLD_MS && !popping) startGame(held);
@@ -1112,7 +1139,8 @@
     }
     function finishPick() { opts.onPick(pendingPick); }
     box.__golf = function () { return golf; };
-    return { stop: function () { running = false; if (ro) ro.disconnect(); setPlaying(false); }, startGolf: startGolf, setCurrent: function (n) { opts.current = n; } };
+    function startHockey(name) { var b = balls.filter(function (x) { return x.name === name; })[0]; if (b && !game && !golf) startGame(b); }
+    return { stop: function () { running = false; if (ro) ro.disconnect(); setPlaying(false); }, startGolf: startGolf, startHockey: startHockey, setCurrent: function (n) { opts.current = n; } };
   }
   $('switch').addEventListener('click', function () { me = null; myParty = null; tab = 'cabin'; lsDel('cabin-haul-me'); showScreen(); });
   $('golfword').addEventListener('click', function () { if (sim && sim.startGolf && !me) renderGolfPost(true); });
@@ -1145,7 +1173,7 @@
     mafiaDraft = null; teamsDraft = null; teamsEdit = false; expanded = null; pickerFor = null; modReveal = false;
     renderPredictions(); renderSheet(); renderWall(); updateChatBadge();
     renderMafia(); renderTeams(); renderLiv(); renderSmash();
-    renderHockeyBoard(); renderGolfBoard(); hibDraft = null; renderHibachi(); renderDinnerTally();
+    renderHockeyBoard(); renderGolfBoard(); renderArcadeCues(); hibDraft = null; renderHibachi(); renderDinnerTally();
   }
 
   // ---- Bottom dock ----
@@ -1161,7 +1189,7 @@
       b.classList.remove('bump'); if (on && changed) { void b.offsetWidth; b.classList.add('bump'); }
     });
     document.body.classList.toggle('tab-home', tab === 'home');
-    if (tab === 'games') golfScrollCue();   // the page was hidden until now, so the measurements were zero
+    if (tab === 'games') { golfScrollCue(); renderArcadeCues(); }   // the page was hidden until now, so the measurements were zero
     moveNavInd();
     updateChatBadge();
     window.scrollTo(0, 0); lastY = 0; setNavAway(false);
@@ -1664,8 +1692,8 @@
     st.innerHTML = 'Par ' + par + (rows.length ? ' · <b>' + esc(rows[0].name === me ? 'you lead' : rows[0].name + ' leads') + '</b>' : ' · best round');
     if (!rows.length) { body.innerHTML = '<div class="lb-empty">Nobody yet</div>'; golfScrollCue(); return; }
     body.innerHTML = '<div class="lb">' + rows.map(function (r, i) {
-      var d = r.best - par, dtxt = d === 0 ? 'E' : d > 0 ? '+' + d : String(d);
-      return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat">' + r.best + '<small>' + dtxt + '</small></span></div>';
+      var dtxt = golfToPar(r.best, par);
+      return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat' + (dtxt.charAt(0) === '-' ? ' under' : dtxt === 'E' ? ' even' : '') + '">' + dtxt + '</span></div>';
     }).join('') + '</div>';
     golfScrollCue();
   }
@@ -1681,6 +1709,25 @@
     cue.textContent = '\u25BC ' + hidden + ' more';
   }
   $('golfboard-body').addEventListener('scroll', golfScrollCue, { passive: true });
+  // once a game has been found on the name screen, its board doubles as a replay button
+  function renderArcadeCues() {
+    var h = foundGame('hockey'), g = foundGame('golf'), hb = $('hockeyboard'), gb = $('golfboard'), lede = $('arcade-lede');
+    if (!hb || !gb) return;
+    [[hb, h, 'Play air hockey again'], [gb, g, 'Play mini golf again']].forEach(function (x) {
+      x[0].classList.toggle('replay', x[1]);
+      if (x[1]) { x[0].setAttribute('role', 'button'); x[0].setAttribute('tabindex', '0'); x[0].setAttribute('aria-label', x[2]); }
+      else { x[0].removeAttribute('role'); x[0].removeAttribute('tabindex'); x[0].removeAttribute('aria-label'); }
+    });
+    if (lede) lede.innerHTML = h && g ? 'You’ve found both. Tap a board to <b>play again</b>.'
+      : h ? 'You found air hockey. Tap its board to <b>play again</b>. Mini golf is still hidden on the name screen.'
+      : g ? 'You found mini golf. Tap its board to <b>play again</b>. Air hockey is still hidden on the name screen.'
+      : 'Air hockey and mini golf are hidden on the name screen. Tap <b>Not you?</b> and poke around.';
+  }
+  [['hockeyboard', 'hockey'], ['golfboard', 'golf']].forEach(function (x) {
+    var el = $(x[0]);
+    el.addEventListener('click', function () { playAgain(x[1]); });
+    el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); playAgain(x[1]); } });
+  });
   window.addEventListener('resize', golfScrollCue);
 
   // ---- Games: Mafia dealer ----
@@ -2222,6 +2269,8 @@
     ] }
   ];
   var HIBACHI_PAYEE = { name: 'Jess', handle: 'Craftyj627' };   // fronts the chef; everyone Venmos her their plate
+  var HIBACHI_HOST = 'Mitch';   // the host eats free: his plate and tip are split evenly across everyone else
+  var HIBACHI_HOST_DEFAULT = { picks: { plate: ['s-filet'] }, note: '', locked: true, preset: true };   // in by default (filet) until he changes it
   var hibJustLocked = false;
   function hibPayUrl(amount, note) {   // Venmo's pay link: opens the app on a phone with recipient, amount and note filled in
     return 'https://venmo.com/' + encodeURIComponent(HIBACHI_PAYEE.handle) + '?txn=pay&amount=' + encodeURIComponent(Number(amount).toFixed(2)) + '&note=' + encodeURIComponent(note);
@@ -2231,6 +2280,7 @@
   function hibOrders() {
     var out = {};
     votes.forEach(function (v) { if (v.question_id !== HIBACHI_Q) return; try { var o = JSON.parse(v.pick); if (o && o.picks) out[v.voter] = o; } catch (e) { /* ignore */ } });
+    if (!out[HIBACHI_HOST]) out[HIBACHI_HOST] = JSON.parse(JSON.stringify(HIBACHI_HOST_DEFAULT));
     return out;
   }
   function hibOption(gid, oid) { var g = HIBACHI_MENU.filter(function (x) { return x.id === gid; })[0]; return g && g.options.filter(function (o) { return o.id && o.id === oid; })[0]; }
@@ -2257,6 +2307,11 @@
   var HIBACHI_TIP = 0.2;   // everyone tips the chef 20% on their own plate; it rides along with the Venmo
   function hibTip(order) { return Math.round(hibPrice(order) * HIBACHI_TIP * 100) / 100; }
   function hibTotal(order) { return Math.round((hibPrice(order) + hibTip(order)) * 100) / 100; }
+  // the host's plate + tip, split evenly across everyone else and added to each of their Venmos
+  function hibSplitWays() { return NAMES.length - 1; }
+  function hibShare() { return Math.round(hibTotal(hibOrders()[HIBACHI_HOST]) / hibSplitWays() * 100) / 100; }
+  function hibShareOf(n) { return n === HIBACHI_HOST ? 0 : hibShare(); }
+  function hibOwed(n, order) { return n === HIBACHI_HOST ? 0 : Math.round((hibTotal(order) + hibShare()) * 100) / 100; }
   function hibComplete(order) { return HIBACHI_MENU.every(function (g) { return !g.pick || (order.picks[g.id] || []).length >= g.pick; }); }
   function money(n) { return '$' + (Math.round(n * 100) / 100).toFixed(n % 1 ? 2 : 0); }
   function renderHibachi() {
@@ -2269,14 +2324,16 @@
     // my order
     var my = orders[me], editing = hibDraft || !(my && my.locked);
     if (!editing) {
-      var plate = hibPrice(my), tip = hibTip(my), price = hibTotal(my), payNote = 'Hibachi: ' + hibLines(my).join(', ') + ' + 20% tip';
-      mine.innerHTML = '<div class="hib-mine-locked' + (hibJustLocked ? ' sizzle' : '') + '"><span>🔒</span><div class="what"><b>Your order is locked in</b>' + esc(hibLines(my).join(', ')) + (my.note ? ' · ' + esc(my.note) : '') + '<small class="tipline">' + money(plate) + ' plate + ' + money(tip) + ' tip (20%)</small></div><span class="amt">' + money(price) + '</span><button type="button" class="linkbtn" id="hib-edit">Change</button></div>' +
-        (me === HIBACHI_PAYEE.name ? '' :
+      var plate = hibPrice(my), tip = hibTip(my), price = hibTotal(my), share = hibShare(), owed = hibOwed(me, my), host = me === HIBACHI_HOST;
+      var payNote = 'Hibachi: ' + hibLines(my).join(', ') + ' + 20% tip + ' + money(share) + ' of ' + HIBACHI_HOST + '’s plate';
+      var tipline = host ? money(plate) + ' plate + ' + money(tip) + ' tip · on the group, ' + money(share) + ' each' : money(plate) + ' plate + ' + money(tip) + ' tip + ' + money(share) + ' for ' + HIBACHI_HOST + '’s';
+      mine.innerHTML = '<div class="hib-mine-locked' + (hibJustLocked ? ' sizzle' : '') + '"><span>🔒</span><div class="what"><b>' + (host && my.preset ? 'You’re in by default' : 'Your order is locked in') + '</b>' + esc(hibLines(my).join(', ')) + (my.note ? ' · ' + esc(my.note) : '') + '<small class="tipline">' + tipline + '</small></div><span class="amt">' + money(host ? price : owed) + '</span><button type="button" class="linkbtn" id="hib-edit">Change</button></div>' +
+        (me === HIBACHI_PAYEE.name ? '' : host ? '<div class="hib-pay host"><div class="pt"><b>Nothing to pay.</b> Your ' + money(price) + ' is split ' + hibSplitWays() + ' ways across everyone else, ' + money(share) + ' apiece, and rides along with their Venmos to ' + esc(HIBACHI_PAYEE.name) + '.</div></div>' :
           '<div class="hib-pay' + (hibJustLocked ? ' pop' : '') + (my.paid ? ' paid' : '') + '">' +
             (my.paid
-              ? '<div class="pt">✅ You paid ' + esc(HIBACHI_PAYEE.name) + ' ' + money(price) + '.</div><button type="button" class="linkbtn" id="hib-unpaid">Actually, not yet</button>'
-              : '<div class="pt"><b>Now Venmo ' + esc(HIBACHI_PAYEE.name) + ' ' + money(price) + '.</b> That’s your ' + money(plate) + ' plate plus a ' + money(tip) + ' tip for the chef. She’s fronting it all, so pay her as you order.</div>' +
-                '<div class="hib-pay-actions"><a class="btn primary" id="hib-venmo" href="' + hibPayUrl(price, payNote) + '" target="_blank" rel="noopener">Pay ' + esc(HIBACHI_PAYEE.name) + ' ' + money(price) + ' on Venmo</a><button type="button" class="btn" id="hib-paid">I’ve paid</button></div>' +
+              ? '<div class="pt">✅ You paid ' + esc(HIBACHI_PAYEE.name) + ' ' + money(owed) + '.</div><button type="button" class="linkbtn" id="hib-unpaid">Actually, not yet</button>'
+              : '<div class="pt"><b>Now Venmo ' + esc(HIBACHI_PAYEE.name) + ' ' + money(owed) + '.</b> That’s your ' + money(plate) + ' plate, a ' + money(tip) + ' tip for the chef and ' + money(share) + ' toward ' + HIBACHI_HOST + '’s plate (his ' + money(hibTotal(hibOrders()[HIBACHI_HOST])) + ' is split ' + hibSplitWays() + ' ways). She’s fronting it all, so pay her as you order.</div>' +
+                '<div class="hib-pay-actions"><a class="btn primary" id="hib-venmo" href="' + hibPayUrl(owed, payNote) + '" target="_blank" rel="noopener">Pay ' + esc(HIBACHI_PAYEE.name) + ' ' + money(owed) + ' on Venmo</a><button type="button" class="btn" id="hib-paid">I’ve paid</button></div>' +
                 '<div class="fine">Opens Venmo with @' + esc(HIBACHI_PAYEE.handle) + ', the amount and a note filled in. You still hit Pay in the app.</div>') +
           '</div>');
       hibJustLocked = false;
@@ -2298,8 +2355,9 @@
       });
       html += '<input type="text" class="hib-note" id="hib-note" maxlength="120" placeholder="Allergies, no onions, extra spicy…" value="' + esc(d.note) + '">';
       var ok = hibComplete(d);
-      html += '<p class="fine hib-tipnote">A 20% tip for the chef gets added on top of your plate.</p>';
-      html += '<div class="hib-foot"><div class="tot">' + money(hibTotal(d)) + '<small>' + money(hibPrice(d)) + ' plate + ' + money(hibTip(d)) + ' tip</small></div><button type="button" class="btn primary hib-lockbtn" id="hib-lock"' + (ok ? '' : ' disabled') + '>' + (my && my.locked ? '🔥 Lock in the change' : '🔥 Lock it in') + '</button></div>';
+      var isHost = me === HIBACHI_HOST, dShare = isHost ? hibShare() : hibShareOf(me);
+      html += '<p class="fine hib-tipnote">' + (isHost ? 'A 20% tip for the chef gets added on top. Your plate’s on everyone else, split ' + hibSplitWays() + ' ways.' : 'A 20% tip for the chef gets added on top of your plate, plus ' + money(dShare) + ' toward ' + HIBACHI_HOST + '’s plate (his ' + money(hibTotal(hibOrders()[HIBACHI_HOST])) + ', split ' + hibSplitWays() + ' ways).') + '</p>';
+      html += '<div class="hib-foot"><div class="tot">' + money(isHost ? hibTotal(d) : hibOwed(me, d)) + '<small>' + money(hibPrice(d)) + ' plate + ' + money(hibTip(d)) + ' tip' + (isHost ? ' · on the group' : ' + ' + money(dShare) + ' for ' + HIBACHI_HOST + '’s') + '</small></div><button type="button" class="btn primary hib-lockbtn" id="hib-lock"' + (ok ? '' : ' disabled') + '>' + (my && my.locked ? '🔥 Lock in the change' : '🔥 Lock it in') + '</button></div>';
       mine.innerHTML = html;
     }
     // everyone, for Jess
@@ -2307,9 +2365,9 @@
     NAMES.forEach(function (n) {
       var o = orders[n];
       if (o && o.locked) {
-        var p = hibTotal(o); plates += hibPrice(o); tips += hibTip(o);
+        var isH = n === HIBACHI_HOST, p = isH ? hibTotal(o) : hibOwed(n, o); plates += hibPrice(o); tips += hibTip(o);
         hibChefLines(o).forEach(function (l) { counts[l] = (counts[l] || 0) + 1; });
-        rows += '<div class="hib-row' + (n === me ? ' me' : '') + (o.paid ? ' paid' : '') + '"><span class="who">' + esc(n) + (o.paid ? ' <span class="pd">paid</span>' : n === HIBACHI_PAYEE.name ? '' : ' <span class="pd owes">owes</span>') + '</span><span class="amt">' + money(p) + '</span><span class="det">' + esc(hibChefLines(o).join(', ')) + (o.note ? ' · “' + esc(o.note) + '”' : '') + '</span></div>';
+        rows += '<div class="hib-row' + (n === me ? ' me' : '') + (o.paid && !isH ? ' paid' : '') + '"><span class="who">' + esc(n) + (isH ? ' <span class="pd treat">covered</span>' : o.paid ? ' <span class="pd">paid</span>' : n === HIBACHI_PAYEE.name ? '' : ' <span class="pd owes">owes</span>') + '</span><span class="amt">' + money(p) + '</span><span class="det">' + esc(hibChefLines(o).join(', ')) + (o.note ? ' · “' + esc(o.note) + '”' : '') + (isH ? ' · split ' + hibSplitWays() + ' ways, ' + money(hibShare()) + ' each' : '') + '</span></div>';
       } else {
         rows += '<div class="hib-row waiting"><span class="who">' + esc(n) + '</span><span class="amt">—</span><span class="det">not in yet</span></div>';
       }
@@ -2318,6 +2376,7 @@
     all.innerHTML = '<div class="hib-all ticket"><div class="ah"><b>Order ticket</b><span class="tk-sub">' + locked.length + ' of ' + NAMES.length + ' plates</span>' + (me === HIBACHI_PAYEE.name ? '<button type="button" class="btn" id="hib-copy"' + (locked.length ? '' : ' disabled') + '>Copy the order</button>' : '') + '</div><div class="hib-rows">' + rows + '</div>' +
       (tally.length ? '<div class="hib-totals">' + esc(tally.join(' · ')) + '</div>' : '') +
       '<div class="hib-sub"><span>Plates</span><span>' + money(plates) + '</span></div><div class="hib-sub"><span>Tip (20%)</span><span>' + money(tips) + '</span></div>' +
+      '<div class="hib-sub split"><span>' + esc(HIBACHI_HOST) + '’s ' + money(hibTotal(orders[HIBACHI_HOST])) + ', in everyone else’s amount</span><span>' + money(hibShare()) + ' × ' + hibSplitWays() + '</span></div>' +
       '<div class="hib-grand"><span>Total' + (done ? '' : ' so far') + '</span><span>' + money(Math.round((plates + tips) * 100) / 100) + '</span></div></div>';
   }
   function hibCopyText() {   // just the menu items and how many of each, in menu order, for Jess to hand to the company
@@ -2355,7 +2414,7 @@
       var focusEl = document.querySelector('#hibachi .hib-mine-locked');
       if (focusEl) { var top = focusEl.getBoundingClientRect().top + window.scrollY - 90; window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' }); }
       var left = NAMES.filter(function (nm) { var o = hibOrders()[nm]; return !(o && o.locked); }).length;
-      toast(me === HIBACHI_PAYEE.name ? (left ? 'Locked in. ' + left + ' to go.' : 'Locked in. That’s everyone!') : 'Locked in. Now Venmo ' + HIBACHI_PAYEE.name + ' ' + money(hibTotal(order)) + ' (plate + 20% tip).');
+      toast(me === HIBACHI_PAYEE.name ? (left ? 'Locked in. ' + left + ' to go.' : 'Locked in. That’s everyone!') : me === HIBACHI_HOST ? 'Locked in. The group’s got your plate.' : 'Locked in. Now Venmo ' + HIBACHI_PAYEE.name + ' ' + money(hibOwed(me, order)) + ' (plate, tip and ' + money(hibShare()) + ' for ' + HIBACHI_HOST + '’s).');
       return;
     }
     if (e.target.closest('#hib-copy')) { copyText(hibCopyText(), 'Copied. Paste it to the hibachi company.'); buzz(6); return; }

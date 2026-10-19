@@ -296,7 +296,11 @@
   .lb-scroll { position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%); z-index: 2; pointer-events: none; font: 700 0.64rem var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ac); background: var(--surface); border: 1px solid var(--ac); border-radius: 999px; padding: 2px 8px; white-space: nowrap; animation: lbcue 1.2s ease-in-out infinite; }
   @keyframes lbcue { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 3px); } }
   #hockeyboard { --ac: #d97757; } #golfboard { --ac: #2d6a4f; }
-  .bc-title { font: 700 0.95rem var(--display); }
+  .bc-title { font: 700 0.95rem var(--display); display: flex; align-items: center; gap: 6px; }
+  .bc-play { display: none; margin-left: auto; font: 700 0.62rem var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--pine-ink); background: var(--pine); padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+  .board-card.replay { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; transition: transform 120ms ease; }
+  .board-card.replay:active { transform: scale(0.97); }
+  .board-card.replay .bc-play { display: inline-block; }
   .bc-sub { font-size: 0.74rem; color: var(--muted); margin: 2px 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .bc-sub b { color: var(--ac); }
   .lb { display: grid; gap: 3px; }
@@ -822,6 +826,10 @@
   #page-games .boards { gap: 14px; margin-top: 22px; }
   #page-games .board-card { background: #000; border: 0; border-radius: 0; box-shadow: 0 0 0 3px #fff, 0 0 0 6px #1a1c3a, 0 0 0 9px #ffcc00; margin: 6px; }
   #page-games .bc-title { font: 700 0.78rem var(--mono); color: #ffcc00; text-transform: uppercase; letter-spacing: 0.06em; }
+  #page-games .bc-play { font-family: var(--mono); font-size: 0.6rem; color: #000; background: #ffcc00; border-radius: 0; padding: 2px 5px; animation: blink 1.1s steps(2, start) infinite; }
+  #page-games .board-card.replay:active { box-shadow: 0 0 0 3px #ffcc00, 0 0 0 6px #1a1c3a, 0 0 0 9px #fff; }
+  @media (prefers-reduced-motion: reduce) { #page-games .bc-play { animation: none; } }
+  #page-games .lb-row .stat.under { color: #ffcc00; } #page-games .lb-row .stat.even { color: #9aa3d6; }
   #page-games .bc-sub { font-family: var(--mono); color: #9aa3d6; } #page-games .bc-sub b { color: #ff4757; }
   #page-games .hb-side .n { font-family: var(--mono); color: #fff; text-shadow: 3px 3px 0 #ff4757; }
   #page-games .hb-side.lead .n { color: #ffcc00; text-shadow: 3px 3px 0 #ff4757; }
@@ -917,7 +925,8 @@
   #page-hibachi .ticket .hib-row .det { color: #5d5d5d; }
   #page-hibachi .ticket .hib-row.waiting .who, #page-hibachi .ticket .hib-row.waiting .amt { color: #9a9a9a; }
   #page-hibachi .ticket .hib-row.me .who { color: var(--hr); }
-  #page-hibachi .ticket .pd { background: #e3efe8; color: #2d6a4f; } #page-hibachi .ticket .pd.owes { background: #fbe9db; color: #b5561c; }
+  #page-hibachi .ticket .pd { background: #e3efe8; color: #2d6a4f; } #page-hibachi .ticket .pd.owes { background: #fbe9db; color: #b5561c; } #page-hibachi .ticket .pd.treat { background: #fff3c4; color: #8a6400; }
+  #page-hibachi .hib-pay.host { background: #1b5e2b; border-color: #39d353; } #page-hibachi .hib-pay.host .pt b { color: #9ef0ae; }
   #page-hibachi .ticket .hib-totals { color: #5d5d5d; }
   #page-hibachi .ticket .hib-sub { color: #5d5d5d; }
   #page-hibachi .hib-tipnote { color: var(--hmuted); }
@@ -971,6 +980,9 @@
   .hib-pay .fine { margin-top: 8px; }
   .hib-row .pd { display: inline-block; margin-left: 6px; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 1px 6px; border-radius: 999px; background: var(--pine-soft); color: var(--pine); vertical-align: middle; }
   .hib-row .pd.owes { background: var(--ember-soft); color: var(--ember); }
+  .hib-row .pd.treat { background: #fff3c4; color: #8a6400; }
+  .hib-sub.split { font-size: 0.78rem; }
+  .hib-pay.host { background: var(--pine-soft); border-color: var(--pine); }
   @media (prefers-color-scheme: dark) { .hib-pay { background: #16304a; border-color: #3d95ce; } .hib-pay .pt b { color: #8ac6f0; } }
   .hib-all { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 12px; }
   .hib-all .ah { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
