@@ -42,8 +42,12 @@
 
   // ---- Identity ----
   // Bump RESET_STAMP to send every phone back to the name screen once (used for clean-slate testing and before go-live).
-  var RESET_STAMP = '2026-10-19-live';
-  if (lsGet('cabin-haul-reset') !== RESET_STAMP) { lsDel('cabin-haul-me'); lsSet('cabin-haul-reset', RESET_STAMP); }
+  var RESET_STAMP = '2026-10-20-fresh';
+  if (lsGet('cabin-haul-reset') !== RESET_STAMP) {
+    lsDel('cabin-haul-me');
+    try { Object.keys(localStorage).filter(function (k) { return k.indexOf('cabin-haul-pred-later-') === 0; }).forEach(lsDel); } catch (e) { /* ignore */ }
+    lsSet('cabin-haul-reset', RESET_STAMP);
+  }
   var me = lsGet('cabin-haul-me');
   if (me && !partyOf(me)) me = null;           // roster changed; ask again
   var myParty = me ? partyOf(me) : null;
@@ -2149,7 +2153,7 @@
   function passFromLink() {
     var m = /(?:^#|[#&])k=([^&]+)/.exec(location.hash || '');
     if (!m) return window.TRIP_LINK_KEY || null;   // the artifact build stamps the password in, since it can't be opened from the link
-    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ }   // keep it out of the address bar and history
+    // the #k= stays in the address bar on purpose: a home-screen shortcut made from this page then carries it and opens unlocked
     try { return decodeURIComponent(m[1]).trim(); } catch (e) { return m[1].trim(); }
   }
   (function () {
