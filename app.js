@@ -2034,10 +2034,11 @@
     window.scrollTo(0, 0);
     if (skipIntro) { $('q-intro').hidden = true; $('q-wrap').hidden = false; showQuestion(false); return; }
     $('q-wrap').hidden = true; $('q-intro').hidden = false;
-    $('q-intro-sub').textContent = plainPicks()
+    var subText = plainPicks()
       ? (answeredCount() ? 'You\'ve answered ' + answeredCount() + ' of ' + QUESTIONS.length + '. Pick up where you left off.' : 'Six quick calls. Everyone sees the tally and who picked who, so make them good.')
       : (answeredCount() ? 'You\'ve got ' + answeredCount() + ' of ' + QUESTIONS.length + ' on your slip. Pick up where you left off.' : 'Six quick calls, no stake. Everyone sees the board and who bet what, so make them good.');
-    var ps = $('q-intro-plain'); if (ps) ps.textContent = $('q-intro-sub').textContent;
+    var qsub = $('q-intro-sub'); if (qsub) qsub.textContent = subText;
+    var ps = $('q-intro-plain'); if (ps) ps.textContent = subText;
     var qs = $('q-start'); if (qs) qs.textContent = plainPicks() ? 'Make my picks' : 'Build my slip';
     var slip0 = $('q-slip'); if (slip0) slip0.textContent = answeredCount() + '/' + QUESTIONS.length;
     var il = $('q-intro-list'); if (il) il.innerHTML = QUESTIONS.map(function (qq) {   // each market with the current favourite's price
