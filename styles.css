@@ -528,12 +528,15 @@
   #page-cabin .key-card .unlock input { background: #fff; color: #18181d; border-color: #fff; }
   #page-cabin .key-card .unlock-msg { color: #ffb380; }
   #page-cabin .note-card { background: var(--ember-soft); }
-  /* the dinner tally */
-  #page-cabin .dinner-card { margin-top: 20px; }
-  .dt-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 12px; font: 800 1.05rem var(--display); color: var(--fg); }
-  .dt-row .dt-side b { font-size: 1.6rem; margin: 0 2px; font-variant-numeric: tabular-nums; }
-  .dt-row .dt-side.lead { color: var(--fire-deep); }
-  .dt-bar { display: flex; height: 10px; border-radius: 999px; background: #ece9e3; overflow: hidden; margin-top: 8px; }
+  /* the dinner tally: a quiet strip that sits in the dark rather than a white card */
+  #page-cabin .info-card.dinner-card { margin-top: 18px; padding: 10px 14px 12px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: none; color: var(--cw); }
+  #page-cabin .dinner-card .info-icon { font-size: 1rem; }
+  #page-cabin .dinner-card .info-title { font-size: 0.9rem; color: var(--cw); }
+  #page-cabin .dinner-card .info-sub { font-size: 0.76rem; color: var(--cmuted); }
+  .dt-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; font: 700 0.88rem var(--display); color: var(--cw); }
+  .dt-row .dt-side b { font-size: 1.1rem; margin: 0 2px; font-variant-numeric: tabular-nums; }
+  .dt-row .dt-side.lead { color: #ffb380; }
+  .dt-bar { display: flex; height: 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); overflow: hidden; margin-top: 6px; }
   .dt-bar i { display: block; height: 100%; transition: width 400ms cubic-bezier(0.2, 0.9, 0.3, 1); }
   .dt-bar .p { background: #ffd166; } .dt-bar .t { background: var(--fire); }
 
