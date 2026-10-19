@@ -1163,8 +1163,7 @@
     if (me !== renderedFor) refreshForUser();
     if (shouldAsk()) { askedThisVisit = true; qAuto = true; openQuestionnaire(firstUnanswered()); return; }   // predictions first
     if (shouldAskDinner()) { askedDinnerThisVisit = true; openDinner(); return; }                              // then the dinner vote, which lands on the FAQ
-    var partner = PARTIES.filter(function (p) { return p.indexOf(me) >= 0; })[0].filter(function (n) { return n !== me; })[0];
-    $('me').innerHTML = 'Hey <b>' + esc(me) + '</b>' + (partner ? ' · with ' + esc(partner) : '');
+    $('me').innerHTML = 'Hey <b>' + esc(me) + '</b>';
     showTab(tab);
     render();
   }
