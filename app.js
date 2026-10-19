@@ -1786,22 +1786,52 @@
   var mafia = null, mafiaLoaded = false, mafiaSub = false, mafiaDraft = null, revealHold = false, modReveal = false, mafiaDealAnim = false;
   var MAFIA_MOD = 'Drew';   // Drew always runs the game; nobody else gets the controls
   function isMod() { return me === MAFIA_MOD; }
-  var ROLE_ICON = { mafia: '\uD83D\uDD76\uFE0F', doctor: '\uD83E\uDE7A', detective: '\uD83D\uDD0D', villager: '\uD83C\uDF3E' };
-  var ROLE_INFO = {
-    mafia: { title: 'Mafia', side: 'mafia', desc: 'Each night, pick someone with the other Mafia to take out. By day, act innocent.' },
-    doctor: { title: 'Doctor', side: 'town', desc: 'Each night, pick one person to protect. If the Mafia pick them, they survive. You can pick yourself.' },
-    detective: { title: 'Detective', side: 'town', desc: 'Each night, point at one person. The moderator tells you whether they’re Mafia.' },
-    villager: { title: 'Villager', side: 'town', desc: 'You’re a regular. Find the Mafia and vote them out by day. Trust nobody.' }
+  // Drew's role sheet. Deal order: the Mafia seats (the Godfather takes one of them), then the toggled roles top to bottom
+  // while seats last (Lovers take two), and whoever is left is a plain Villager.
+  var ROLES = {
+    villager:  { title: 'Villager', side: 'town', icon: '🌾', desc: 'A basic Town member with no special powers. Participates in daytime discussion, deduction, and voting.', night: '' },
+    medic:     { title: 'Medic', side: 'town', icon: '🩹', short: 'Protects one player a night', desc: 'A Town protector who can prevent another player from being killed. May protect themselves, but cannot protect the same player, including themselves, on two consecutive nights.', night: 'Choose one player to protect. If that player would be killed that night, they survive.' },
+    cop:       { title: 'Cop', side: 'town', icon: '🔍', short: 'Learns if a player is Town or Mafia', desc: 'A Town investigator who can determine whether another player is Town or Mafia.', night: 'Choose one player to investigate. Drew signals V for Villager/Town or M for Mafia.' },
+    mayor:     { title: 'Mayor', side: 'town', icon: '🎩', short: 'Vote secretly counts as two', desc: 'A Town member whose vote secretly counts as two. The Mayor is not automatically revealed, but vote totals can indirectly give clues about who the Mayor is.', night: 'No night action. Your double vote is a passive ability used during daytime voting.' },
+    vigilante: { title: 'Vigilante', side: 'town', icon: '🎯', short: 'May shoot one player a night', desc: 'A Town member who may attempt to kill another player at night. Killing Mafia has no penalty, but killing a Town player causes the Vigilante to die as well.', night: 'May choose one player to kill, or choose not to shoot. If the target is Mafia, only the target dies and you remain hidden. If the target is Town, both the target and you die.' },
+    jester:    { title: 'Jester', side: 'town', icon: '🃏', short: 'Wins by getting voted out', desc: 'The Town clown. Has no traditional power, but has a unique personal objective: convincing the Town to vote them out.', night: '' },
+    lover:     { title: 'Lover', side: 'town', icon: '💞', short: 'Two seats, soulbound', desc: 'Two Town players who are soulbound. If either Lover dies, the other dies as well.', night: 'No night action. You already know who your Lover is.' },
+    watcher:   { title: 'Watcher', side: 'town', icon: '👀', short: 'Learns who visited a player', desc: 'A Town information role that watches one player and learns who interacted with that player during the night.', night: 'Choose one player to watch. Drew identifies every player who visited or interacted with that target that night, such as someone attempting to kill, protect, investigate, block, or otherwise target them.' },
+    tracker:   { title: 'Tracker', side: 'town', icon: '🐾', short: 'Learns who a player visited', desc: 'A Town information role that follows one player and learns who that player interacted with during the night.', night: 'Choose one player to track. Drew identifies the player that the selected target visited or interacted with. If they did not target anyone, Drew indicates no action.' },
+    judge:     { title: 'Judge', side: 'town', icon: '⚖️', short: 'Cancels one elimination per game', desc: 'A Town member who can cancel a daytime elimination once per game. Using the ability publicly reveals the Judge.', night: 'No night action. Once per game during the day, you may overrule a vote to eliminate a player. The elimination is canceled, you are revealed, and the game immediately proceeds to the next night.' },
+    mafia:     { title: 'Mafia', side: 'mafia', icon: '🕶️', desc: 'A standard Mafia member who participates in selecting a player for the Mafia to kill each night. The kill can be prevented by protection.', night: 'Participate in selecting one player for the Mafia to kill.' },
+    godfather: { title: 'Godfather', side: 'mafia', icon: '👑', short: 'Leads the Mafia, reads as Town to the Cop', desc: 'The leader of the Mafia. Appears innocent when investigated by the Cop and has final authority over the Mafia’s night kill.', night: 'Participate in the Mafia kill and make the final decision on which player is targeted.' }
   };
+  var SPECIAL_ROLES = ['medic', 'cop', 'mayor', 'vigilante', 'jester', 'lover', 'watcher', 'tracker', 'judge'];   // sheet order = deal priority
+  var TOGGLE_ROLES = ['godfather'].concat(SPECIAL_ROLES);
+  function seatsFor(role) { return role === 'lover' ? 2 : 1; }
+  function isMafiaRole(r) { return r === 'mafia' || r === 'godfather'; }
   function subscribeMafia() {
     if (mafiaSub || !store || !store.game) return;
     mafiaSub = true;
     store.game('mafia', function (doc) { var same = mafiaLoaded && sameDoc(doc, mafia); mafia = doc; mafiaLoaded = true; if (!same) renderMafia(); });
   }
   function mafiaDefaults() {
-    var players = NAMES.filter(function (n) { return n !== me; });
-    return { players: players, mafiaCount: Math.max(1, Math.round(players.length / 4)), doctor: true, detective: true, hostPlays: false, guests: [] };
+    var players = NAMES.filter(function (n) { return n !== me; }), roles = {};
+    TOGGLE_ROLES.forEach(function (r) { roles[r] = true; });
+    return { players: players, mafiaCount: Math.max(1, Math.round(players.length / 4)), roles: roles, hostPlays: false, guests: [] };
   }
+  // What the draft would deal, in order: Mafia seats, then each toggled role while seats last, then Villagers.
+  function mafiaPlan(d) {
+    var players = d.players.slice(); if (d.hostPlays && players.indexOf(me) < 0) players.push(me);
+    var n = players.length, mafiaCount = Math.max(1, Math.min(d.mafiaCount, Math.max(1, Math.floor((n - 1) / 2))));
+    var deck = [], skipped = [];
+    for (var i = 0; i < mafiaCount; i++) deck.push(i === 0 && d.roles.godfather ? 'godfather' : 'mafia');
+    SPECIAL_ROLES.forEach(function (r) {
+      if (!d.roles[r]) return;
+      var seats = seatsFor(r);
+      if (deck.length + seats <= n) { for (var k = 0; k < seats; k++) deck.push(r); } else skipped.push(r);
+    });
+    var villagers = Math.max(0, n - deck.length);
+    while (deck.length < n) deck.push('villager');
+    return { players: players, n: n, mafiaCount: mafiaCount, deck: deck, skipped: skipped, villagers: villagers };
+  }
+  function roleTitles(list) { return list.map(function (r) { return ROLES[r].title; }).join(', '); }
   function renderMafia() {
     var body = $('mafia-body'), status = $('mafia-status'); if (!body) return;
     if (!mafiaLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
@@ -1809,81 +1839,100 @@
     if (!g) {
       status.textContent = 'No game running';
       if (!isMod()) {
-        body.innerHTML = '<div class="liv-locked"><div class="lock">\uD83D\uDD75\uFE0F</div><b>' + esc(MAFIA_MOD) + ' runs Mafia.</b><span>Your card shows up here the moment he deals.</span></div>' +
+        body.innerHTML = '<div class="liv-locked"><div class="lock">🕵️</div><b>' + esc(MAFIA_MOD) + ' runs Mafia.</b><span>Your card shows up here the moment he deals.</span></div>' +
           (mafia && mafia.status === 'ended' ? '<p class="info-sub" style="margin-top:10px">Last game ended ' + esc(agoText(mafia.ended_at)) + '.</p>' : '');
         return;
       }
       // lobby: set up a game
-      var d = mafiaDraft || (mafiaDraft = mafiaDefaults());
-      var n = d.players.length + (d.hostPlays ? 1 : 0);
-      var html = '<p class="info-sub">You’re the moderator, always. Pick who’s playing, deal, and everyone sees their own role on their own phone.</p>';
+      var d = mafiaDraft || (mafiaDraft = mafiaDefaults()), plan = mafiaPlan(d), n = plan.n;
+      var html = '<p class="info-sub">You’re the moderator, always. Pick who’s playing, turn roles on or off, deal, and everyone sees their own card on their own phone.</p>';
       html += '<div class="name-grid">' + NAMES.concat(guestsOf(d)).map(function (nm) {
         var inGame = nm === me ? d.hostPlays : d.players.indexOf(nm) >= 0;
         return '<button type="button" data-player="' + esc(nm) + '" aria-pressed="' + inGame + '"' + (guestsOf(d).indexOf(nm) >= 0 ? ' class="is-guest"' : '') + '>' + esc(nm === me ? 'You' : nm) + '</button>';
       }).join('') + '</div>';
       html += guestRowHtml(d, 'mafia-guest');
       html += '<div class="mafia-opts">' +
-        '<div class="opt-row"><span>Mafia <span class="info-sub">(' + n + ' playing)</span></span><span class="stepper"><button type="button" data-step="-1">−</button><b>' + d.mafiaCount + '</b><button type="button" data-step="1">+</button></span></div>' +
-        '<div class="opt-row"><span>Doctor</span><button type="button" class="toggle" data-opt="doctor" aria-pressed="' + d.doctor + '" aria-label="Doctor"></button></div>' +
-        '<div class="opt-row"><span>Detective</span><button type="button" class="toggle" data-opt="detective" aria-pressed="' + d.detective + '" aria-label="Detective"></button></div>' +
+        '<div class="opt-row"><span>Mafia <span class="info-sub">(' + n + ' playing)</span></span><span class="stepper"><button type="button" data-step="-1">−</button><b>' + plan.mafiaCount + '</b><button type="button" data-step="1">+</button></span></div>' +
         '<div class="opt-row"><span>I’m playing too <span class="info-sub">(moderator sees all roles either way)</span></span><button type="button" class="toggle" data-opt="hostPlays" aria-pressed="' + d.hostPlays + '" aria-label="Host plays"></button></div>' +
         '</div>';
-      html += '<div class="mafia-actions"><button type="button" class="big-btn" id="mafia-deal"' + (n < 4 ? ' disabled' : '') + '>\uD83C\uDCCF Deal the cards</button></div>';
+      html += '<div class="role-list"><div class="rl-head">Roles <span class="info-sub">dealt top to bottom after the Mafia</span></div>' + TOGGLE_ROLES.map(function (r) {
+        var info = ROLES[r], out = plan.skipped.indexOf(r) >= 0;
+        return '<div class="opt-row' + (out ? ' out' : '') + '"><span><span class="ri">' + info.icon + '</span><span><span class="rt">' + esc(info.title) + (r === 'godfather' ? ' <small>(one of the Mafia seats)</small>' : r === 'lover' ? ' <small>(2 seats)</small>' : '') + '</span><span class="rs">' + esc(out ? 'No seat left, sits out' : info.short) + '</span></span></span><button type="button" class="toggle" data-role="' + r + '" aria-pressed="' + !!d.roles[r] + '" aria-label="' + esc(info.title) + '"></button></div>';
+      }).join('') + '</div>';
+      var specials = plan.deck.filter(function (r) { return !isMafiaRole(r) && r !== 'villager'; }).length;
+      html += '<div class="deal-sum' + (plan.skipped.length ? ' over' : '') + '">' + n + ' playing: ' + plan.mafiaCount + ' Mafia' + (d.roles.godfather ? ' (one is the Godfather)' : '') + ', ' + specials + ' with a role, ' + plan.villagers + ' plain ' + (plan.villagers === 1 ? 'Villager' : 'Villagers') + '.' +
+        (plan.skipped.length ? ' <b>No seat left for ' + esc(roleTitles(plan.skipped)) + '.</b> Turn something off or add a player to bring them in.' : '') + '</div>';
+      html += '<div class="mafia-actions"><button type="button" class="big-btn" id="mafia-deal"' + (n < 4 ? ' disabled' : '') + '>🃏 Deal the cards</button></div>';
       if (mafia && mafia.status === 'ended') html += '<p class="info-sub" style="margin-top:10px">Last game ended ' + esc(agoText(mafia.ended_at)) + '.</p>';
       body.innerHTML = html;
       return;
     }
     // a game is running
     var alive = g.players.filter(function (p) { return (g.dead || []).indexOf(p) < 0; });
-    var mafiaAlive = alive.filter(function (p) { return g.roles[p] === 'mafia'; }).length, townAlive = alive.length - mafiaAlive;
+    var mafiaAlive = alive.filter(function (p) { return isMafiaRole(g.roles[p]); }).length, townAlive = alive.length - mafiaAlive;
     status.textContent = g.players.length + ' playing · dealt ' + agoText(g.dealt_at);
     var html = '';
     var myRole = g.roles[me];
     if (myRole) {
-      var info = ROLE_INFO[myRole], dead = (g.dead || []).indexOf(me) >= 0;
-      var mates = myRole === 'mafia' ? g.players.filter(function (p) { return p !== me && g.roles[p] === 'mafia'; }) : [];
+      var info = ROLES[myRole] || ROLES.villager, dead = (g.dead || []).indexOf(me) >= 0;
+      var mates = isMafiaRole(myRole) ? g.players.filter(function (p) { return p !== me && isMafiaRole(g.roles[p]); }) : [];
+      var partner = myRole === 'lover' ? g.players.filter(function (p) { return p !== me && g.roles[p] === 'lover'; })[0] : null;
       html += '<div class="role-card' + (revealHold ? ' revealed' : '') + (mafiaDealAnim ? ' dealin' : '') + '" id="role-card"><div class="role-inner">' +
-        '<div class="role-face back"><div class="icon">\uD83C\uDCCF</div><div class="hold">Hold to flip your card</div><div class="sub">Keep your thumb on it. Lifting hides it again.</div></div>' +
-        '<div class="role-face front ' + info.side + '"><div class="icon">' + ROLE_ICON[myRole] + '</div><div class="sub">You are</div><div class="role">' + esc(info.title) + '</div><div class="desc">' + esc(info.desc) + '</div>' +
-        (mates.length ? '<div class="mates">Your Mafia: ' + esc(mates.join(', ')) + '</div>' : (myRole === 'mafia' ? '<div class="mates">You’re the only Mafia.</div>' : '')) + '</div></div></div>';
+        '<div class="role-face back"><div class="icon">🃏</div><div class="hold">Hold to flip your card</div><div class="sub">Keep your thumb on it. Lifting hides it again.</div></div>' +
+        '<div class="role-face front ' + info.side + '"><div class="icon">' + info.icon + '</div><div class="sub">You are</div><div class="role">' + esc(info.title) + '</div><div class="desc">' + esc(info.desc) + '</div>' +
+        (info.night ? '<div class="night"><b>At night:</b> ' + esc(info.night) + '</div>' : '') +
+        (mates.length ? '<div class="mates">Your Mafia: ' + esc(mates.map(function (p) { return p + (g.roles[p] === 'godfather' ? ' (Godfather)' : ''); }).join(', ')) + '</div>' : (isMafiaRole(myRole) ? '<div class="mates">You’re the only Mafia.</div>' : '')) +
+        (partner ? '<div class="mates">Your Lover is ' + esc(partner) + '. If either of you dies, the other goes too.</div>' : '') +
+        '</div></div></div>';
       if (dead) html += '<p class="info-sub" style="margin-top:8px">You’re out. No talking, no hints, no faces.</p>';
     } else if (!isMod()) {
       html += '<p class="info-sub">You’re not in this one. ' + esc(MAFIA_MOD) + ' is running it.</p>';
     }
     if (isMod()) {
-      html += '<div class="cheat"><b>Moderator</b> · ' + mafiaAlive + ' Mafia and ' + townAlive + ' town still alive' +
+      html += '<div class="cheat"><b>Moderator</b> · ' + mafiaAlive + ' Mafia and ' + townAlive + ' Town still alive' +
         (mafiaAlive === 0 ? ' · <b>Town wins.</b>' : mafiaAlive >= townAlive ? ' · <b>Mafia wins.</b>' : '') + '</div>';
       html += '<div class="mafia-actions"><button type="button" class="btn" id="mod-toggle">' + (modReveal ? 'Hide roles' : 'Show all roles') + '</button><button type="button" class="btn" id="mafia-redeal">Re-deal</button><button type="button" class="btn" id="mafia-end">End game</button></div>';
       if (modReveal) {
         html += '<div class="mod-list">' + g.players.map(function (p, i) {
-          var isDead = (g.dead || []).indexOf(p) >= 0;
-          return '<div class="mod-row' + (isDead ? ' dead' : '') + (modRevealAnim ? ' dealin' : '') + '"' + (modRevealAnim ? ' style="animation-delay:' + (i * 45) + 'ms"' : '') + '><span>' + esc(p) + '</span><span><span class="r ' + esc(g.roles[p]) + '">' + ROLE_ICON[g.roles[p]] + ' ' + esc(ROLE_INFO[g.roles[p]].title) + '</span> <button type="button" class="btn" data-dead="' + esc(p) + '">' + (isDead ? 'Revive' : 'Out') + '</button></span></div>';
+          var isDead = (g.dead || []).indexOf(p) >= 0, r = g.roles[p], ri = ROLES[r] || ROLES.villager;
+          return '<div class="mod-row' + (isDead ? ' dead' : '') + (modRevealAnim ? ' dealin' : '') + '"' + (modRevealAnim ? ' style="animation-delay:' + (i * 45) + 'ms"' : '') + '><span>' + esc(p) + '</span><span><span class="r ' + esc(r) + '">' + ri.icon + ' ' + esc(ri.title) + '</span> <button type="button" class="btn" data-dead="' + esc(p) + '">' + (isDead ? 'Revive' : 'Out') + '</button></span></div>';
         }).join('') + '</div>';
       }
-      html += '<div class="cheat"><b>Night:</b> everyone closes eyes → Mafia open, agree on a target, close → Doctor opens, points at a save, closes → Detective opens, points at someone, you nod or shake, closes.<br><b>Day:</b> announce who didn’t make it, argue, vote someone out. Repeat until the Mafia are gone or they outnumber the town.</div>';
+      html += mafiaCheatSheet(g);
     } else {
       html += '<div class="cheat">' + alive.length + ' of ' + g.players.length + ' still alive' + ((g.dead || []).length ? ' · out: ' + esc((g.dead || []).join(', ')) : '') + ' · ' + esc(MAFIA_MOD) + ' is moderating</div>';
     }
     body.innerHTML = html;
     mafiaDealAnim = false; modRevealAnim = false;
   }
+  // the narrator's script, built from the roles actually dealt so Drew never calls a role that isn't in play
+  function mafiaCheatSheet(g) {
+    var has = {}; Object.keys(g.roles).forEach(function (p) { has[g.roles[p]] = true; });
+    var night = ['Everyone closes their eyes.', 'Mafia open, agree on a kill' + (has.godfather ? ' (the Godfather has the final say)' : '') + ', close.'];
+    if (has.medic) night.push('Medic opens, points at who to protect (not the same person two nights running), closes.');
+    if (has.cop) night.push('Cop opens, points at someone; you signal V or M' + (has.godfather ? ' (the Godfather reads as V)' : '') + '. Closes.');
+    if (has.vigilante) night.push('Vigilante opens, may point at someone to shoot, or pass. Closes.');
+    if (has.watcher) night.push('Watcher opens, points at someone to watch; you show them everyone who visited that person tonight. Closes.');
+    if (has.tracker) night.push('Tracker opens, points at someone to follow; you show them who that person visited, or nobody. Closes.');
+    var deaths = []; if (has.vigilante) deaths.push('a Vigilante who shot Town dies too'); if (has.lover) deaths.push('if a Lover dies, the other goes with them');
+    var day = ['Announce who didn’t make it' + (deaths.length ? ' (' + deaths.join('; ') + ')' : '') + '.', 'Argue, then vote someone out' + (has.mayor ? '; the Mayor’s vote quietly counts twice' : '') + '.'];
+    if (has.judge) day.push('The Judge may cancel one elimination per game. They’re revealed, and it goes straight to night.');
+    if (has.jester) day.push('If the Town votes out the Jester, the Jester wins.');
+    day.push('Repeat until the Mafia are gone or they outnumber the Town.');
+    return '<div class="cheat"><b>Night</b><ol class="script">' + night.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol><b>Day</b><ol class="script">' + day.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>' +
+      (has.lover ? '<span class="info-sub">The Lovers already see each other on their cards.</span>' : '') + '</div>';
+  }
   var modRevealAnim = false;
   function dealMafia() {
     if (!isMod()) return;
-    var d = mafiaDraft || mafiaDefaults();
-    var players = d.players.slice(); if (d.hostPlays && players.indexOf(me) < 0) players.push(me);
-    var n = players.length;
-    if (n < 4) { toast('Need at least four players.'); return; }
-    var mafiaCount = Math.max(1, Math.min(d.mafiaCount, Math.floor((n - 1) / 2)));
-    var deck = [];
-    for (var i = 0; i < mafiaCount; i++) deck.push('mafia');
-    if (d.doctor && deck.length < n) deck.push('doctor');
-    if (d.detective && deck.length < n) deck.push('detective');
-    while (deck.length < n) deck.push('villager');
+    var d = mafiaDraft || mafiaDefaults(), plan = mafiaPlan(d);
+    if (plan.n < 4) { toast('Need at least four players.'); return; }
+    var deck = plan.deck.slice();
     for (var j = deck.length - 1; j > 0; j--) { var k = Math.floor(Math.random() * (j + 1)); var t = deck[j]; deck[j] = deck[k]; deck[k] = t; }
-    var roles = {}; players.forEach(function (p, idx) { roles[p] = deck[idx]; });
-    var doc = { status: 'dealt', host: me, players: players, roles: roles, dead: [], dealt_at: new Date().toISOString(), mafia_count: mafiaCount, guests: guestsOf(d) };
-    mafia = doc; modReveal = false; mafiaDealAnim = true; renderMafia(); buzz([20, 50, 20, 50, 20]); toast('Dealt. Everyone can check their phone.');
+    var roles = {}; plan.players.forEach(function (p, idx) { roles[p] = deck[idx]; });
+    var doc = { status: 'dealt', host: me, players: plan.players, roles: roles, dead: [], dealt_at: new Date().toISOString(), mafia_count: plan.mafiaCount, guests: guestsOf(d), toggles: Object.assign({}, d.roles) };
+    mafia = doc; modReveal = false; mafiaDealAnim = true; renderMafia(); buzz([20, 50, 20, 50, 20]);
+    toast('Dealt. Everyone can check their phone.' + (plan.skipped.length ? ' ' + roleTitles(plan.skipped) + ' sat out.' : ''));
     store.setGame('mafia', doc).catch(function (e) { toast('Couldn’t deal: ' + ((e && e.message) || e)); });
   }
   $('mafia-body').addEventListener('submit', function (e) {
@@ -1905,10 +1954,17 @@
     }
     var st = e.target.closest('[data-step]');
     if (st) { d.mafiaCount = Math.max(1, Math.min(6, d.mafiaCount + (+st.getAttribute('data-step')))); renderMafia(); return; }
+    var rt = e.target.closest('[data-role]');
+    if (rt) { var rk = rt.getAttribute('data-role'); d.roles[rk] = !d.roles[rk]; buzz(6); renderMafia(); return; }
     var op = e.target.closest('[data-opt]');
     if (op) { var key = op.getAttribute('data-opt'); d[key] = !d[key]; renderMafia(); return; }
     if (e.target.closest('#mafia-deal')) { dealMafia(); return; }
-    if (e.target.closest('#mafia-redeal')) { mafiaDraft = { guests: (mafia.guests || []).slice(), players: mafia.players.filter(function (p) { return p !== me; }), mafiaCount: mafia.mafia_count || 3, doctor: Object.keys(mafia.roles).some(function (p) { return mafia.roles[p] === 'doctor'; }), detective: Object.keys(mafia.roles).some(function (p) { return mafia.roles[p] === 'detective'; }), hostPlays: mafia.players.indexOf(me) >= 0 }; dealMafia(); return; }
+    if (e.target.closest('#mafia-redeal')) {
+      var toggles = mafia.toggles;
+      if (!toggles) { toggles = {}; TOGGLE_ROLES.forEach(function (r) { toggles[r] = Object.keys(mafia.roles).some(function (p) { return mafia.roles[p] === r; }); }); }
+      mafiaDraft = { guests: (mafia.guests || []).slice(), players: mafia.players.filter(function (p) { return p !== me; }), mafiaCount: mafia.mafia_count || 3, roles: toggles, hostPlays: mafia.players.indexOf(me) >= 0 };
+      dealMafia(); return;
+    }
     if (e.target.closest('#mafia-end')) {
       var ended = Object.assign({}, mafia, { status: 'ended', ended_at: new Date().toISOString() });
       store.setGame('mafia', ended).then(function () { mafia = ended; mafiaDraft = null; renderMafia(); }).catch(function (err) { toast('Couldn’t end it: ' + ((err && err.message) || err)); });

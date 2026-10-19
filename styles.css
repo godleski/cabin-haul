@@ -460,11 +460,21 @@
   .role-face .role { font: 800 1.9rem var(--display); letter-spacing: -0.02em; margin-top: 4px; }
   .role-face .desc { font-size: 0.88rem; margin-top: 6px; }
   .role-face .mates { font-size: 0.85rem; margin-top: 8px; font-weight: 600; }
+  .role-face .night { font-size: 0.82rem; margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(128, 128, 128, 0.45); text-align: left; }
+  .role-list { display: grid; gap: 8px; margin-top: 14px; }
+  .role-list .rl-head { font: 700 0.95rem var(--display); } .role-list .rl-head .info-sub { font-weight: 500; }
+  .role-list .opt-row > span:first-child { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .role-list .ri { font-size: 1.25rem; line-height: 1; flex: none; width: 1.5rem; text-align: center; }
+  .role-list .rt { display: block; font-weight: 700; } .role-list .rt small { font-weight: 500; color: var(--muted); }
+  .role-list .rs { display: block; font-size: 0.76rem; color: var(--muted); }
+  .role-list .opt-row.out .rt, .role-list .opt-row.out .ri { opacity: 0.45; } .role-list .opt-row.out .rs { color: var(--ember); }
+  .deal-sum { margin-top: 12px; font-size: 0.85rem; color: var(--muted); } .deal-sum.over { color: var(--ember); } .deal-sum b { color: var(--fg); }
+  .cheat .script { margin: 4px 0 10px; padding-left: 20px; } .cheat .script li { margin: 2px 0; }
   .mod-row.dealin { animation: dealin 360ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
   .mod-row.dead { animation: slash 320ms ease-out; }
   .mod-list { margin-top: 10px; display: grid; gap: 4px; }
   .mod-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.9rem; padding: 6px 8px; border-radius: 8px; background: var(--bg); }
-  .mod-row .r { font-weight: 700; } .mod-row .r.mafia { color: #c0392b; } .mod-row .r.doctor { color: var(--pine); } .mod-row .r.detective { color: var(--lake); }
+  .mod-row .r { font-weight: 700; color: var(--pine); } .mod-row .r.mafia, .mod-row .r.godfather { color: #c0392b; } .mod-row .r.jester { color: var(--ember); } .mod-row .r.villager { color: var(--muted); }
   .mod-row.dead { opacity: 0.5; text-decoration: line-through; }
   .mod-row .btn { padding: 5px 9px; font-size: 0.75rem; }
   .cheat { margin-top: 12px; font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
