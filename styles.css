@@ -48,7 +48,7 @@
   .bubbles canvas { display: block; width: 100%; height: 100%; cursor: grab; -webkit-tap-highlight-color: transparent; }
   /* a game is on: the arena takes the screen and the words get out of the way */
   body.playing { padding: calc(4px + env(safe-area-inset-top, 0px)) 6px 4px; }
-  body.playing #pick > :not(.bubbles) { display: none !important; }
+  body.playing #pick > :not(.arena-wrap) { display: none !important; }
   body.playing .bubbles { margin-top: 0; height: calc(100dvh - 8px - env(safe-area-inset-top, 0px)); min-height: 0; border-radius: 14px; }
   /* experiment: the back of a trunk instead of a green */
   .bubbles.trunk {
@@ -314,9 +314,13 @@
   .hb-side small { display: block; margin-top: 4px; font: 600 0.62rem var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
   .hb-vs { font: 700 0.8rem var(--body); color: var(--muted); }
   .lb-empty { padding: 10px 6px; text-align: center; color: var(--muted); font-size: 0.78rem; border: 1px dashed var(--line); border-radius: 10px; }
-  .golf-post { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1.5px solid var(--pine); animation: pop 360ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
-  .golf-post .gp-title { font: 700 0.95rem var(--display); margin-bottom: 2px; }
-  .golf-post .name-grid { margin-top: 8px; }
+  /* the golf name picker sits over the green so nobody scrolls past it */
+  .arena-wrap { position: relative; }
+  .golf-post { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; padding: 18px; border-radius: 18px; background: rgba(0, 20, 10, 0.55); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+  .golf-post[hidden] { display: none; }
+  .gp-card { width: 100%; max-width: 340px; padding: 14px 14px 10px; border-radius: 16px; background: var(--surface); border: 1.5px solid var(--pine); box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35); animation: pop 360ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+  .gp-card .gp-title { font: 700 1.1rem var(--display); margin-bottom: 2px; }
+  .gp-card .name-grid { margin-top: 10px; }
   .game-head { display: flex; align-items: center; gap: 10px; padding: 12px 0; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
   .game-head .gi { width: 40px; height: 40px; border-radius: 12px; background: var(--ac-soft); display: grid; place-items: center; font-size: 1.3rem; flex: none; transition: transform 120ms; }
   .game-head:active .gi { transform: scale(0.9); }

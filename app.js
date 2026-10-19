@@ -86,10 +86,10 @@
     var el = $('golf-post'); if (!el) return;
     if (!show) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false;
-    el.innerHTML = '<div class="gp-title">Who\u2019s putting?</div><div class="info-sub">Three random holes, par 9. Your best round goes on the board.</div>' +
+    el.innerHTML = '<div class="gp-card"><div class="gp-title">Who\u2019s putting?</div><div class="info-sub">Three random holes, par 9. Your best round goes on the board.</div>' +
       '<div class="name-grid">' + NAMES.map(function (n) { return '<button type="button" data-golfer="' + esc(n) + '" aria-pressed="false">' + esc(n) + '</button>'; }).join('') + '</div>' +
-      '<div class="mafia-actions"><button type="button" class="linkbtn" id="golf-skip">Never mind</button></div>';
-    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      '<div class="mafia-actions"><button type="button" class="linkbtn" id="golf-skip">Never mind</button></div></div>';
+    $('roster').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
   $('golf-post').addEventListener('click', function (e) {
     var b = e.target.closest('[data-golfer]');
