@@ -17,29 +17,6 @@
   // The sportsbook look on Predictions is a lot. These people get the plain version of the page and the picks.
   var PLAIN_PICKS = ['Katelyn', 'Jess', 'Liv', 'Kelly', 'Gabby', 'Kyrsten'];
   function plainPicks() { return PLAIN_PICKS.indexOf(me) >= 0; }
-  var CATEGORIES = ['Food', 'Booze', 'Weed', 'Drinks', 'Snacks', 'Supplies', 'Gear', 'Other'];
-  var CAT_ICON = { Food: '\uD83C\uDF56', Drinks: '\uD83E\uDD64', Booze: '\uD83C\uDF7A', Snacks: '\uD83C\uDF7F', Supplies: '\uD83E\uDDFB', Gear: '\uD83C\uDFBF', Weed: '\uD83C\uDF3F', Other: '\uD83D\uDCE6' };
-  // the weed questionnaire
-  var WEED = {
-    form: { label: 'Form', opts: [['flower', '\uD83C\uDF38 Flower'], ['prerolls', '\uD83D\uDEAC Pre-rolls'], ['edibles', '\uD83C\uDF6A Edibles'], ['cart', '\uD83D\uDD0B Cart'], ['dabs', '\uD83D\uDC8E Dabs']] },
-    type: { label: 'Type', opts: [['sativa', '\u2600\uFE0F Sativa'], ['indica', '\uD83C\uDF19 Indica'], ['hybrid', '\uD83C\uDF17 Hybrid']] },
-    weight: { label: 'How much', opts: [['1g', '1g'], ['3.5g', '\u215B (3.5g)'], ['7g', '\u00BC (7g)'], ['14g', '\u00BD (14g)'], ['28g', 'oz (28g)']] },
-    dose: { label: 'How strong', opts: [['10mg', '10mg'], ['25mg', '25mg'], ['50mg', '50mg'], ['100mg', '100mg'], ['??', 'no idea']] },
-    grade: { label: 'Be honest', required: true, opts: [['gas', '\uD83D\uDD25 Gas'], ['mid', '\uD83E\uDD74 Crumbly mid']] },
-    vibe: { label: 'The vibe', opts: [['couch', '\uD83D\uDECB\uFE0F Couch-lock'], ['giggles', '\uD83D\uDE02 Giggles'], ['creative', '\uD83C\uDFA8 Creative'], ['munchies', '\uD83C\uDF55 Munchies'], ['paranoid', '\uD83D\uDC40 Paranoid']] }
-  };
-  var BOOZE = {
-    kind: { label: 'What kind', opts: [['beer', '\uD83C\uDF7A Beer'], ['seltzer', '\uD83E\uDD64 Seltzer'], ['liquor', '\uD83E\uDD43 Liquor']] },
-    count: { label: 'How many', opts: [['6', '6-pack'], ['12', '12-pack'], ['18', '18-pack'], ['24', '24-pack'], ['30', '30 rack'], ['keg', 'a keg']] },
-    size: { label: 'How big', opts: [['shooters', 'Shooters'], ['pint', 'Pint'], ['fifth', 'Fifth'], ['handle', 'Handle'], ['several', 'Several']] }
-  };
-  // which categories get a follow-up panel, and which rows show for which answers
-  var PANELS = {
-    Weed: { title: 'The paperwork', sub: 'so nobody gets surprised', fields: WEED, rows: function (x) { var r = ['form', 'type']; if (x.form === 'flower' || x.form === 'prerolls') r.push('weight'); if (x.form === 'edibles') r.push('dose'); return r.concat(['grade', 'vibe']); }, placeholder: 'Strain, if you know it (optional)', order: ['form', 'type', 'weight', 'dose', 'grade', 'vibe'] },
-    Booze: { title: 'The run', sub: 'so we don\u2019t triple up', fields: BOOZE, rows: function (x) { var r = ['kind']; if (x.kind === 'beer' || x.kind === 'seltzer') r.push('count'); if (x.kind === 'liquor') r.push('size'); return r; }, placeholder: 'Which one? (e.g. Coors Banquet, High Noon)', order: ['kind', 'count', 'size'] }
-  };
-  function optLabel(cat, key, val) { var p = PANELS[cat]; var o = p ? (p.fields[key] || { opts: [] }).opts.filter(function (x) { return x[0] === val; })[0] : null; return o ? o[1] : val; }
-
   function partyOf(name) {
     for (var i = 0; i < PARTIES.length; i++) if (PARTIES[i].indexOf(name) >= 0) return PARTIES[i].join(' & ');
     return null;
@@ -2881,8 +2858,6 @@
 
   // ---- Data ----
   var store = window.STORE, booted = false, items = [], busy = {}, live = false, itemsLoaded = false;
-  var view = { all: 'all', open: 'open', mine: 'mine' }[lsGet('cabin-haul-view')] || 'all';
-  var mode = 'bring', expandedItem = null, adding = false, catTouched = false;
 
   function boot() {
     booted = true;
@@ -2896,73 +2871,41 @@
     store.init({
       onItems: function (rows) { items = rows.slice(); itemsLoaded = true; render(); },
       onLive: function (on) { live = on; updateStatus(); },
-      onError: function (msg) { $('groups').innerHTML = '<p class="skeleton">' + esc(msg) + '</p>'; },
+      onError: function (msg) { $('br-who').innerHTML = '<p class="skeleton">' + esc(msg) + '</p>'; },
       onSetup: showSetup
     });
   }
-  function showSetup(html) { $('setup').hidden = false; $('setup').innerHTML = html; $('groups').innerHTML = ''; }
+  function showSetup(html) { $('setup').hidden = false; $('setup').innerHTML = html; $('br-who').innerHTML = ''; }
 
   // ---- Render ----
-  function metaLine(it) {   // "Seltzer · 12-pack", the paperwork answers in one quiet line
-    var m = it.meta, p = PANELS[it.category]; if (!m || !p) return '';
-    return p.order.filter(function (k) { return m[k]; }).map(function (k) { return optLabel(it.category, k, m[k]); }).join(' · ');
+  // Three things on the page: what you're bringing, what nobody has grabbed yet, and what everyone else has.
+  function partyNames() {
+    var out = PARTIES.map(function (p) { return p.join(' & '); });
+    items.forEach(function (it) { if (it.party && out.indexOf(it.party) < 0) out.push(it.party); });
+    return out;
   }
-  function initials(party) { return party.split('&').map(function (s) { return s.trim().charAt(0); }).join('').toUpperCase().slice(0, 2); }
-  function itemRow(it, showCat) {
-    var mine = !!it.party && it.party === myParty, open = !it.party, exp = expandedItem === it.id;
-    var canRemove = (it.adder_id && it.adder_id === myId()) || mine;
-    var bits = [];
-    if (!open) bits.push('<span class="hl-who">' + esc(mine ? 'You' : it.party) + '</span>');
-    var ml = metaLine(it); if (ml) bits.push(esc(ml));
-    if (showCat) bits.push(esc(it.category));
-    if (open && it.added_by) bits.push('flagged by ' + esc(it.added_by === me ? 'you' : it.added_by));
-    var acts = '';
-    if (exp) {
-      if (open) acts = '<button type="button" class="hl-pill go" data-claim="' + esc(it.id) + '">I\u2019ll bring it</button>';
-      else if (mine) acts = '<button type="button" class="hl-pill" data-unclaim="' + esc(it.id) + '">Can\u2019t bring it</button>';
-      if (canRemove) acts += '<button type="button" class="hl-pill quiet" data-rm="' + esc(it.id) + '">Remove</button>';
-      if (it.added_by && !mine) acts += '<span class="hl-added">added by ' + esc(it.added_by) + '</span>';
-    }
-    var tick = open ? '' : mine ? '\u2713' : esc(initials(it.party));
-    return '<div class="hl-row' + (open ? ' open' : mine ? ' mine' : '') + (exp ? ' exp' : '') + '" data-id="' + esc(it.id) + '">' +
-      '<button type="button" class="hl-tick" data-tick="' + esc(it.id) + '" aria-label="' + (open ? 'I\u2019ll bring it' : mine ? 'Your item' : esc(it.party)) + '">' + tick + '</button>' +
-      '<div class="hl-body"><div class="hl-title">' + esc(it.name) + (it.note ? ' <span class="hl-note">\u00b7 ' + esc(it.note) + '</span>' : '') + '</div>' +
-      '<div class="hl-meta">' + bits.join(' <i>\u00b7</i> ') + '</div>' + (acts ? '<div class="hl-acts">' + acts + '</div>' : '') + '</div></div>';
-  }
-  function subHead(title, n, cls) { return '<div class="hl-sub' + (cls ? ' ' + cls : '') + '"><span>' + esc(title) + '</span><span>' + n + '</span></div>'; }
   function render() {
     if (!me) return;
-    Array.prototype.forEach.call(document.querySelectorAll('#haul-filters [data-view]'), function (b) { b.setAttribute('aria-selected', String(b.getAttribute('data-view') === view)); });
-    var needed = items.filter(function (it) { return !it.party; });
-    var html = '';
-    if (!items.length) {
-      html = itemsLoaded ? '<div class="pad-empty">Nothing on the pad yet. Add the first thing above.</div>' : '<p class="skeleton">Loading the list\u2026</p>';
-    } else if (view === 'open') {
-      html = needed.length ? '<div class="hl-hint">Tap a circle to grab one.</div>' + needed.map(function (it) { return itemRow(it, true); }).join('') : '<div class="pad-empty">Everything\u2019s covered. Nice.</div>';
-    } else if (view === 'mine') {
-      var mineRows = items.filter(function (it) { return it.party === myParty; });
-      html = mineRows.length ? mineRows.map(function (it) { return itemRow(it, true); }).join('') : '<div class="pad-empty">You haven\u2019t called anything yet. Tap a circle to grab something.</div>';
-    } else {
-      if (needed.length) html += subHead('Needs someone', 'tap a circle to grab one', 'need') + needed.map(function (it) { return itemRow(it, true); }).join('');
-      var cats = CATEGORIES.slice();
-      items.forEach(function (it) { if (cats.indexOf(it.category) < 0) cats.push(it.category); });
-      cats.forEach(function (cat) {
-        var rows = items.filter(function (it) { return it.party && it.category === cat; });
-        if (!rows.length) return;
-        html += subHead(cat, rows.length) + rows.map(function (it) { return itemRow(it, false); }).join('');
-      });
-    }
-    $('groups').innerHTML = html;
-    updateStatus();
+    var needed = items.filter(function (it) { return !it.party; }), mine = items.filter(function (it) { return it.party === myParty; });
+    $('br-you').innerHTML = mine.length
+      ? '<span class="lbl">You\u2019re bringing</span>' + mine.map(function (it) { return '<span class="chip">' + esc(it.name) + '<button type="button" data-x="' + esc(it.id) + '" aria-label="Remove ' + esc(it.name) + '">\u00d7</button></span>'; }).join('')
+      : '<span class="lbl none">' + (itemsLoaded ? 'Nothing from you yet.' : 'Loading\u2026') + '</span>';
+    $('br-needs-k').textContent = needed.length ? plural(needed.length, 'thing', 'things') : '';
+    $('br-needs').innerHTML = needed.length ? needed.map(function (it) {
+      var own = it.adder_id && it.adder_id === myId();
+      return '<div class="need" data-id="' + esc(it.id) + '"><span class="nm">' + esc(it.name) + (it.added_by ? '<small>' + (own ? 'you asked' : esc(it.added_by) + ' asked') + '</small>' : '') + '</span>' +
+        (own ? '<button type="button" class="rm" data-rm="' + esc(it.id) + '" aria-label="Remove ' + esc(it.name) + '">\u00d7</button>' : '') +
+        '<button type="button" class="btn primary" data-claim="' + esc(it.id) + '">I got it</button></div>';
+    }).join('') : '<div class="br-empty">' + (itemsLoaded ? 'Nothing missing right now.' : 'Loading\u2026') + '</div>';
+    var others = partyNames().filter(function (p) { return p !== myParty; }), got = 0;
+    $('br-who').innerHTML = others.map(function (party) {
+      var rows = items.filter(function (it) { return it.party === party; });
+      if (rows.length) got++;
+      return '<div class="br-row"><div class="nm">' + esc(party) + '</div><div class="items' + (rows.length ? '' : ' none') + '">' + (rows.length ? rows.map(function (r) { return esc(r.name); }).join(', ') : 'nothing yet') + '</div></div>';
+    }).join('');
+    $('br-who-k').textContent = itemsLoaded ? got + ' of ' + others.length + ' have added something' : '';
   }
-
-  function updateStatus() {
-    var el = $('haul-stats'); if (!el) return;
-    var n = items.length, needed = items.filter(function (it) { return !it.party; }).length, covered = n - needed;
-    if (!n) { el.innerHTML = '<div class="txt">' + (itemsLoaded ? 'Nothing on the pad yet.' : 'Loading\u2026') + '</div>'; return; }
-    el.innerHTML = '<div class="bar"><i style="width:' + Math.round(covered / n * 100) + '%"></i></div>' +
-      '<div class="txt">' + (needed ? '<b>' + covered + ' of ' + n + '</b> covered \u00b7 <span class="need">' + plural(needed, 'thing needs', 'things need') + ' someone</span>' : '<b>All ' + n + '</b> covered. Nice.') + '</div>';
-  }
+  function updateStatus() { /* the live dot went away with the old page; kept so the store can still call it */ }
 
   // ---- Actions ----
   function myId() {
@@ -2975,185 +2918,93 @@
   }
   function setBusy(id, on) {
     busy[id] = on;
-    var el = document.querySelector('.hl-row[data-id="' + id + '"] .hl-tick');
+    var el = document.querySelector('[data-claim="' + id + '"], [data-x="' + id + '"]');
     if (el) el.disabled = on;
   }
   function fail(prefix) { return function (e) { toast(prefix + ': ' + ((e && e.message) || e)); }; }
   function patchLocal(row) { items = items.map(function (it) { return it.id === row.id ? row : it; }); render(); }
-  document.addEventListener('click', function (e) {   // tap anywhere off the add form with nothing typed and it folds back up
-    if (!adding || e.target.closest('#adder')) return;
-    if (!$('new-name').value.trim() && !$('new-note').value.trim()) closeAdd();
-  });
+  function findDup(name) { return items.filter(function (it) { return norm(it.name) === norm(name); })[0]; }
 
-  function addItem() {
-    var nameEl = $('new-name'), noteEl = $('new-note');
-    var name = nameEl.value.replace(/\s+/g, ' ').trim();
-    var note = noteEl.value.replace(/\s+/g, ' ').trim();
-    if (!name && newCat === 'Weed') {                       // strain is optional: name it from the paperwork
-      var bits = [];
-      if (extra.type) bits.push(optLabel('Weed', 'type', extra.type).replace(/^\S+\s/, ''));
-      bits.push(extra.form ? optLabel('Weed', 'form', extra.form).replace(/^\S+\s/, '').toLowerCase() : 'weed');
-      name = bits.join(' ');
-      var base = name, n = 2;
-      while (items.some(function (it) { return norm(it.name) === norm(name); })) name = base + ' #' + (n++);
-    }
-    if (!name) { nameEl.focus(); return; }
-    var meta = null, panel = PANELS[newCat];
-    if (panel) {
-      if (newCat === 'Weed' && !extra.grade) { toast('Gas or crumbly mid? Be honest.'); return; }
-      meta = {}; panel.rows(extra).forEach(function (k) { if (extra[k]) meta[k] = extra[k]; });   // only the rows that were showing
-      if (!Object.keys(meta).length) meta = null;
-    }
-    var dup = items.filter(function (it) { return norm(it.name) === norm(name); })[0];
-    if (dup) {
-      if (!dup.party && mode === 'bring') { toast('"' + dup.name + '" was already needed. It\'s yours now.'); claim(dup.id); }
-      else if (dup.party) toast('"' + dup.name + '" is already covered by ' + dup.party + '.');
-      else toast('"' + dup.name + '" is already on the needed list.');
-      nameEl.value = ''; noteEl.value = '';
-      return;
-    }
-    var row = { name: name, note: note || null, category: newCat, added_by: me, adder_id: myId(), meta: meta,
-      party: mode === 'bring' ? myParty : null, claimed_by: mode === 'bring' ? me : null };
+  function addMine(name) {
+    var dup = findDup(name);
+    if (dup && !dup.party) { claim(dup.id, name + ' was on the list. It\u2019s yours.'); return; }   // typing something we needed just claims it
+    var row = { name: name, note: null, category: 'Other', added_by: me, adder_id: myId(), meta: null, party: myParty, claimed_by: me };
     $('addbtn').disabled = true;
     store.add(row).then(function (saved) {
       if (!items.some(function (it) { return it.id === saved.id; })) items.push(saved);
-      nameEl.value = ''; noteEl.value = ''; extra = {}; catTouched = false; newCat = 'Food'; renderCatRow(); renderExtraPanel(); syncMode();
-      expandedItem = null; render(); nameEl.focus();
-      toast((mode === 'bring' ? 'On the pad: ' : 'Flagged: ') + name + '.');
+      render(); buzz(6);
+      toast(dup && dup.party !== myParty ? 'Added. Heads up: ' + dup.party + ' ' + (dup.party.indexOf('&') >= 0 ? 'have' : 'has') + ' that too.' : 'Added: ' + name + '.');
     }).catch(fail('Couldn\'t add that')).then(function () { $('addbtn').disabled = false; });
   }
-
-  function claim(id) {
+  function addNeed(name) {
+    var dup = findDup(name);
+    if (dup) { toast(dup.party ? dup.party + ' already ' + (dup.party.indexOf('&') >= 0 ? 'have' : 'has') + ' ' + dup.name + '.' : dup.name + ' is already on the list.'); return; }
+    var row = { name: name, note: null, category: 'Other', added_by: me, adder_id: myId(), meta: null, party: null, claimed_by: null };
+    store.add(row).then(function (saved) {
+      if (!items.some(function (it) { return it.id === saved.id; })) items.push(saved);
+      render(); toast('On the list: ' + name + '. Someone grab it.');
+    }).catch(fail('Couldn\'t add that'));
+  }
+  function claim(id, msg) {
     if (busy[id]) return;
-    setBusy(id, true);
     var it = items.filter(function (x) { return x.id === id; })[0];
-    expandedItem = null; buzz([8, 30, 8]);
-    store.update(id, { party: myParty, claimed_by: me }).then(function (row) { patchLocal(row); toast((it ? it.name : 'That') + ' is yours.'); })
-      .catch(fail('Couldn\'t claim that')).then(function () { setBusy(id, false); });
+    setBusy(id, true); buzz([8, 30, 8]);
+    store.update(id, { party: myParty, claimed_by: me }).then(function (row) { patchLocal(row); toast(msg || ((it ? it.name : 'That') + ' is yours.')); })
+      .catch(fail('Couldn\'t grab that')).then(function () { setBusy(id, false); });
   }
   function unclaim(id) {
     if (busy[id]) return;
     setBusy(id, true);
-    expandedItem = null;
-    store.update(id, { party: null, claimed_by: null }).then(function (row) {
-      patchLocal(row); toast('Back on the pad for someone else to grab.');
-    }).catch(fail('Couldn\'t update that')).then(function () { setBusy(id, false); });
+    store.update(id, { party: null, claimed_by: null }).then(function (row) { patchLocal(row); toast('Back on the still-needed list.'); })
+      .catch(fail('Couldn\'t update that')).then(function () { setBusy(id, false); });
   }
   function removeItem(id) {
     var it = items.filter(function (x) { return x.id === id; })[0];
     if (!it) return;
-    expandedItem = null;
     store.remove(id).then(function () {
       items = items.filter(function (x) { return x.id !== id; });
-      render();
-      toast('Removed "' + it.name + '".');
+      render(); toast('Removed ' + it.name + '.');
     }).catch(fail('Couldn\'t remove that'));
   }
 
-  $('adder').addEventListener('submit', function (e) { e.preventDefault(); addItem(); });
-  function openAdd() { if (adding) return; adding = true; $('add-more').hidden = false; $('add-cancel').hidden = false; $('adder').classList.add('on'); }
-  function closeAdd() {
-    adding = false; $('add-more').hidden = true; $('add-cancel').hidden = true; $('adder').classList.remove('on');
-    $('new-name').value = ''; $('new-note').value = ''; mode = 'bring'; newCat = 'Food'; extra = {}; catTouched = false;
-    renderCatRow(); renderExtraPanel(); syncMode(); $('new-name').blur();
-  }
-  $('new-name').addEventListener('focus', openAdd);
-  $('new-name').addEventListener('input', function () {
-    if (catTouched) return;
-    var g = guessCat($('new-name').value) || 'Food';
-    if (g !== newCat) { newCat = g; extra = {}; renderCatRow(); renderExtraPanel(); syncMode(); }
+  $('adder').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var el = $('new-name'), name = el.value.replace(/\s+/g, ' ').trim();
+    if (!name) { el.focus(); return; }
+    el.value = ''; addMine(name); el.focus();
   });
-  $('add-cancel').addEventListener('click', closeAdd);
-  $('mode-bring').addEventListener('click', function () { mode = 'bring'; syncMode(); });
-  $('mode-need').addEventListener('click', function () { mode = 'need'; syncMode(); });
-  function syncMode() {
-    $('mode-bring').setAttribute('aria-pressed', String(mode === 'bring'));
-    $('mode-need').setAttribute('aria-pressed', String(mode === 'need'));
-    $('addbtn').textContent = mode === 'bring' ? 'Add it' : 'Flag it';
-    $('new-name').placeholder = adding ? (PANELS[newCat] ? PANELS[newCat].placeholder : mode === 'bring' ? 'What are you bringing?' : 'What do we still need?') : 'Add something\u2026';
-  }
-  // a rough guess at the category from the name, so most people never touch the chips
-  var CAT_WORDS = [
-    ['Booze', /\b(beer|ipa|lager|pilsner|seltzer|claw|high noon|noon|truly|vodka|tequila|whisk|bourbon|rum|gin|wine|champagne|prosecco|fireball|tito|jager|mezcal|cider|twisted tea|modelo|coors|bud|miller|busch|pbr|stella|corona|keg|shooters|handle|booze|liquor|shots?|margarita|mimosa|spiked|hard)\b/],
-    ['Weed', /\b(weed|flower|pre[- ]?rolls?|joints?|edibles?|gummies|carts?|dabs?|pen|indica|sativa|hybrid|blunts?|zip|eighth|quarter|oz|thc)\b/],
-    ['Drinks', /\b(coffee|creamer|water|soda|pop|coke|diet|sprite|pepsi|gatorade|juice|red ?bull|celsius|energy|tea|milk|mixers?|tonic|ginger ale|lemonade|croix|kombucha|cocoa|hot chocolate|oj)\b/],
-    ['Snacks', /\b(chips?|salsa|pretzels?|popcorn|candy|cookies?|trail mix|jerky|nuts|crackers|dip|guac|hummus|granola|oreos?|goldfish|cheez|snacks?|gummy|bars?|puffs)\b/],
-    ['Supplies', /\b(ice|paper towels?|toilet paper|tp|plates?|cups?|solo|napkins?|utensils?|forks?|spoons?|knives|trash|garbage|foil|ziploc|sponge|soap|sunscreen|bug spray|lighters?|matches|firewood|wood|charcoal|propane|batteries|first aid|advil|tylenol|cooler|koozies?|tupperware|plastic|bags?)\b/],
-    ['Gear', /\b(speaker|cards|games?|board game|cornhole|spikeball|football|frisbee|skis?|snowboard|sled|poles|helmet|goggles|boots|projector|hdmi|extension cord|chargers?|dice|poker|uno|jenga|catan|guitar|tent|lantern|headlamp|blankets?|pillows?|towels?|sleeping bag|chairs?|bluetooth|aux)\b/],
-    ['Food', /\b(burgers?|buns|hot ?dogs?|eggs?|bacon|bread|cheese|butter|pancake|syrup|chicken|steaks?|tortillas?|tacos?|pasta|sauce|rice|veggies|vegetables|fruit|bananas?|apples?|lettuce|tomato|onions?|pizza|breakfast|dinner|lunch|sandwich|deli|ham|turkey|yogurt|cereal|bagels?|cream cheese|ketchup|mustard|condiments|oil|spices?|salt|pepper|marshmallows?|s'?mores|graham|chocolate|hershey|potatoes|chili|wings|ribs|brisket|sausage|avocado|salad)\b/]
-  ];
-  function guessCat(name) {
-    var s = String(name || '').toLowerCase();
-    for (var i = 0; i < CAT_WORDS.length; i++) if (CAT_WORDS[i][1].test(s)) return CAT_WORDS[i][0];
-    return null;
-  }
-  var newCat = 'Food', extra = {};
-  function renderCatRow() {
-    $('cat-row').innerHTML = CATEGORIES.map(function (c) {
-      return '<button type="button" data-cat="' + esc(c) + '" class="' + (c === 'Weed' ? 'weed' : c === 'Booze' ? 'booze' : '') + '" aria-pressed="' + (c === newCat) + '">' + CAT_ICON[c] + ' ' + esc(c) + '</button>';
-    }).join('');
-  }
-  function renderExtraPanel() {
-    var el = $('weed-panel'), panel = PANELS[newCat]; if (!el) return;
-    if (!panel) { el.hidden = true; el.innerHTML = ''; return; }
-    el.hidden = false; el.className = 'weed ' + newCat.toLowerCase();
-    el.innerHTML = '<div class="w-title">' + esc(panel.title) + ' <small>' + esc(panel.sub) + '</small></div>' + panel.rows(extra).map(function (k) {
-      var g = panel.fields[k];
-      return '<div class="w-row"><div class="w-l">' + esc(g.label) + (g.required && !extra[k] ? '<em>required</em>' : '') + '</div><div class="chips">' + g.opts.map(function (o) {
-        return '<button type="button" data-weed="' + k + '" data-val="' + esc(o[0]) + '" class="' + (k === 'grade' ? o[0] : '') + '" aria-pressed="' + (extra[k] === o[0]) + '">' + o[1] + '</button>';
-      }).join('') + '</div></div>';
-    }).join('');
-  }
-  $('cat-row').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-cat]'); if (!b) return;
-    var was = newCat; newCat = b.getAttribute('data-cat'); catTouched = true; if (newCat !== was) extra = {};
-    renderCatRow(); renderExtraPanel(); syncMode();
-    if (PANELS[newCat]) buzz(15);
+  $('need-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var el = $('need-name'), name = el.value.replace(/\s+/g, ' ').trim();
+    if (!name) { el.focus(); return; }
+    el.value = ''; addNeed(name); el.blur();
   });
-  $('weed-panel').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-weed]'); if (!b) return;
-    var k = b.getAttribute('data-weed'), v = b.getAttribute('data-val');
-    extra[k] = extra[k] === v ? null : v;
-    renderExtraPanel();
+  $('br-you').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-x]'); if (!b) return;
+    var id = b.getAttribute('data-x'), it = items.filter(function (x) { return x.id === id; })[0]; if (!it) return;
+    // if someone else asked for it, put it back for the next person; if it was your own idea, just drop it
+    if (it.added_by && partyOf(it.added_by) !== myParty) unclaim(id); else removeItem(id);
   });
-  renderCatRow(); syncMode();
-  $('groups').addEventListener('click', function (e) {
+  $('br-needs').addEventListener('click', function (e) {
     var c = e.target.closest('[data-claim]'); if (c) { claim(c.getAttribute('data-claim')); return; }
-    var u = e.target.closest('[data-unclaim]'); if (u) { unclaim(u.getAttribute('data-unclaim')); return; }
-    var r = e.target.closest('[data-rm]'); if (r) { removeItem(r.getAttribute('data-rm')); return; }
-    var row = e.target.closest('.hl-row'); if (!row) return;
-    var id = row.getAttribute('data-id'), it = items.filter(function (x) { return x.id === id; })[0]; if (!it) return;
-    if (e.target.closest('[data-tick]') && !it.party) { claim(id); return; }   // an open circle: tap it and it's yours
-    expandedItem = expandedItem === id ? null : id; buzz(6); render();
-  });
-  $('haul-filters').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-view]'); if (!b) return;
-    view = b.getAttribute('data-view'); lsSet('cabin-haul-view', view); expandedItem = null; buzz(6); render();
+    var r = e.target.closest('[data-rm]'); if (r) removeItem(r.getAttribute('data-rm'));
   });
 
   function listText() {
-    var lines = ['Cabin haul · ' + new Date().toLocaleDateString()];
+    var lines = ['Cabin haul \u00b7 ' + new Date().toLocaleDateString()];
     var needed = items.filter(function (it) { return !it.party; });
-    if (needed.length) {
-      lines.push('', 'STILL NEEDED');
-      needed.forEach(function (it) { lines.push('☐ ' + it.name + (it.note ? ' (' + it.note + ')' : '') + ' · ' + it.category); });
-    }
-    PARTIES.map(function (p) { return p.join(' & '); }).forEach(function (party) {
+    if (needed.length) { lines.push('', 'STILL NEEDED'); needed.forEach(function (it) { lines.push('\u2610 ' + it.name); }); }
+    partyNames().forEach(function (party) {
       var rows = items.filter(function (it) { return it.party === party; });
-      if (!rows.length) return;
-      lines.push('', party.toUpperCase());
-      rows.forEach(function (it) {
-        var p = PANELS[it.category], m = it.meta && p ? p.order.filter(function (k) { return it.meta[k]; }).map(function (k) { return optLabel(it.category, k, it.meta[k]); }).join(', ') : '';
-        lines.push('• ' + it.name + (it.note ? ' (' + it.note + ')' : '') + ' · ' + it.category + (m ? ' · ' + m : ''));
-      });
+      lines.push('', party.toUpperCase() + (rows.length ? '' : ' \u00b7 nothing yet'));
+      rows.forEach(function (it) { lines.push('\u2022 ' + it.name); });
     });
     return lines.join('\n');
   }
   $('copylist').addEventListener('click', function () {
     if (!items.length) { toast('Nothing to copy yet.'); return; }
-    copyText(listText(), 'List copied: who\'s bringing what, plus what\'s still needed.');
+    copyText(listText(), 'List copied. Paste it in the group text.');
   });
 
-  syncMode();
   showScreen();
 })();

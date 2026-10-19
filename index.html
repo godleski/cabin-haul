@@ -80,37 +80,30 @@
     </section>
 
     <section class="page themed" id="page-bringing" hidden>
-      <div class="pad"><div class="pad-paper">
-        <div class="pad-tape" aria-hidden="true"></div>
-        <div class="pad-head">
-          <div class="pad-title">What we’re bringing</div>
-          <div class="pad-sum" id="haul-stats"></div>
-        </div>
-        <div class="pad-filters" role="tablist" id="haul-filters">
-          <button type="button" role="tab" data-view="all" aria-selected="true">Everything</button>
-          <button type="button" role="tab" data-view="open" aria-selected="false">Needs someone</button>
-          <button type="button" role="tab" data-view="mine" aria-selected="false">Mine</button>
-        </div>
-        <form class="pad-add" id="adder" autocomplete="off">
-          <div class="add-line">
-            <span class="plus" aria-hidden="true">+</span>
-            <input type="text" id="new-name" placeholder="Add something…" maxlength="60" aria-label="Item" autocomplete="off" enterkeyhint="done">
-            <button type="button" class="add-x" id="add-cancel" hidden aria-label="Cancel">×</button>
-          </div>
-          <div class="add-more" id="add-more" hidden>
-            <div class="segc" role="group" aria-label="What kind of entry">
-              <button type="button" id="mode-bring" aria-pressed="true">I’ve got it</button>
-              <button type="button" id="mode-need" class="need" aria-pressed="false">Someone should</button>
-            </div>
-            <div class="cat-row" id="cat-row" role="group" aria-label="Category"></div>
-            <div class="weed" id="weed-panel" hidden></div>
-            <input type="text" id="new-note" placeholder="How much, which kind (optional)" maxlength="80" aria-label="Note" autocomplete="off">
-            <button class="big-btn" type="submit" id="addbtn">Add it</button>
-          </div>
+      <div class="br-head">
+        <h1 class="br-h1">What are you bringing?</h1>
+        <p class="br-lede">Type it in so nobody doubles up. See something we still need? Grab it.</p>
+      </div>
+      <form class="br-add" id="adder" autocomplete="off">
+        <input type="text" id="new-name" placeholder="Chips, a cooler, firewood…" maxlength="60" aria-label="What are you bringing?" autocomplete="off" enterkeyhint="done">
+        <button class="big-btn" type="submit" id="addbtn">Add</button>
+      </form>
+      <div class="br-you" id="br-you"></div>
+
+      <section class="br-sec">
+        <div class="br-sec-head"><h2>Still needed</h2><span class="k" id="br-needs-k"></span></div>
+        <div id="br-needs"></div>
+        <form class="br-need-add" id="need-form" autocomplete="off">
+          <input type="text" id="need-name" placeholder="Something we still need…" maxlength="60" aria-label="Something we still need" autocomplete="off" enterkeyhint="done">
+          <button type="submit" class="btn">Add</button>
         </form>
-        <div class="pad-list" id="groups"><p class="skeleton">Loading the list…</p></div>
-        <div class="pad-foot"><button type="button" class="linkbtn" id="copylist">Copy the list</button></div>
-      </div></div>
+      </section>
+
+      <section class="br-sec">
+        <div class="br-sec-head"><h2>Everyone else</h2><span class="k" id="br-who-k"></span></div>
+        <div id="br-who"><p class="skeleton">Loading the list…</p></div>
+      </section>
+      <div class="br-foot"><button type="button" class="linkbtn" id="copylist">Copy the list</button></div>
     </section>
 
     <section class="page themed" id="page-cabin" hidden>
