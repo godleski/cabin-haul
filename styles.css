@@ -47,9 +47,9 @@
   }
   .bubbles canvas { display: block; width: 100%; height: 100%; cursor: grab; -webkit-tap-highlight-color: transparent; }
   /* a game is on: the arena takes the screen and the words get out of the way */
-  body.playing { padding: calc(4px + env(safe-area-inset-top, 0px)) 6px 4px; }
+  body.playing { padding: calc(4px + env(safe-area-inset-top, 0px)) 6px calc(4px + env(safe-area-inset-bottom, 0px)); }
   body.playing #pick > :not(.arena-wrap) { display: none !important; }
-  body.playing .bubbles { margin-top: 0; height: calc(100dvh - 8px - env(safe-area-inset-top, 0px)); min-height: 0; border-radius: 14px; }
+  body.playing .bubbles { margin-top: 0; height: calc(100dvh - 8px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); min-height: 0; border-radius: 14px; }
   /* experiment: the back of a trunk instead of a green */
   .bubbles.trunk {
     border: 10px solid #15171a;
@@ -208,7 +208,7 @@
   .topbar .me b { color: var(--fg); }
   .linkbtn { background: none; border: 0; color: var(--pine); font: 600 0.85rem var(--body); cursor: pointer; padding: 0; text-decoration: underline; flex: none; }
 
-  input[type="text"], select {
+  input[type="text"], input[type="password"], select {
     width: 100%; font: 400 1rem var(--body); color: var(--fg); background: var(--surface);
     border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0;
   }
@@ -354,7 +354,7 @@
   .guest { display: inline-flex; align-items: center; gap: 4px; padding: 5px 6px 5px 10px; border-radius: 999px; background: var(--pine-soft); color: var(--pine); font: 600 0.8rem var(--body); }
   .guest button { border: 0; background: none; color: inherit; font-size: 1rem; line-height: 1; padding: 0 4px; cursor: pointer; opacity: 0.7; }
   .guest-add { display: flex; gap: 6px; flex: 1; min-width: 200px; }
-  .guest-add input { flex: 1; min-width: 0; padding: 8px 10px; font-size: 0.88rem; }
+  .guest-add input { flex: 1; min-width: 0; padding: 8px 10px; font-size: 1rem; }
   .guest-add .btn { padding: 8px 12px; }
   #page-games .guest { border-radius: 0; } #page-games .guest-add input { border-radius: 0; }
   .mafia-opts { display: grid; gap: 8px; margin-top: 12px; }
@@ -1000,7 +1000,7 @@
   .haptic { position: fixed; left: 0; bottom: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
   .haptic input, .haptic label { width: 1px; height: 1px; margin: 0; }
   .toast {
-    position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    position: fixed; left: 16px; right: 16px; width: fit-content; margin-inline: auto; bottom: calc(92px + env(safe-area-inset-bottom, 0px));
     background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 0.9rem;
     opacity: 0; pointer-events: none; transition: opacity 180ms; max-width: calc(100% - 32px); text-align: center; z-index: 50;
   }

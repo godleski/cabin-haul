@@ -18,12 +18,20 @@
       if (res.error) throw res.error;
       cb.onItems(res.data || []);
     }).catch(function (e) {
-      cb.onError('Couldn\'t load the list (' + ((e && e.message) || e) + '). Check config.js, and that the SQL in schema.sql was run.');
+      console.warn('items load failed', e);
+      cb.onError('Couldn\'t load the list. Check your signal; it retries every 15 seconds.');
     });
   }
   var reloadTimer;
   function scheduleReload() { clearTimeout(reloadTimer); reloadTimer = setTimeout(load, 250); }
   function one(res) { if (res.error) throw res.error; return res.data; }
+  // Every live subscription registers its read here. iPhones drop the realtime socket when the screen locks, so all reads
+  // also re-run every 15 s and whenever the page comes back to the foreground. A failed read is "unknown", never "empty":
+  // telling the app someone has no picks would re-open the first-visit prompts.
+  var readers = [];
+  function refreshAll() { readers.forEach(function (r) { try { r(); } catch (e) { /* ignore */ } }); }
+  function reader(fn) { var read = function () { try { fn(); } catch (e) { /* ignore */ } }; readers.push(read); return read; }
+  function ok(res, what) { if (res.error) { console.warn(what + ' read failed', res.error); return false; } return true; }
 
   window.STORE = {
     init: function (callbacks) {
@@ -39,21 +47,27 @@
           .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, scheduleReload)
           .subscribe(function (status) { cb.onLive(status === 'SUBSCRIBED'); });
       } catch (e) { /* polling covers it */ }
-      setInterval(function () { if (!document.hidden) load(); }, 15000);
-      document.addEventListener('visibilitychange', function () { if (!document.hidden) load(); });
+      setInterval(function () { if (!document.hidden) { load(); refreshAll(); } }, 15000);
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) { load(); refreshAll(); } });
       load();
     },
     add: function (row) { return sb.from('items').insert(row).select(COLS).single().then(one); },
-    update: function (id, patch) { return sb.from('items').update(patch).eq('id', id).select(COLS).single().then(one); },
+    update: function (id, patch) {
+      return sb.from('items').update(patch).eq('id', id).select(COLS).maybeSingle().then(function (res) {
+        if (res.error) throw res.error;
+        if (!res.data) { scheduleReload(); throw new Error('that one just came off the list'); }   // someone else removed it a moment ago
+        return res.data;
+      });
+    },
     remove: function (id) { return sb.from('items').delete().eq('id', id).then(one); },
 
     // Predictions: table "predictions" (question_id, voter, pick, updated_at), primary key (question_id, voter).
     // Not in schema.sql yet; added with the one-time setup when the site goes live.
     predictions: function (onRows) {
       if (!ensure()) return;
-      var read = function () {
-        sb.from('predictions').select('question_id,voter,pick,updated_at').then(function (res) { onRows(res.data || []); });
-      };
+      var read = reader(function () {
+        sb.from('predictions').select('question_id,voter,pick,updated_at').then(function (res) { if (ok(res, 'predictions')) onRows(res.data || []); });
+      });
       try { sb.channel('cabin-pred').on('postgres_changes', { event: '*', schema: 'public', table: 'predictions' }, read).subscribe(); } catch (e) { /* ignore */ }
       read();
     },
@@ -66,9 +80,9 @@
     // Both are created at go-live with the one-time setup.
     photos: function (onRows) {
       if (!ensure()) return;
-      var read = function () {
-        sb.from('photos').select('id,path,uploader,size,created_at').order('created_at', { ascending: false }).then(function (res) { onRows(res.data || []); });
-      };
+      var read = reader(function () {
+        sb.from('photos').select('id,path,uploader,size,created_at').order('created_at', { ascending: false }).then(function (res) { if (ok(res, 'photos')) onRows(res.data || []); });
+      });
       try { sb.channel('cabin-photos').on('postgres_changes', { event: '*', schema: 'public', table: 'photos' }, read).subscribe(); } catch (e) { /* ignore */ }
       read();
     },
@@ -89,9 +103,9 @@
     // Prediction chat: table "comments" (id, question_id, author, text, created_at). Added at go-live with the one-time setup.
     comments: function (onRows) {
       if (!ensure()) return;
-      var read = function () {
-        sb.from('comments').select('id,question_id,author,text,created_at').order('created_at', { ascending: true }).then(function (res) { onRows(res.data || []); });
-      };
+      var read = reader(function () {   // newest 500, handed over oldest-first (the app sorts by created_at anyway)
+        sb.from('comments').select('id,question_id,author,text,created_at').order('created_at', { ascending: false }).limit(500).then(function (res) { if (ok(res, 'comments')) onRows((res.data || []).slice().reverse()); });
+      });
       try { sb.channel('cabin-comments').on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, read).subscribe(); } catch (e) { /* ignore */ }
       read();
     },
@@ -103,7 +117,7 @@
     // Reactions: table "reactions" (comment_id, reactor, emoji, created_at), primary key (comment_id, reactor, emoji). Added at go-live.
     reactions: function (onRows) {
       if (!ensure()) return;
-      var read = function () { sb.from('reactions').select('comment_id,reactor,emoji').then(function (res) { onRows(res.data || []); }); };
+      var read = reader(function () { sb.from('reactions').select('comment_id,reactor,emoji').then(function (res) { if (ok(res, 'reactions')) onRows(res.data || []); }); });
       try { sb.channel('cabin-reactions').on('postgres_changes', { event: '*', schema: 'public', table: 'reactions' }, read).subscribe(); } catch (e) { /* ignore */ }
       read();
     },
@@ -116,7 +130,7 @@
     // Shared game state: a row in "kv" per game.
     game: function (name, onDoc) {
       if (!ensure()) return;
-      var read = function () { sb.from('kv').select('value').eq('key', 'game-' + name).maybeSingle().then(function (res) { onDoc((res.data && res.data.value) || null); }); };
+      var read = reader(function () { sb.from('kv').select('value').eq('key', 'game-' + name).maybeSingle().then(function (res) { if (ok(res, 'game-' + name)) onDoc((res.data && res.data.value) || null); }); });
       try { sb.channel('cabin-game-' + name).on('postgres_changes', { event: '*', schema: 'public', table: 'kv' }, read).subscribe(); } catch (e) { /* ignore */ }
       read();
     },
@@ -128,11 +142,11 @@
     // Air hockey tally: one row in the "kv" table, key "hockey".
     scores: function (onScores) {
       if (!ensure()) return;
-      var read = function () {
+      var read = reader(function () {
         sb.from('kv').select('value').eq('key', 'hockey').maybeSingle().then(function (res) {
-          onScores((res.data && res.data.value) || { humans: 0, cpu: 0 });
+          if (ok(res, 'hockey')) onScores((res.data && res.data.value) || { humans: 0, cpu: 0 });
         });
-      };
+      });
       try { sb.channel('cabin-kv').on('postgres_changes', { event: '*', schema: 'public', table: 'kv' }, read).subscribe(); } catch (e) { /* ignore */ }
       read();
     },
@@ -155,7 +169,7 @@
     // Mini golf: kv key "golf".
     golfScores: function (onDoc) {
       if (!ensure()) return;
-      var read = function () { sb.from('kv').select('value').eq('key', 'golf').maybeSingle().then(function (res) { onDoc((res.data && res.data.value) || { by: {} }); }); };
+      var read = reader(function () { sb.from('kv').select('value').eq('key', 'golf').maybeSingle().then(function (res) { if (ok(res, 'golf')) onDoc((res.data && res.data.value) || { by: {} }); }); });
       try { sb.channel('cabin-golf').on('postgres_changes', { event: '*', schema: 'public', table: 'kv' }, read).subscribe(); } catch (e) { /* ignore */ }
       read();
     },

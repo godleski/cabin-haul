@@ -2566,7 +2566,7 @@
   function addMine(name) {
     var dup = findDup(name);
     if (dup && !dup.party) { claim(dup.id, name + ' was on the list. It\u2019s yours.'); return; }   // typing something we needed just claims it
-    var row = { name: name, note: null, category: 'Other', added_by: me, adder_id: myId(), meta: null, party: myParty, claimed_by: me };
+    var row = { name: name, note: null, category: 'Other', added_by: me, adder_id: myId(), meta: { mine: true }, party: myParty, claimed_by: me };   // meta.mine: added as "I'm bringing", not as a need
     $('addbtn').disabled = true;
     store.add(row).then(function (saved) {
       if (!items.some(function (it) { return it.id === saved.id; })) items.push(saved);
@@ -2620,8 +2620,9 @@
   $('br-you').addEventListener('click', function (e) {
     var b = e.target.closest('[data-x]'); if (!b) return;
     var id = b.getAttribute('data-x'), it = items.filter(function (x) { return x.id === id; })[0]; if (!it) return;
-    // if someone else asked for it, put it back for the next person; if it was your own idea, just drop it
-    if (it.added_by && partyOf(it.added_by) !== myParty) unclaim(id); else removeItem(id);
+    // your own idea from this phone just goes away; anything that was ever a need (seeded or asked for) goes back on the list
+    var ownIdea = !!(it.meta && it.meta.mine && it.adder_id && it.adder_id === myId());
+    if (ownIdea) removeItem(id); else unclaim(id);
   });
   $('br-needs').addEventListener('click', function (e) {
     var c = e.target.closest('[data-claim]'); if (c) { claim(c.getAttribute('data-claim')); return; }

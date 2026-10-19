@@ -43,10 +43,10 @@ alone. The anon key is designed to be public, so it is fine to commit.
 
 ### 3. Host the page
 
-**Quick way (drag and drop):** go to https://app.netlify.com/drop, drag the
-folder (with your `config.js` inside) onto the page, and Netlify gives you a
-link like `https://something-random.netlify.app`. Every later change means
-dragging the folder again.
+**Do not drag-and-drop the folder onto a host.** The working folder holds
+gitignored secrets (`secrets.json`, `trip-password.txt`, `dist/`) that must never
+be served. Deploy from the git repo only, as below, so only tracked files go up.
+The site is on GitHub Pages from the `main` branch.
 
 **Set-and-forget way (recommended while the page keeps changing):**
 
