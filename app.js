@@ -1274,7 +1274,14 @@
       return '<span class="guest">' + esc(g) + '<button type="button" data-drop-guest="' + esc(g) + '" aria-label="Remove ' + esc(g) + '">\u00d7</button></span>';
     }).join('') + '<form class="guest-add" id="' + id + '"><input type="text" maxlength="20" placeholder="Add someone who\u2019s stopping by" autocomplete="off" autocapitalize="words"><button type="submit" class="btn">Add</button></form></div>';
   }
-  function sameDoc(a, b) { return JSON.stringify(a || null) === JSON.stringify(b || null); }
+  // Postgres stores JSON with its keys re-ordered, so a doc that comes back from Supabase never matches our own copy
+  // byte for byte. Compare by content, with keys sorted, or every poll looks like a change and re-renders the card.
+  function canon(v) {
+    if (Array.isArray(v)) return '[' + v.map(canon).join(',') + ']';
+    if (v && typeof v === 'object') return '{' + Object.keys(v).sort().map(function (k) { return JSON.stringify(k) + ':' + canon(v[k]); }).join(',') + '}';
+    return JSON.stringify(v === undefined ? null : v);
+  }
+  function sameDoc(a, b) { return canon(a || null) === canon(b || null); }
   // slot-machine a name into an element: cycles through the pool, slows down, lands on the real one
   function spinName(el, pool, final, done) {
     if (!el) { if (done) done(); return; }
@@ -1581,13 +1588,15 @@
   });
 
   // ---- Games: Mitch vs Luke Smash tally ----
-  var smash = null, smashLoaded = false, smashSub = false, smashAnim = null, charge = null;
+  var smash = null, smashLoaded = false, smashSub = false, smashAnim = null, charge = null, smashDirty = false, smashPending = null;
   var SMASH_P = { p1: 'Mitch', p2: 'Luke' };
   function subscribeSmash() {
     if (smashSub || !store || !store.game) return;
     smashSub = true;
     store.game('smash', function (doc) {
-      var same = smashLoaded && JSON.stringify((doc && doc.log) || []) === JSON.stringify((smash && smash.log) || []);
+      var incoming = (doc && doc.log) || [];
+      if (smashPending && sameDoc(incoming, smashPending)) return;   // a read that raced our own write: the server hasn't caught up yet, don't yank the number back
+      var same = smashLoaded && sameDoc(incoming, (smash && smash.log) || []);
       smash = doc; smashLoaded = true;
       if (!same) renderSmash();                       // our own write echoing back shouldn't restart the KO animation
     });
@@ -1604,6 +1613,7 @@
   }
   function renderSmash() {
     var body = $('smash-body'), status = $('smash-status'); if (!body) return;
+    if (charge) { smashDirty = true; return; }   // never swap the card out from under a finger mid-hold; redraw when the hold ends
     if (!smashLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
     var c = smashCounts(), log = (smash && smash.log) || [];
     status.textContent = c.p1 + ' – ' + c.p2 + (c.p1 === c.p2 ? (log.length ? ' · tied' : '') : ' · ' + (c.p1 > c.p2 ? SMASH_P.p1 : SMASH_P.p2) + ' leads');
@@ -1631,14 +1641,18 @@
   }
   function smashWin(side) {
     var log = ((smash && smash.log) || []).slice(-199);
-    var before = smashCounts()[side];
+    var before = { n: smashCounts()[side], log: (smash && smash.log) || [] };
     log.push({ w: side, by: me, at: new Date().toISOString() });
     var doc = { log: log, updated_at: new Date().toISOString() };
-    smash = doc; smashAnim = { side: side, from: before };
+    smash = doc; smashAnim = { side: side, from: before.n };
     renderSmash();
     var card = $('smash-body').querySelector('.smash'); if (card) { card.classList.add('shake'); }
     try { if (navigator.vibrate) navigator.vibrate([30, 40, 60]); } catch (e) { /* ignore */ }
-    store.setGame('smash', doc).catch(function (e) { toast('Couldn’t save that win: ' + ((e && e.message) || e)); });
+    smashWrite(doc, before.log).catch(function (e) { toast('Couldn’t save that win: ' + ((e && e.message) || e)); });
+  }
+  function smashWrite(doc, prevLog) {   // remember what the server still has until this lands, so a stale read can be told apart from a real change
+    smashPending = prevLog;
+    return store.setGame('smash', doc).then(function () { smashPending = null; }, function (e) { smashPending = null; throw e; });
   }
   function chargeStart(e) {
     var btn = e.target.closest('.fighter[data-side]'); if (!btn || charge) return;
@@ -1660,14 +1674,16 @@
     cancelAnimationFrame(charge.raf);
     charge.btn.classList.remove('charging'); charge.btn.style.setProperty('--charge', 0);
     charge = null;
+    if (smashDirty) { smashDirty = false; renderSmash(); }
   }
   $('smash-body').addEventListener('pointerdown', chargeStart);
   window.addEventListener('pointerup', chargeEnd); window.addEventListener('pointercancel', chargeEnd);
   $('smash-body').addEventListener('contextmenu', function (e) { if (e.target.closest('.fighter')) e.preventDefault(); });
   $('smash-body').addEventListener('click', function (e) {
     if (e.target.closest('#smash-undo') && smash && smash.log && smash.log.length) {
-      var doc = { log: smash.log.slice(0, -1), updated_at: new Date().toISOString() };
-      store.setGame('smash', doc).then(function () { smash = doc; renderSmash(); }).catch(function (err) { toast('Couldn’t undo: ' + ((err && err.message) || err)); });
+      var doc = { log: smash.log.slice(0, -1), updated_at: new Date().toISOString() }, prev = smash.log;
+      smash = doc; renderSmash();
+      smashWrite(doc, prev).catch(function (err) { toast('Couldn’t undo: ' + ((err && err.message) || err)); });
     }
   });
 
