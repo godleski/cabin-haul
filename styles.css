@@ -883,6 +883,9 @@
   #page-hibachi .ticket .hib-row.me .who { color: var(--hr); }
   #page-hibachi .ticket .pd { background: #e3efe8; color: #2d6a4f; } #page-hibachi .ticket .pd.owes { background: #fbe9db; color: #b5561c; }
   #page-hibachi .ticket .hib-totals { color: #5d5d5d; }
+  #page-hibachi .ticket .hib-sub { color: #5d5d5d; }
+  #page-hibachi .hib-tipnote { color: var(--hmuted); }
+  #page-hibachi .hib-mine-locked .what .tipline { color: var(--hmuted); }
   #page-hibachi .ticket .hib-grand { border-top: 2px solid #1b1b1b; padding-top: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
   @media (prefers-reduced-motion: reduce) { .volcano .flame, .volcano .spark, .hib-mine-locked.sizzle, .hib-mine-locked.sizzle::before, .hib-mine-locked.sizzle::after { animation: none; } }
   /* ---- FAQ on the cabin page ---- */
@@ -954,7 +957,11 @@
   .hib-row.waiting .amt { color: var(--muted); font-weight: 500; }
   .hib-row.me .who { color: var(--pine); }
   .hib-totals { margin-top: 10px; font-size: 0.85rem; color: var(--muted); }
+  .hib-sub { display: flex; justify-content: space-between; margin-top: 6px; font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .hib-sub + .hib-sub { margin-top: 2px; }
   .hib-grand { display: flex; justify-content: space-between; margin-top: 8px; font: 800 1.05rem var(--display); }
+  .hib-tipnote { margin: 12px 0 0; }
+  .hib-mine-locked .what .tipline { display: block; font-size: 0.76rem; color: var(--muted); margin-top: 2px; }
   .note-card { background: var(--ember-soft); border-color: var(--ember); }
   .note-card .info-title { color: var(--ember); }
   /* ---- Chat wall ---- */

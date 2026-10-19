@@ -2593,7 +2593,7 @@
   var HIBACHI_PAYEE = { name: 'Jess', handle: 'Craftyj627' };   // fronts the chef; everyone Venmos her their plate
   var hibJustLocked = false;
   function hibPayUrl(amount, note) {   // Venmo's pay link: opens the app on a phone with recipient, amount and note filled in
-    return 'https://venmo.com/' + encodeURIComponent(HIBACHI_PAYEE.handle) + '?txn=pay&amount=' + encodeURIComponent(amount) + '&note=' + encodeURIComponent(note);
+    return 'https://venmo.com/' + encodeURIComponent(HIBACHI_PAYEE.handle) + '?txn=pay&amount=' + encodeURIComponent(Number(amount).toFixed(2)) + '&note=' + encodeURIComponent(note);
   }
   var hibDraft = null;   // the order being built on this phone before it's locked; null until you touch something
   function hibBaseDraft() { var my = hibOrders()[me]; return my ? { picks: JSON.parse(JSON.stringify(my.picks)), note: my.note || '' } : { picks: {}, note: '' }; }
@@ -2623,6 +2623,9 @@
     HIBACHI_MENU.forEach(function (g) { (order.picks[g.id] || []).forEach(function (oid) { var o = hibOption(g.id, oid); if (o) t += o.price; }); });
     return t;
   }
+  var HIBACHI_TIP = 0.2;   // everyone tips the chef 20% on their own plate; it rides along with the Venmo
+  function hibTip(order) { return Math.round(hibPrice(order) * HIBACHI_TIP * 100) / 100; }
+  function hibTotal(order) { return Math.round((hibPrice(order) + hibTip(order)) * 100) / 100; }
   function hibComplete(order) { return HIBACHI_MENU.every(function (g) { return !g.pick || (order.picks[g.id] || []).length >= g.pick; }); }
   function money(n) { return '$' + (Math.round(n * 100) / 100).toFixed(n % 1 ? 2 : 0); }
   function renderHibachi() {
@@ -2635,13 +2638,13 @@
     // my order
     var my = orders[me], editing = hibDraft || !(my && my.locked);
     if (!editing) {
-      var price = hibPrice(my), payNote = 'Hibachi: ' + hibLines(my).join(', ');
-      mine.innerHTML = '<div class="hib-mine-locked' + (hibJustLocked ? ' sizzle' : '') + '"><span>🔒</span><div class="what"><b>Your order is locked in</b>' + esc(hibLines(my).join(', ')) + (my.note ? ' · ' + esc(my.note) : '') + '</div><span class="amt">' + money(price) + '</span><button type="button" class="linkbtn" id="hib-edit">Change</button></div>' +
+      var plate = hibPrice(my), tip = hibTip(my), price = hibTotal(my), payNote = 'Hibachi: ' + hibLines(my).join(', ') + ' + 20% tip';
+      mine.innerHTML = '<div class="hib-mine-locked' + (hibJustLocked ? ' sizzle' : '') + '"><span>🔒</span><div class="what"><b>Your order is locked in</b>' + esc(hibLines(my).join(', ')) + (my.note ? ' · ' + esc(my.note) : '') + '<small class="tipline">' + money(plate) + ' plate + ' + money(tip) + ' tip (20%)</small></div><span class="amt">' + money(price) + '</span><button type="button" class="linkbtn" id="hib-edit">Change</button></div>' +
         (me === HIBACHI_PAYEE.name ? '' :
           '<div class="hib-pay' + (hibJustLocked ? ' pop' : '') + (my.paid ? ' paid' : '') + '">' +
             (my.paid
               ? '<div class="pt">✅ You paid ' + esc(HIBACHI_PAYEE.name) + ' ' + money(price) + '.</div><button type="button" class="linkbtn" id="hib-unpaid">Actually, not yet</button>'
-              : '<div class="pt"><b>Now Venmo ' + esc(HIBACHI_PAYEE.name) + ' ' + money(price) + '.</b> She’s fronting the chef, so pay her as you order.</div>' +
+              : '<div class="pt"><b>Now Venmo ' + esc(HIBACHI_PAYEE.name) + ' ' + money(price) + '.</b> That’s your ' + money(plate) + ' plate plus a ' + money(tip) + ' tip for the chef. She’s fronting it all, so pay her as you order.</div>' +
                 '<div class="hib-pay-actions"><a class="btn primary" id="hib-venmo" href="' + hibPayUrl(price, payNote) + '" target="_blank" rel="noopener">Pay ' + esc(HIBACHI_PAYEE.name) + ' ' + money(price) + ' on Venmo</a><button type="button" class="btn" id="hib-paid">I’ve paid</button></div>' +
                 '<div class="fine">Opens Venmo with @' + esc(HIBACHI_PAYEE.handle) + ', the amount and a note filled in. You still hit Pay in the app.</div>') +
           '</div>');
@@ -2664,15 +2667,16 @@
       });
       html += '<input type="text" class="hib-note" id="hib-note" maxlength="120" placeholder="Allergies, no onions, extra spicy…" value="' + esc(d.note) + '">';
       var ok = hibComplete(d);
-      html += '<div class="hib-foot"><div class="tot">' + money(hibPrice(d)) + '<small>your plate</small></div><button type="button" class="btn primary hib-lockbtn" id="hib-lock"' + (ok ? '' : ' disabled') + '>' + (my && my.locked ? '🔥 Lock in the change' : '🔥 Lock it in') + '</button></div>';
+      html += '<p class="fine hib-tipnote">A 20% tip for the chef gets added on top of your plate.</p>';
+      html += '<div class="hib-foot"><div class="tot">' + money(hibTotal(d)) + '<small>' + money(hibPrice(d)) + ' plate + ' + money(hibTip(d)) + ' tip</small></div><button type="button" class="btn primary hib-lockbtn" id="hib-lock"' + (ok ? '' : ' disabled') + '>' + (my && my.locked ? '🔥 Lock in the change' : '🔥 Lock it in') + '</button></div>';
       mine.innerHTML = html;
     }
     // everyone, for Jess
-    var all = $('hib-all'), rows = '', counts = {}, grand = 0;
+    var all = $('hib-all'), rows = '', counts = {}, plates = 0, tips = 0;
     NAMES.forEach(function (n) {
       var o = orders[n];
       if (o && o.locked) {
-        var p = hibPrice(o); grand += p;
+        var p = hibTotal(o); plates += hibPrice(o); tips += hibTip(o);
         hibChefLines(o).forEach(function (l) { counts[l] = (counts[l] || 0) + 1; });
         rows += '<div class="hib-row' + (n === me ? ' me' : '') + (o.paid ? ' paid' : '') + '"><span class="who">' + esc(n) + (o.paid ? ' <span class="pd">paid</span>' : n === HIBACHI_PAYEE.name ? '' : ' <span class="pd owes">owes</span>') + '</span><span class="amt">' + money(p) + '</span><span class="det">' + esc(hibChefLines(o).join(', ')) + (o.note ? ' · “' + esc(o.note) + '”' : '') + '</span></div>';
       } else {
@@ -2682,17 +2686,18 @@
     var tally = Object.keys(counts).map(function (k) { return counts[k] + '× ' + k; });
     all.innerHTML = '<div class="hib-all ticket"><div class="ah"><b>Order ticket</b><span class="tk-sub">' + locked.length + ' of ' + NAMES.length + ' plates</span><button type="button" class="btn" id="hib-copy"' + (locked.length ? '' : ' disabled') + '>Copy the ticket</button></div><div class="hib-rows">' + rows + '</div>' +
       (tally.length ? '<div class="hib-totals">' + esc(tally.join(' · ')) + '</div>' : '') +
-      '<div class="hib-grand"><span>Total' + (done ? '' : ' so far') + '</span><span>' + money(grand) + '</span></div></div>';
+      '<div class="hib-sub"><span>Plates</span><span>' + money(plates) + '</span></div><div class="hib-sub"><span>Tip (20%)</span><span>' + money(tips) + '</span></div>' +
+      '<div class="hib-grand"><span>Total' + (done ? '' : ' so far') + '</span><span>' + money(Math.round((plates + tips) * 100) / 100) + '</span></div></div>';
   }
   function hibCopyText() {
-    var orders = hibOrders(), lines = [], counts = {}, grand = 0, n = 0;
+    var orders = hibOrders(), lines = [], counts = {}, plates = 0, tips = 0, n = 0;
     NAMES.forEach(function (nm) {
       var o = orders[nm]; if (!o || !o.locked) return;
-      n++; var p = hibPrice(o); grand += p;
+      n++; var p = hibPrice(o); plates += p; tips += hibTip(o);
       hibChefLines(o).forEach(function (l) { counts[l] = (counts[l] || 0) + 1; });
-      lines.push(nm + ': ' + hibChefLines(o).join(' + ') + (o.note ? ' (' + o.note + ')' : '') + ' - ' + money(p) + (o.paid ? ' [paid]' : ''));
+      lines.push(nm + ': ' + hibChefLines(o).join(' + ') + (o.note ? ' (' + o.note + ')' : '') + ' - ' + money(p) + ' + ' + money(hibTip(o)) + ' tip' + (o.paid ? ' [paid]' : ''));
     });
-    var out = 'Hibachi orders (' + n + ' of ' + NAMES.length + ')\n' + lines.join('\n') + '\n\nTotals: ' + Object.keys(counts).map(function (k) { return counts[k] + 'x ' + k; }).join(', ') + '\nGrand total: ' + money(grand);
+    var out = 'Hibachi orders (' + n + ' of ' + NAMES.length + ')\n' + lines.join('\n') + '\n\nTotals: ' + Object.keys(counts).map(function (k) { return counts[k] + 'x ' + k; }).join(', ') + '\nPlates: ' + money(plates) + '\nTip (20%): ' + money(tips) + '\nGrand total: ' + money(Math.round((plates + tips) * 100) / 100);
     return out;
   }
   $('hibachi').addEventListener('click', function (e) {
@@ -2720,7 +2725,7 @@
       var focusEl = document.querySelector('#hibachi .hib-mine-locked');
       if (focusEl) { var top = focusEl.getBoundingClientRect().top + window.scrollY - 90; window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' }); }
       var left = NAMES.filter(function (nm) { var o = hibOrders()[nm]; return !(o && o.locked); }).length;
-      toast(me === HIBACHI_PAYEE.name ? (left ? 'Locked in. ' + left + ' to go.' : 'Locked in. That’s everyone!') : 'Locked in. Now Venmo ' + HIBACHI_PAYEE.name + ' ' + money(hibPrice(order)) + '.');
+      toast(me === HIBACHI_PAYEE.name ? (left ? 'Locked in. ' + left + ' to go.' : 'Locked in. That’s everyone!') : 'Locked in. Now Venmo ' + HIBACHI_PAYEE.name + ' ' + money(hibTotal(order)) + ' (plate + 20% tip).');
       return;
     }
     if (e.target.closest('#hib-copy')) { copyText(hibCopyText(), 'Orders copied. Send them to the chef.'); buzz(6); return; }
