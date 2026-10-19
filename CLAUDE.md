@@ -9,6 +9,8 @@
   `node tools/seal-secrets.js "<trip password>"`). The link sent to the group carries the password
   after a hash, `<site url>#k=<trip password>`, so the page unlocks itself; the password form on the
   FAQ page is only the fallback. Re-sealing with a new password means re-sending the link.
+  The artifact build stamps the password in from the gitignored `trip-password.txt` so the prototype
+  unlocks itself; keep that file in step with the sealed password.
 - Everyone is on iPhone: send phone-width screenshots for visual changes, keep 60fps.
 
 ## Go-live reminder

@@ -9,6 +9,9 @@ const out = [
   '<style>', fs.readFileSync('styles.css', 'utf8').trim(), '</style>',
   body.trim(),
   '<script>', fs.readFileSync('secrets.js', 'utf8').trim(), '</script>',
+  // The prototype can't be opened from the group-text link, so the artifact carries the trip password itself.
+  // trip-password.txt is gitignored; the live site gets the password from the link instead.
+  '<script>' + (fs.existsSync('trip-password.txt') ? 'window.TRIP_LINK_KEY = ' + JSON.stringify(fs.readFileSync('trip-password.txt', 'utf8').trim()) + ';' : '') + '</script>',
   '<script>', fs.readFileSync('store-artifact.js', 'utf8').trim(), '</script>',
   '<script>', fs.readFileSync('app.js', 'utf8').trim(), '</script>', ''
 ].join('\n');

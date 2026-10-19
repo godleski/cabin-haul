@@ -1912,7 +1912,7 @@
   // leaves the phone (browsers don't send it to the server) and isn't in the repo, so nobody has to type anything.
   function passFromLink() {
     var m = /(?:^#|[#&])k=([^&]+)/.exec(location.hash || '');
-    if (!m) return null;
+    if (!m) return window.TRIP_LINK_KEY || null;   // the artifact build stamps the password in, since it can't be opened from the link
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ }   // keep it out of the address bar and history
     try { return decodeURIComponent(m[1]).trim(); } catch (e) { return m[1].trim(); }
   }
