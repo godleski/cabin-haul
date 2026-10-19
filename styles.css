@@ -301,6 +301,7 @@
   .board-card.replay { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; transition: transform 120ms ease; }
   .board-card.replay:active { transform: scale(0.97); }
   .board-card.replay .bc-play { display: inline-block; }
+  .boards:has(.board-card.replay) .bc-title { line-height: 1.25; min-height: 2.5em; }
   .bc-sub { font-size: 0.74rem; color: var(--muted); margin: 2px 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .bc-sub b { color: var(--ac); }
   .lb { display: grid; gap: 3px; }
