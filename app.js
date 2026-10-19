@@ -916,7 +916,7 @@
       // aim wobble (HOCKEY_AI) keep it beatable.
       var plan = cpuPlan(g, now), cx = plan.x, cy = plan.y;
       cx = Math.max(c.r, Math.min(W - c.r, cx)); cy = Math.max(c.r, Math.min(H / 2 - c.r, cy));
-      var maxv = HOCKEY_AI.speed * (plan.mode === 'strike' ? 1.15 : 1);
+      var maxv = HOCKEY_AI.speed * (plan.mode === 'swing' ? 1.4 : 1);   // the swing is the one time it really moves
       var nvx = (cx - c.x) * HOCKEY_AI.gain, nvy = (cy - c.y) * HOCKEY_AI.gain, nv = Math.hypot(nvx, nvy);
       if (nv > maxv) { nvx *= maxv / nv; nvy *= maxv / nv; }
       c.vx = nvx; c.vy = nvy; c.x += c.vx * dt; c.y += c.vy * dt;
@@ -965,23 +965,29 @@
       return x + p.r;
     }
     function cpuPlan(g, now) {
-      var p = g.puck, c = g.cpu, me = g.me, last = g.plan;
-      if (last && now - last.t < HOCKEY_AI.react) return last;   // reaction time: it sticks with its last read for a beat
-      var wob = (Math.random() - 0.5) * 2 * HOCKEY_AI.wobble, x, y, mode;
+      var p = g.puck, c = g.cpu, me = g.me, last = g.plan, R = c.r + p.r;
+      if (last && now - last.t < (last.mode === 'swing' ? 30 : HOCKEY_AI.react)) return last;   // reaction time: it sticks with its last read for a beat (a swing tracks faster)
+      var wob = (Math.random() - 0.5) * 2 * HOCKEY_AI.wobble, x, y, mode, t0 = now;
+      var dist = Math.hypot(p.x - c.x, p.y - c.y), speed = Math.hypot(p.vx, p.vy), incoming = p.vy < -0.3;
+      // where it wants to put the puck: the side of your goal you're not covering, or off the wall if you're covering it
+      var aimX = me.x < W / 2 ? g.goal.x2 - 18 : g.goal.x1 + 18;
+      if (Math.abs(me.x - aimX) < 46) aimX = aimX < W / 2 ? -aimX : 2 * W - aimX;
+      var dx = p.x - aimX, dy = p.y - H, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;   // unit vector from that target up through the puck
       if (g.kickoff) { x = W / 2; y = 56; mode = 'wait'; }   // nothing moves until you hit the puck
-      else if (p.y < c.y - 4) {   // the puck got behind it: slide beside and below it so it can roll out, without leaving the goal open
-        x = p.x + (p.x < W / 2 ? 1 : -1) * (c.r + p.r + 6); y = Math.min(H / 2 - c.r, p.y + c.r + p.r + 26); mode = 'recover';
+      else if (last && last.mode === 'swing' && now - last.t0 < 420) { x = p.x - ux * 220; y = p.y - uy * 220; mode = 'swing'; t0 = last.t0; }   // follow through
+      else if (p.y < c.y - 4 && p.y < HOCKEY_AI.line + 10) {   // the puck is between it and its goal: slide beside and below it so it can roll out
+        x = p.x + (p.x < W / 2 ? 1 : -1) * (R + 6); y = Math.min(H / 2 - c.r, p.y + R + 26); mode = 'recover';
       }
-      else if (p.vy < -2.5 && p.y > HOCKEY_AI.line + 30) {   // a real shot coming in: meet it where it'll cross the line
-        x = puckXAt(p, HOCKEY_AI.line) + wob; y = HOCKEY_AI.line; mode = 'block';
+      else if (incoming && p.y > HOCKEY_AI.line + 30) {   // coming its way: meet it where it'll cross the line, and step into it as it arrives
+        x = puckXAt(p, HOCKEY_AI.line) + wob; y = HOCKEY_AI.line + (dist < R * 1.8 ? 34 : 0); mode = 'block';
       }
-      else if (p.y < H / 2 + 10) {   // puck in its half: swing through it toward the side of your goal you're not covering
-        var aimX = me.x < W / 2 ? g.goal.x2 - 18 : g.goal.x1 + 18, dx = p.x - aimX, dy = p.y - H, d = Math.hypot(dx, dy) || 1;
-        x = p.x + dx / d * (c.r + p.r) * 0.55 + wob; y = p.y + dy / d * (c.r + p.r) * 0.55; mode = 'strike';
+      else if (dist < R * 2.4 && p.y > c.y - 4 && p.y < H / 2 + 10 && (speed < 4 || p.vy > 0)) { x = p.x - ux * 220 + wob; y = p.y - uy * 220; mode = 'swing'; }   // a loose puck in reach: drive through it at the target
+      else if (p.y < H / 2 + 10) {   // puck in its half but not in reach yet: get behind it on the line to the target
+        if (c.y > p.y - 6 && Math.abs(c.x - p.x) < R + 8) { x = p.x + (c.x < p.x ? -1 : 1) * (R + 18); y = c.y; mode = 'around'; }   // it's in the way: step round it
+        else { x = p.x + ux * R * 1.25 + wob; y = p.y + uy * R * 1.25; mode = 'windup'; }
       }
-      else if (p.vy < -0.3) { x = puckXAt(p, HOCKEY_AI.line) + wob; y = HOCKEY_AI.line; mode = 'block'; }   // drifting our way: get in its path
       else { x = W / 2 + (p.x - W / 2) * 0.35; y = 56; mode = 'hover'; }   // puck's down your end: shade toward it and wait
-      g.plan = { x: x, y: y, mode: mode, t: now };
+      g.plan = { x: x, y: y, mode: mode, t: now, t0: t0 };
       return g.plan;
     }
     function endGame(winner) {
