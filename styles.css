@@ -694,6 +694,56 @@
   body.picking:has(#predict:not([hidden])) { background: #0f0f0f; }
   body.picking:has(#predict:not([hidden])) .toast { background: var(--dkg); color: #06200a; }
 
+  /* ---- Plain picks: the simple, light version of Predictions for people who don't want a sportsbook ---- */
+  .plain-head, .plain-only { display: none; }
+  body.plain-picks .plain-head { display: block; }
+  body.plain-picks .plain-only { display: inline; }
+  body.plain-picks .dk-only, body.plain-picks .dk-head, body.plain-picks .dk-tabs, body.plain-picks .dk-promo, body.plain-picks .q-market .live, body.plain-picks .q-market .sgp { display: none; }
+  body.plain-picks #page-home {
+    --surface: #fffdf8; --bg: #f3efe4; --fg: #1b2a22; --muted: #5f6b62; --line: #e0dacb; --pine: #2d6a4f; --pine-soft: #e3efe8; --pine-ink: #fff; --ember: #d2691e; --ember-soft: #fbe9db;
+    background: linear-gradient(180deg, #fbf3e6 0%, #f3efe4 240px, #f3efe4 100%); color: var(--fg); padding-top: 22px;
+  }
+  body.plain-picks .plain-head .eyebrow { color: var(--pine); }
+  body.plain-picks .plain-head h1 { color: var(--fg); font: 800 clamp(2.2rem, 10vw, 2.8rem)/0.95 var(--display); letter-spacing: -0.03em; margin-top: 6px; }
+  body.plain-picks .plain-head .lede { color: var(--muted); margin-top: 12px; }
+  body.plain-picks #page-home .pred { margin-top: 18px; }
+  body.plain-picks #page-home .pred-banner { background: var(--ember-soft); border: 1.5px solid var(--ember); border-left-width: 1.5px; }
+  body.plain-picks #page-home .pred-banner b { color: var(--fg); } body.plain-picks #page-home .pred-banner span { color: var(--muted); }
+  body.plain-picks #page-home .pred-banner .btn { background: var(--ember); color: #fff; }
+  body.plain-picks #page-home .pred-count { background: var(--pine-soft); color: var(--pine); }
+  body.plain-picks #page-home .pred-head .linkbtn { color: var(--pine); }
+  .pred-card.plain { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 14px 12px; box-shadow: 0 6px 18px rgba(40, 30, 10, 0.07); }
+  .pred-card.plain .pq { color: var(--muted); }
+  .pred-card.plain .lead { color: var(--ember); text-shadow: none; }
+  .pred-card.plain .lead.none { color: var(--muted); }
+  .pred-card.plain .share { color: var(--fg); }
+  .pred-card.plain .seg { background: #ebe5d6; }
+  .pred-card.plain .sub .you { color: var(--pine); } .pred-card.plain .sub .you.no { color: var(--ember); }
+  .pred-card.plain .pred-chat { background: #f3efe4; color: var(--fg); }
+  .pred-card.plain .pred-chat .more { color: var(--pine); }
+  /* the picks screen in plain mode: light, no odds, big name buttons */
+  body.plain-picks #predict.dk-page { background: #f3efe4; color: #1b2a22; --surface: #fffdf8; --bg: #f3efe4; --fg: #1b2a22; --muted: #5f6b62; --line: #e0dacb; --pine: #2d6a4f; --pine-soft: #e3efe8; --pine-ink: #fff; --ember: #d2691e; --ember-soft: #fbe9db; }
+  body.plain-picks #predict .intro .eyebrow, body.plain-picks #predict .q-market .eyebrow { color: var(--pine); }
+  body.plain-picks #predict h1 { color: var(--fg); }
+  body.plain-picks #predict .lede { color: var(--muted); }
+  body.plain-picks #predict .intro-list li { background: var(--surface); border-color: var(--line); color: var(--fg); font-weight: 500; }
+  body.plain-picks #predict .intro-list li b { display: none; }
+  body.plain-picks #predict .intro-actions .addbtn { background: var(--pine); color: #fff; border-radius: 999px; box-shadow: 0 6px 16px rgba(45, 106, 79, 0.25); }
+  body.plain-picks #predict .linkbtn { color: var(--pine); }
+  body.plain-picks .q-prog i { background: #e0dacb; } body.plain-picks .q-prog i.done { background: var(--pine); } body.plain-picks .q-prog i.now { background: var(--fg); }
+  body.plain-picks #predict .pickbtn { display: block; text-align: center; padding: 18px 12px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); color: var(--fg); font: 700 1.1rem var(--display); }
+  body.plain-picks #predict .pickbtn .nm { white-space: normal; }
+  body.plain-picks #predict .pickbtn[aria-pressed="true"] { background: var(--pine); border-color: var(--pine); color: #fff; }
+  body.plain-picks #predict .pickbtn .tick { display: block; color: #fff; opacity: 0.9; margin-top: 4px; }
+  body.plain-picks #predict .q-foot .linkbtn { color: var(--muted); }
+  body.plain-picks.picking:has(#predict:not([hidden])) { background: #f3efe4; }
+  body.plain-picks.picking:has(#predict:not([hidden])) .toast { background: var(--fg); color: var(--bg); }
+  body.plain-picks.tab-home .sheet { --surface: #fffdf8; --bg: #f3efe4; --fg: #1b2a22; --muted: #5f6b62; --line: #e0dacb; --pine: #2d6a4f; --pine-soft: #e3efe8; --pine-ink: #fff; --ember: #d2691e; --ember-soft: #fbe9db; background: var(--surface); color: var(--fg); }
+  body.plain-picks.tab-home .sheet .poll-track { background: rgba(0, 0, 0, 0.08); }
+  body.plain-picks.tab-home .sheet .sheet-x { background: var(--bg); color: var(--fg); }
+  body.plain-picks.tab-home .sheet input[type="text"] { background: var(--surface); color: var(--fg); border-color: var(--line); }
+  body.plain-picks .poll-n .odds { display: none; }
+
   /* ---- Bringing: kraft paper, sticky notes, a highlighter stroke. ---- */
   #page-bringing {
     --surface: #fffdf7; --bg: #f4ecda; --fg: #2b2218; --muted: #6f6353; --line: #dccbab; --pine: #1f6f50; --pine-soft: #dcebe1; --pine-ink: #fff; --ember: #c0392b; --ember-soft: #f8ddd8;

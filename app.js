@@ -14,6 +14,9 @@
     ['Terry', 'Kyrsten'],
     ['Drew']
   ];
+  // The sportsbook look on Predictions is a lot. These people get the plain version of the page and the picks.
+  var PLAIN_PICKS = ['Katelyn', 'Jess', 'Liv', 'Kelly', 'Gabby', 'Kyrsten'];
+  function plainPicks() { return PLAIN_PICKS.indexOf(me) >= 0; }
   var CATEGORIES = ['Food', 'Booze', 'Weed', 'Drinks', 'Snacks', 'Supplies', 'Gear', 'Other'];
   var CAT_ICON = { Food: '\uD83C\uDF56', Drinks: '\uD83E\uDD64', Booze: '\uD83C\uDF7A', Snacks: '\uD83C\uDF7F', Supplies: '\uD83E\uDDFB', Gear: '\uD83C\uDFBF', Weed: '\uD83C\uDF3F', Other: '\uD83D\uDCE6' };
   // the weed questionnaire
@@ -1592,6 +1595,7 @@
   var renderedFor = null;
   function refreshForUser() {
     renderedFor = me;
+    document.body.classList.toggle('plain-picks', plainPicks());
     mafiaDraft = null; teamsDraft = null; teamsEdit = false; expSplit = null; expanded = null; pickerFor = null; modReveal = false;
     renderPredictions(); renderSheet(); renderWall(); updateChatBadge();
     renderMafia(); renderTeams(); renderLiv(); renderSmash();
@@ -2540,10 +2544,15 @@
     window.scrollTo(0, 0);
     if (skipIntro) { $('q-intro').hidden = true; $('q-wrap').hidden = false; showQuestion(false); return; }
     $('q-wrap').hidden = true; $('q-intro').hidden = false;
-    $('q-intro-sub').textContent = answeredCount() ? 'You\'ve got ' + answeredCount() + ' of ' + QUESTIONS.length + ' on your slip. Pick up where you left off.' : 'Six quick calls, no stake. Everyone sees the board and who bet what, so make them good.';
+    $('q-intro-sub').textContent = plainPicks()
+      ? (answeredCount() ? 'You\'ve answered ' + answeredCount() + ' of ' + QUESTIONS.length + '. Pick up where you left off.' : 'Six quick calls. Everyone sees the tally and who picked who, so make them good.')
+      : (answeredCount() ? 'You\'ve got ' + answeredCount() + ' of ' + QUESTIONS.length + ' on your slip. Pick up where you left off.' : 'Six quick calls, no stake. Everyone sees the board and who bet what, so make them good.');
+    var ps = $('q-intro-plain'); if (ps) ps.textContent = $('q-intro-sub').textContent;
+    var qs = $('q-start'); if (qs) qs.textContent = plainPicks() ? 'Make my picks' : 'Build my slip';
     var slip0 = $('q-slip'); if (slip0) slip0.textContent = answeredCount() + '/' + QUESTIONS.length;
     var il = $('q-intro-list'); if (il) il.innerHTML = QUESTIONS.map(function (qq) {   // each market with the current favourite's price
       var t = tallyFor(qq), total = t.rows.reduce(function (a, r) { return a + r.n; }, 0), lead = t.rows[0];
+      if (plainPicks()) return '<li><span>' + esc(qq.text) + '</span></li>';
       return '<li><span>' + esc(qq.text) + (lead ? '<small>' + esc(lead.pick) + ' favoured</small>' : '<small>No action yet</small>') + '</span><b>' + oddsFor(lead ? lead.n : 0, total) + '</b></li>';
     }).join('');
   }
@@ -2552,9 +2561,12 @@
   var picking = false;
   function showQuestion(animate) {
     var q = QUESTIONS[qIndex], mine = myVotes()[q.id] || null;
-    $('q-progress').textContent = 'Market ' + (qIndex + 1) + ' of ' + QUESTIONS.length;
+    var plain = plainPicks();
+    $('q-progress').textContent = (plain ? 'Question ' : 'Market ') + (qIndex + 1) + ' of ' + QUESTIONS.length;
     $('q-text').textContent = q.text;
-    $('q-current').textContent = mine ? 'On your slip: ' + mine + '. Tap another to swap it.' : (q.type === 'couple' ? 'Tap a couple to add them to your slip.' : 'Tap a name to add them to your slip. Yes, you can bet on yourself.');
+    $('q-current').textContent = plain
+      ? (mine ? 'Your pick: ' + mine + '. Tap another to change it.' : (q.type === 'couple' ? 'Tap a couple.' : 'Tap a name. Yes, you can pick yourself.'))
+      : (mine ? 'On your slip: ' + mine + '. Tap another to swap it.' : (q.type === 'couple' ? 'Tap a couple to add them to your slip.' : 'Tap a name to add them to your slip. Yes, you can bet on yourself.'));
     var bar = $('q-progress-bar'); if (bar) bar.innerHTML = QUESTIONS.map(function (qq, k) { return '<i class="' + (k < qIndex ? 'done' : k === qIndex ? 'now' : '') + '"></i>'; }).join('');
     var slip = $('q-slip'); if (slip) slip.textContent = answeredCount() + '/' + QUESTIONS.length;
     var t = tallyFor(q), total = t.rows.reduce(function (a, r) { return a + r.n; }, 0), byPick = {};
@@ -2563,7 +2575,7 @@
     if (animate) { wrap.classList.remove('slide'); void wrap.offsetWidth; wrap.classList.add('slide'); }
     var names = q.type === 'couple' ? COUPLES : NAMES.slice().sort();
     $('q-grid').innerHTML = names.map(function (n) {
-      return '<button type="button" class="pickbtn" data-pick="' + esc(n) + '" aria-pressed="' + (mine === n) + '"><span class="nm">' + esc(n) + '</span><span class="odds">' + oddsFor(byPick[n] || 0, total) + '</span>' + (mine === n ? '<span class="tick">\u2713 On slip</span>' : '') + '</button>';
+      return '<button type="button" class="pickbtn" data-pick="' + esc(n) + '" aria-pressed="' + (mine === n) + '"><span class="nm">' + esc(n) + '</span>' + (plain ? '' : '<span class="odds">' + oddsFor(byPick[n] || 0, total) + '</span>') + (mine === n ? '<span class="tick">\u2713' + (plain ? ' Your pick' : ' On slip') + '</span>' : '') + '</button>';
     }).join('');
     picking = false;
   }
@@ -2575,14 +2587,14 @@
       el.setAttribute('aria-pressed', String(el === b));
       var tk = el.querySelector('.tick'); if (tk) tk.remove();
     });
-    b.insertAdjacentHTML('beforeend', '<span class="tick">\u2713 On slip</span>'); buzz(6);
+    b.insertAdjacentHTML('beforeend', '<span class="tick">\u2713' + (plainPicks() ? ' Your pick' : ' On slip') + '</span>'); buzz(6);
     store.vote(q.id, me, pick).catch(function (e2) { toast('That pick didn\'t save: ' + ((e2 && e2.message) || e2)); });
     votes = votes.filter(function (v) { return !(v.voter === me && v.question_id === q.id); });
     votes.push({ question_id: q.id, voter: me, pick: pick, updated_at: new Date().toISOString() });
     var slipNow = $('q-slip'); if (slipNow) slipNow.textContent = answeredCount() + '/' + QUESTIONS.length;
     setTimeout(function () {
       if (qIndex + 1 < QUESTIONS.length) { qIndex++; showQuestion(true); }
-      else { toast('Slip placed. You can change a bet any time from the board.'); tab = 'home'; showScreen(); }
+      else { toast(plainPicks() ? 'Picks are in. You can change them any time.' : 'Slip placed. You can change a bet any time from the board.'); tab = 'home'; showScreen(); }
     }, 260);
   });
   $('q-later').addEventListener('click', function () { lsSet('cabin-haul-pred-later-' + me, '1'); showScreen(); });
@@ -2619,12 +2631,27 @@
     var mine = myVotes(), left = QUESTIONS.length - answeredCount();
     var html = '';
     var slip = $('dk-slip'); if (slip) slip.textContent = (QUESTIONS.length - left) + '/' + QUESTIONS.length;
-    if (left) html += '<div class="pred-banner"><div><b>' + (left === QUESTIONS.length ? 'Your bet slip is empty' : left + ' open ' + (left === 1 ? 'market' : 'markets') + ' on your slip') + '</b><span>Six markets, no stake, pure trash talk.</span></div><button type="button" class="nudge" id="pred-open">Make my picks</button></div>';
+    if (left && plainPicks()) html += '<div class="pred-banner"><div><b>' + (left === QUESTIONS.length ? 'You haven\u2019t picked yet' : left + ' still to pick') + '</b><span>Six quick questions. Takes a minute.</span></div><button type="button" class="btn primary" id="pred-open">Make my picks</button></div>';
+    else if (left) html += '<div class="pred-banner"><div><b>' + (left === QUESTIONS.length ? 'Your bet slip is empty' : left + ' open ' + (left === 1 ? 'market' : 'markets') + ' on your slip') + '</b><span>Six markets, no stake, pure trash talk.</span></div><button type="button" class="nudge" id="pred-open">Make my picks</button></div>';
+    else if (plainPicks()) html += '<div class="pred-head"><span class="pred-count">\u2713 All ' + QUESTIONS.length + ' picked</span><button type="button" class="linkbtn" id="pred-open">Change my picks</button></div>';
     else html += '<div class="pred-head"><span class="pred-count">\u2713 Slip placed \u00b7 ' + QUESTIONS.length + ' of ' + QUESTIONS.length + '</span><button type="button" class="linkbtn" id="pred-open">Edit my slip</button></div>';
     html += '<div class="pred-list">';
     QUESTIONS.forEach(function (q, i) {
       var t = tallyFor(q), total = t.rows.reduce(function (a, r) { return a + r.n; }, 0);
       var cc = comments.filter(function (c) { return c.question_id === q.id; }).length, my = mine[q.id];
+      if (plainPicks()) {   // the simple card: question, who's winning, a bar, your pick
+        var lead = t.rows[0];
+        html += '<button type="button" class="pred-card plain" data-q="' + i + '">' +
+          '<div class="pq">' + esc(q.text) + '</div>' +
+          '<div class="lead-row"><span class="lead' + (lead ? '' : ' none') + '">' + (lead ? esc(lead.pick) : 'No picks yet') + '</span>' + (lead ? '<span class="share">' + lead.n + ' <small>of ' + total + '</small></span>' : '') + '</div>' +
+          (total ? '<div class="seg">' + t.rows.map(function (r, k) { return '<span style="width:' + (100 * r.n / total) + '%;background:' + SEG_COLORS[k % SEG_COLORS.length] + '"></span>'; }).join('') + '</div>' : '') +
+          '<div class="sub"><span>' + t.voted + ' of ' + NAMES.length + ' have picked</span>' + (cc ? '<span class="k">\uD83D\uDCAC ' + cc + '</span>' : '') + (my ? '<span class="you">You picked ' + esc(my) + '</span>' : '<span class="you no">You haven\u2019t picked</span>') + '</div>';
+        var th = comments.filter(function (c) { return c.question_id === q.id; }), l2 = th.slice(-2);
+        if (!th.length) html += '<div class="pred-chat none"><span class="line"><span class="t">No comments yet. Tap to add one.</span></span></div>';
+        else html += '<div class="pred-chat">' + l2.map(function (c) { var rx = rxSummary(c.id); return '<span class="line"><b>' + esc(c.author === me ? 'You' : c.author) + '</b><span class="t">' + esc(c.text) + '</span>' + (rx ? '<span class="rx">' + rx + '</span>' : '') + '</span>'; }).join('') + (th.length > 2 ? '<span class="more">+' + (th.length - 2) + ' more</span>' : '') + '</div>';
+        html += '</button>';
+        return;
+      }
       var rows = t.rows.slice(0, 3);
       if (!rows.length) rows = NAMES.filter(function (n) { return n !== me; }).slice(0, 3).map(function (n) { return { pick: n, n: 0 }; });
       if (my && !rows.some(function (r) { return r.pick === my; })) rows.push({ pick: my, n: (t.rows.filter(function (r) { return r.pick === my; })[0] || { n: 0 }).n });
