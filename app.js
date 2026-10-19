@@ -1596,20 +1596,19 @@
   function refreshForUser() {
     renderedFor = me;
     document.body.classList.toggle('plain-picks', plainPicks());
-    mafiaDraft = null; teamsDraft = null; teamsEdit = false; expSplit = null; expanded = null; pickerFor = null; modReveal = false;
+    mafiaDraft = null; teamsDraft = null; teamsEdit = false; expanded = null; pickerFor = null; modReveal = false;
     renderPredictions(); renderSheet(); renderWall(); updateChatBadge();
     renderMafia(); renderTeams(); renderLiv(); renderSmash();
-    renderHockeyBoard(); renderGolfBoard(); renderSplitGrid(); renderVenmo(); renderMoney(); hibDraft = null; renderHibachi();
+    renderHockeyBoard(); renderGolfBoard(); hibDraft = null; renderHibachi();
   }
 
   // ---- Bottom dock ----
-  var TABS = ['home', 'bringing', 'cabin', 'games', 'money', 'hibachi'];
+  var TABS = ['home', 'bringing', 'cabin', 'games', 'hibachi'];
   var tab = 'cabin', indPlaced = false;
   function showTab(name) {
     var changed = name !== tab;
     tab = name;
     TABS.forEach(function (t) { $('page-' + t).hidden = t !== tab; });
-    if (tab === 'money') { renderSplitGrid(); renderVenmo(); renderMoney(); }
     Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function (b) {
       var on = b.getAttribute('data-tab') === tab;
       b.setAttribute('aria-selected', String(on));
@@ -2122,133 +2121,6 @@
       return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat">' + r.best + '<small>' + dtxt + '</small></span></div>';
     }).join('') + '</div>' + (rows.length > BOARD_MAX ? '<div class="lb-more">+' + (rows.length - BOARD_MAX) + ' more</div>' : '');
   }
-
-  // ---- Money: shared expenses ----
-  var expenses = [], expLoaded = false, expSub = false, expSplit = null, venmo = {}, venmoSub = false;
-  function subscribeVenmo() {
-    if (venmoSub || !store || !store.game) return;
-    venmoSub = true;
-    store.game('venmo', function (doc) { venmo = doc || {}; renderVenmo(); renderMoney(); });
-  }
-  function cleanHandle(v) { v = String(v || '').trim().replace(/^https?:\/\/(www\.)?venmo\.com\/(u\/)?/i, '').replace(/^@+/, ''); return v ? '@' + v : ''; }
-  function venmoLink(name) { var h = venmo[name]; return h ? '<a class="vm" href="https://venmo.com/u/' + encodeURIComponent(h.replace(/^@/, '')) + '" target="_blank" rel="noopener">' + esc(h) + '</a>' : ''; }
-  function renderVenmo() {
-    var form = $('venmo-form'), inp = $('venmo-input'); if (!form || !me) return;
-    var mine = venmo[me] || '';
-    if (document.activeElement !== inp) inp.value = mine;
-    form.classList.toggle('missing', !mine);
-    inp.placeholder = mine ? mine : '@your-handle';
-  }
-  $('venmo-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-    var h = cleanHandle($('venmo-input').value);
-    var doc = Object.assign({}, venmo); if (h) doc[me] = h; else delete doc[me];
-    venmo = doc; renderVenmo(); renderMoney();
-    store.setGame('venmo', doc).then(function () { toast(h ? 'Saved. People can pay ' + h + '.' : 'Venmo cleared.'); $('venmo-input').blur(); })
-      .catch(function (err) { toast('Couldn’t save that: ' + ((err && err.message) || err)); });
-  });
-  function subscribeExpenses() {
-    if (expSub || !store || !store.expenses) return;
-    expSub = true;
-    store.expenses(function (rows) {
-      expenses = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? 1 : -1; });
-      expLoaded = true; renderMoney();
-    }, function (e) { $('expenses').innerHTML = '<p class="empty">Couldn’t load expenses (' + esc((e && e.message) || e) + ').</p>'; });
-  }
-  function dollars(cents) { var n = Math.round(cents) / 100; return (n < 0 ? '−' : '') + '$' + Math.abs(n).toFixed(2); }
-  function expSplitOf(e) { return e.split && e.split.length ? e.split : NAMES; }
-  function balances() {
-    var net = {}; NAMES.forEach(function (n) { net[n] = 0; });
-    expenses.forEach(function (e) {
-      var amt = +e.amount || 0, sp = expSplitOf(e);
-      if (net[e.paid_by] == null) net[e.paid_by] = 0;
-      net[e.paid_by] += amt;
-      sp.forEach(function (n) { if (net[n] == null) net[n] = 0; net[n] -= amt / sp.length; });
-    });
-    return net;
-  }
-  function settleUp(net) {
-    var debt = [], cred = [];
-    Object.keys(net).forEach(function (n) { var v = Math.round(net[n]); if (v < -0.5) debt.push({ n: n, v: -v }); else if (v > 0.5) cred.push({ n: n, v: v }); });
-    debt.sort(function (a, b) { return b.v - a.v; }); cred.sort(function (a, b) { return b.v - a.v; });
-    var out = [], i = 0, k = 0;
-    while (i < debt.length && k < cred.length) {
-      var pay = Math.min(debt[i].v, cred[k].v);
-      if (pay >= 1) out.push({ from: debt[i].n, to: cred[k].n, amount: pay });
-      debt[i].v -= pay; cred[k].v -= pay;
-      if (debt[i].v < 1) i++; if (cred[k].v < 1) k++;
-    }
-    return out;
-  }
-  function renderSplitGrid() {
-    var grid = $('exp-split'); if (!grid) return;
-    if (!expSplit) expSplit = NAMES.slice();
-    grid.innerHTML = NAMES.map(function (n) { return '<button type="button" data-split="' + esc(n) + '" aria-pressed="' + (expSplit.indexOf(n) >= 0) + '">' + esc(n === me ? 'You' : n) + '</button>'; }).join('');
-    $('exp-split-n').textContent = expSplit.length === NAMES.length ? 'everyone' : expSplit.length + (expSplit.length === 1 ? ' person' : ' people');
-    renderExpPreview();
-  }
-  function parseAmount() { var v = parseFloat(String($('exp-amount').value).replace(/[^0-9.]/g, '')); return isNaN(v) || v <= 0 ? 0 : Math.round(v * 100); }
-  function renderExpPreview() {
-    var el = $('exp-preview'); if (!el) return;
-    var cents = parseAmount();
-    el.textContent = cents && expSplit.length ? dollars(cents / expSplit.length) + ' each' : '';
-  }
-  var AV_COLORS = ['#008cff', '#7c4dff', '#ff6d3a', '#00b887', '#ff3d8f', '#f5a623', '#2bb3c0', '#8e5ad9'];
-  function avatar(name) {   // Venmo-style initial bubble, colour fixed per person
-    var h = 0; for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-    return '<span class="av" style="background:' + AV_COLORS[h % AV_COLORS.length] + '">' + esc(name.charAt(0)) + '</span>';
-  }
-  function renderMoney() {
-    var list = $('expenses'), sum = $('money-summary'); if (!list || !me) return;
-    if (!expLoaded) { list.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
-    var net = balances(), mine = Math.round(net[me] || 0), total = expenses.reduce(function (a, e) { return a + (+e.amount || 0); }, 0);
-    var html = '';
-    if (!expenses.length) { sum.innerHTML = ''; list.innerHTML = '<p class="empty">Nothing in yet. First round of groceries goes here.</p>'; return; }
-    html += '<div class="money-you' + (mine < -50 ? ' owe' : '') + '"><div class="big">' + (Math.abs(mine) < 50 ? 'You’re square' : mine > 0 ? 'You’re owed ' + dollars(mine) : 'You owe ' + dollars(-mine)) + '</div><div class="sub">' + dollars(total) + ' spent so far across ' + expenses.length + (expenses.length === 1 ? ' expense' : ' expenses') + '.</div></div>';
-    var pays = settleUp(net);
-    html += '<div class="settle"><h3>Settle up <small>' + (pays.length ? pays.length + (pays.length === 1 ? ' payment' : ' payments') + ' and everyone’s even' : 'all even') + '</small></h3>';
-    html += pays.length ? pays.map(function (p) {
-      var inv = p.from === me || p.to === me;
-      return '<div class="pay' + (inv ? ' me' : '') + '">' + avatar(p.from === me ? p.to : p.from) + '<span><b>' + esc(p.from === me ? 'You' : p.from) + '</b><span class="arrow">→</span><b>' + esc(p.to === me ? 'you' : p.to) + '</b>' + (venmoLink(p.to) || '<span class="vm">no Venmo yet</span>') + '</span><span class="amt">' + dollars(p.amount) + '</span></div>';
-    }).join('') : '<div class="info-sub">Nobody owes anybody.</div>';
-    html += '</div>';
-    sum.innerHTML = html;
-    list.innerHTML = '<div class="exp-head">Everything so far <small>' + dollars(total) + '</small></div><div class="exp-list">' + expenses.map(function (e) {
-      var sp = expSplitOf(e);
-      return '<div class="exp">' + avatar(e.paid_by) + '<span class="t"><b>' + esc(e.paid_by === me ? 'You' : e.paid_by) + '</b> paid <b>' + (sp.length === NAMES.length ? 'everyone' : sp.length + ' people') + '</b><small>' + esc(agoText(e.created_at)) + '</small></span><span class="amt">' + dollars(+e.amount || 0) + '</span>' +
-        '<span class="note">' + esc(e.title) + '</span>' +
-        '<span class="sub"><span class="rx">\u2661 \u00b7 \uD83D\uDCAC</span>' +
-        (e.paid_by === me ? '<button type="button" class="linkbtn" data-del-exp="' + esc(e.id) + '">Remove</button>' : '') + '</span></div>';
-    }).join('') + '</div>';
-  }
-  $('exp-split').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-split]'); if (!b) return;
-    var n = b.getAttribute('data-split');
-    if (expSplit.indexOf(n) >= 0) { if (expSplit.length > 1) expSplit = expSplit.filter(function (x) { return x !== n; }); } else expSplit.push(n);
-    renderSplitGrid();
-  });
-  $('exp-split-all').addEventListener('click', function () { expSplit = NAMES.slice(); renderSplitGrid(); });
-  $('exp-amount').addEventListener('input', renderExpPreview);
-  $('money-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-    var title = $('exp-title').value.replace(/\s+/g, ' ').trim(), cents = parseAmount();
-    if (!title) { $('exp-title').focus(); return; }
-    if (!cents) { $('exp-amount').focus(); toast('How much was it?'); return; }
-    var row = { title: title, amount: cents, paid_by: me, split: expSplit.slice() };
-    $('exp-add').disabled = true;
-    store.addExpense(row).then(function (saved) {
-      $('exp-title').value = ''; $('exp-amount').value = ''; expSplit = NAMES.slice(); renderSplitGrid();
-      if (!expenses.some(function (x) { return x.id === saved.id; })) { expenses.unshift(saved); renderMoney(); }
-      toast('In. ' + dollars(cents) + ' for ' + title + '.');
-    }).catch(function (err) { toast('Didn’t save: ' + ((err && err.message) || err)); })
-      .then(function () { $('exp-add').disabled = false; });
-  });
-  $('expenses').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-del-exp]'); if (!b) return;
-    var id = b.getAttribute('data-del-exp');
-    expenses = expenses.filter(function (x) { return x.id !== id; }); renderMoney();
-    store.removeExpense(id).catch(function (err) { toast('Couldn’t remove it: ' + ((err && err.message) || err)); });
-  });
 
   // ---- Games: Mafia dealer ----
   var mafia = null, mafiaLoaded = false, mafiaSub = false, mafiaDraft = null, revealHold = false, modReveal = false, mafiaDealAnim = false;
@@ -3000,9 +2872,6 @@
     subscribeLiv();
     subscribeSmash();
     subscribeBoards();
-    subscribeExpenses();
-    subscribeVenmo();
-    renderSplitGrid();
     if (!store) { showSetup('No data layer loaded. The page is missing its store script.'); return; }
     store.init({
       onItems: function (rows) { items = rows.slice(); itemsLoaded = true; render(); },

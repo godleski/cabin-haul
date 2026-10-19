@@ -551,10 +551,7 @@
   .steps b, .rules b, .info-sub b { color: var(--fg); font-weight: 700; }
   .rules { margin: 6px 0 0; padding-left: 18px; font-size: 0.9rem; color: var(--muted); display: grid; gap: 5px; }
   .fine { margin: 10px 0 0; font-size: 0.76rem; color: var(--muted); }
-  /* the money form and the questionnaire button lost their base styles in the Bringing redesign; restored here */
-  .money-form { margin-top: 12px; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; color: var(--fg); }
-  .money-form .row { display: flex; gap: 8px; }
-  .money-form .row2 { display: flex; gap: 10px; margin-top: 12px; }
+  /* the questionnaire button lost its base styles in the Bringing redesign; restored here */
   .addbtn { border: 0; background: var(--pine); color: var(--pine-ink); font: 800 0.95rem var(--display); padding: 12px 18px; border-radius: 999px; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15); }
   .addbtn:disabled { opacity: 0.5; }
   /* ===== Every tab is its own world. Each page sets the shared tokens for its cards and gets a hero on top. ===== */
@@ -809,68 +806,6 @@
   #page-games input[type="text"], #page-games .name-grid button, #page-games .segc { border-radius: 0; }
   @media (prefers-reduced-motion: reduce) { .arcade-hero .eyebrow .cursor, .arcade-hero .dice { animation: none; } }
 
-  /* ---- Money: a mock Venmo. Blue header band, white balance card, pay composer, activity feed with avatars. ---- */
-  #page-money {
-    --vb: #008cff; --vb-deep: #0070d6; --surface: #ffffff; --bg: #f0f6fc; --fg: #1b2a35; --muted: #6b7c8f; --line: #e1ecf6; --pine: #008cff; --pine-soft: #e5f3ff; --pine-ink: #fff; --ember: #d93025; --ember-soft: #fde8e6; --lake: #008cff;
-    display: flex; flex-direction: column; color: var(--fg); padding-top: 0;
-    background: linear-gradient(180deg, var(--vb) 0, var(--vb) 250px, var(--bg) 250px);
-  }
-  #page-money > .vm-hero { order: 0; } #page-money > #money-summary { order: 1; } #page-money > .venmo { order: 2; } #page-money > .money-form { order: 3; } #page-money > #expenses { order: 4; }
-  .vm-hero { padding: 16px 0 56px; color: #fff; }
-  .vm-bar { display: flex; align-items: center; justify-content: space-between; }
-  .vm-brand { display: flex; align-items: center; gap: 8px; }
-  .vm-mark { width: 34px; height: 34px; border-radius: 9px; background: #fff; color: var(--vb); display: grid; place-items: center; font: 800 1.4rem/1 var(--display); }
-  .vm-word { font: 800 1.5rem var(--display); letter-spacing: -0.03em; color: #fff; }
-  .vm-emoji { display: flex; gap: 2px; font-size: 1.3rem; }
-  .vm-emoji span { display: inline-block; animation: vmfloat 3.2s ease-in-out infinite; }
-  .vm-emoji span:nth-child(2) { animation-delay: 0.5s; } .vm-emoji span:nth-child(3) { animation-delay: 1s; } .vm-emoji span:nth-child(4) { animation-delay: 1.5s; }
-  @keyframes vmfloat { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-5px) rotate(6deg); } }
-  .vm-hero .eyebrow { margin-top: 22px; color: rgba(255, 255, 255, 0.8); }
-  .vm-hero h1 { color: #fff; text-transform: none; letter-spacing: -0.03em; font-size: clamp(2.2rem, 10vw, 2.9rem); }
-  .vm-hero .lede { color: rgba(255, 255, 255, 0.88); }
-  #page-money #money-summary { margin-top: -40px; display: grid; gap: 12px; }
-  #page-money .money-you { background: #fff; border: 0; border-radius: 18px; padding: 18px 18px 16px; box-shadow: 0 12px 30px rgba(0, 60, 120, 0.18); color: var(--fg); }
-  #page-money .money-you::before { content: "Balance"; display: block; font: 700 0.72rem var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
-  #page-money .money-you .big { color: #148f3a; font-size: 1.75rem; text-shadow: none; letter-spacing: -0.02em; }
-  #page-money .money-you.owe .big { color: var(--ember); }
-  #page-money .money-you .sub { color: var(--muted); }
-  #page-money .settle { border: 0; border-radius: 18px; box-shadow: 0 8px 22px rgba(0, 60, 120, 0.1); color: var(--fg); }
-  #page-money .settle h3 { color: var(--fg); }
-  #page-money .pay .av { width: 34px; height: 34px; font-size: 0.9rem; }
-  #page-money .pay .amt { padding: 6px 11px; border-radius: 999px; background: var(--bg); color: var(--fg); font-size: 0.85rem; }
-  #page-money .pay.me .amt { background: var(--vb); color: #fff; }
-  #page-money .pay a.vm { color: var(--vb); }
-  #page-money .venmo { background: #fff; border: 0; border-radius: 16px; box-shadow: 0 6px 18px rgba(0, 60, 120, 0.08); color: var(--fg); }
-  #page-money .venmo.missing { background: #fff; border: 1.5px solid var(--ember); }
-  #page-money .venmo label::before { content: "@"; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--vb); color: #fff; font: 800 0.8rem var(--display); margin-right: 6px; vertical-align: -5px; }
-  #page-money .money-form { background: #fff; border: 0; border-radius: 18px; box-shadow: 0 8px 22px rgba(0, 60, 120, 0.1); color: var(--fg); }
-  #page-money .money-form::before { content: "Pay or request"; display: block; font: 800 1rem var(--display); margin-bottom: 10px; }
-  #page-money .money-form .row { flex-direction: column; gap: 10px; }
-  #page-money .money-form #exp-amount { flex: none; width: 100%; text-align: center; font: 800 2.4rem var(--display); letter-spacing: -0.03em; color: var(--vb); border: 0; background: transparent; padding: 4px 0; }
-  #page-money .money-form #exp-amount::placeholder { color: #bcd6ef; }
-  #page-money .money-form #exp-title { background: var(--bg); border: 0; border-radius: 12px; text-align: center; }
-  #page-money .money-form .name-grid button { border-radius: 999px; background: var(--bg); border-color: transparent; color: var(--fg); }
-  #page-money .money-form .name-grid button[aria-pressed="true"] { background: var(--vb); color: #fff; }
-  #page-money .money-form .split-head { color: var(--muted); }
-  #page-money .addbtn { background: var(--vb); color: #fff; border-radius: 999px; box-shadow: 0 6px 16px rgba(0, 140, 255, 0.35); width: 100%; font-size: 1rem; padding: 14px 18px; }
-  #page-money .money-foot { flex-direction: column; align-items: stretch; gap: 8px; }
-  #page-money .money-foot .info-sub { text-align: center; }
-  #page-money .exp-head { color: var(--fg); margin-top: 22px; font-size: 1.05rem; }
-  #page-money .exp-head::before { content: "Activity"; display: block; font: 700 0.72rem var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-  #page-money .exp-head small { color: var(--muted); }
-  #page-money .exp { background: #fff; border: 0; border-radius: 16px; padding: 12px 14px; box-shadow: 0 6px 18px rgba(0, 60, 120, 0.08); color: var(--fg); }
-  #page-money .exp::before { display: none; }
-  #page-money .exp .t { font-weight: 500; font-size: 0.92rem; } #page-money .exp .t b { font-weight: 700; }
-  #page-money .exp .t small { display: block; color: var(--muted); font-size: 0.74rem; margin-top: 1px; }
-  #page-money .exp .amt { color: #148f3a; }
-  #page-money .exp .amt::before { content: "+ "; }
-  #page-money .exp .note { grid-column: 2 / -1; font-size: 0.95rem; color: var(--fg); margin-top: 2px; }
-  #page-money .exp .sub { grid-column: 2 / -1; }
-  #page-money .exp .sub .rx { color: var(--muted); letter-spacing: 0.08em; }
-  #page-money .exp .sub .linkbtn { color: var(--vb); }
-  #page-money .skeleton, #page-money .empty { color: var(--muted); border-color: var(--line); }
-  @media (prefers-reduced-motion: reduce) { .vm-emoji span { animation: none; } }
-
   @media (prefers-reduced-motion: reduce) { .cabin-hero .star, .cabin-hero .win, .cabin-hero .smoke, .odds-hero .orb, .ticker .tk, .haul-hero .cart, .arcade-hero .eyebrow, .arcade-hero h1.neon, .arcade-hero .dice { animation: none; } }
   /* ---- Hibachi: the whole tab goes grill-house red, black menu panels, white caps ---- */
   #page-hibachi {
@@ -1022,41 +957,6 @@
   .hib-grand { display: flex; justify-content: space-between; margin-top: 8px; font: 800 1.05rem var(--display); }
   .note-card { background: var(--ember-soft); border-color: var(--ember); }
   .note-card .info-title { color: var(--ember); }
-  /* ---- Money ---- */
-  .venmo { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; margin-top: 14px; padding: 10px 12px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
-  .venmo label { font: 700 0.85rem var(--display); white-space: nowrap; }
-  .venmo input { min-width: 0; }
-  .venmo.missing { border-color: var(--ember); background: var(--ember-soft); }
-  .venmo .btn { padding: 8px 12px; }
-  .pay .vm { font-size: 0.76rem; color: var(--muted); font-weight: 500; margin-left: 6px; }
-  .pay a.vm { color: var(--lake); text-decoration: none; font-weight: 600; }
-  .money-form .row input[type="text"] { min-width: 0; }
-  .money-form #exp-amount { flex: 0 0 110px; font-variant-numeric: tabular-nums; }
-  .split-head { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 0.85rem; color: var(--muted); }
-  .split-head b { color: var(--fg); }
-  .money-foot { align-items: center; justify-content: space-between; }
-  .money-form .name-grid button { padding: 7px 4px; font-size: 0.8rem; }
-  .money-summary { margin-top: 16px; display: grid; gap: 10px; }
-  .money-you { padding: 14px 16px; border-radius: 14px; background: var(--pine-soft); border: 1.5px solid var(--pine); }
-  .money-you.owe { background: var(--ember-soft); border-color: var(--ember); }
-  .money-you .big { font: 800 1.6rem var(--display); letter-spacing: -0.02em; } .money-you.owe .big { color: var(--ember); } .money-you:not(.owe) .big { color: var(--pine); }
-  .money-you .sub { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
-  .settle { padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
-  .settle h3 { font: 700 0.95rem var(--display); margin: 0 0 8px; display: flex; justify-content: space-between; align-items: baseline; }
-  .settle h3 small { font: 500 0.75rem var(--body); color: var(--muted); }
-  .pay { display: grid; grid-template-columns: auto 1fr auto; gap: 8px 10px; align-items: center; padding: 7px 0; border-top: 1px solid var(--line); font-size: 0.9rem; }
-  .pay:first-of-type { border-top: 0; }
-  .av { width: 30px; height: 30px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff; font: 800 0.8rem var(--display); flex: none; }
-  .pay b { font-weight: 700; } .pay .arrow { color: var(--muted); margin: 0 6px; }
-  .pay .amt { font-weight: 800; font-variant-numeric: tabular-nums; }
-  .pay.me { color: var(--fg); } .pay.me .amt { color: var(--ember); }
-  .exp-list { margin-top: 14px; display: grid; gap: 6px; }
-  .exp-head { display: flex; justify-content: space-between; align-items: baseline; margin-top: 18px; font: 700 0.95rem var(--display); }
-  .exp-head small { font: 500 0.78rem var(--body); color: var(--muted); }
-  .exp { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); align-items: center; }
-  .exp .t { font-weight: 700; } .exp .amt { font: 800 1.05rem var(--display); font-variant-numeric: tabular-nums; }
-  .exp .sub { grid-column: 1 / -1; font-size: 0.78rem; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
-  .exp .sub .linkbtn { font-size: 0.78rem; }
   /* ---- Chat wall ---- */
   .wall { display: grid; gap: 8px; margin-top: 6px; }
   .wall .msg { max-width: 86%; }

@@ -179,26 +179,6 @@
           return ref.set(sc);
         });
       });
-    },
-
-    // Shared expenses: one document per expense (future Supabase table "expenses": id, title, amount (cents), paid_by, split, created_at).
-    expenses: function (onRows, onError) {
-      ensure().then(function () {
-        if (!db) return;
-        db.collection('expenses').onSnapshot(function (qs) {
-          onRows(qs.docs.filter(function (d) { return d.exists; }).map(toRow));
-        }, function (e) { if (onError) onError(e); });
-      });
-    },
-    addExpense: function (row) {
-      return ensure().then(function () {
-        if (!db) throw new Error('not signed in');
-        var body = Object.assign({}, row, { created_at: new Date().toISOString() });
-        return db.collection('expenses').add(body).then(function (ref) { body.id = ref.id; return body; });
-      });
-    },
-    removeExpense: function (id) {
-      return ensure().then(function () { if (!db) throw new Error('not signed in'); return db.doc('expenses/' + id).delete(); });
     }
   };
 })();

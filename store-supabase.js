@@ -170,24 +170,6 @@
         sc.by[name] = p;
         return sb.from('kv').upsert({ key: 'golf', value: sc }).then(one);
       });
-    },
-
-    // Shared expenses: table "expenses" (id, title, amount integer cents, paid_by, split jsonb, created_at). Added at go-live.
-    expenses: function (onRows) {
-      if (!ensure()) return;
-      var read = function () {
-        sb.from('expenses').select('id,title,amount,paid_by,split,created_at').order('created_at', { ascending: true }).then(function (res) { onRows(res.data || []); });
-      };
-      try { sb.channel('cabin-expenses').on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, read).subscribe(); } catch (e) { /* ignore */ }
-      read();
-    },
-    addExpense: function (row) {
-      if (!ensure()) return Promise.reject(new Error('not connected'));
-      return sb.from('expenses').insert(row).select().single().then(one);
-    },
-    removeExpense: function (id) {
-      if (!ensure()) return Promise.reject(new Error('not connected'));
-      return sb.from('expenses').delete().eq('id', id).then(one);
     }
   };
 })();
