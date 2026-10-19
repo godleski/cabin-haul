@@ -36,16 +36,41 @@
   :is(input, select, button):focus-visible { outline: 3px solid var(--ember); outline-offset: 2px; }
 
   /* ---- Who are you: bubbles you can fling around (drawn on a canvas) ---- */
+  /* The turf: a mown fairway built from layered gradients and inline SVG grass grain (blade streaks, tufts, broad mottle,
+     soft mow stripes with wandering edges) inside a textured first-cut rough painted under a transparent border, with a
+     light collar ring (::before). All static, so it rasterises once; the canvas with the balls sits above on its own layer. */
   .bubbles {
     position: relative; margin-top: 20px; height: min(62vh, 560px); min-height: 420px;
-    border-radius: 18px; border: 6px solid var(--fringe);
-    background:
-      radial-gradient(ellipse at 50% 35%, rgba(120, 200, 140, 0.30), rgba(0, 0, 0, 0) 62%),
-      repeating-linear-gradient(135deg, var(--grass-a) 0 40px, var(--grass-b) 40px 80px);
-    box-shadow: inset 0 0 70px rgba(0, 20, 10, 0.45);
-    overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
+    border-radius: 18px; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
+    border: 8px solid transparent;
+    background-image:
+      radial-gradient(ellipse 85% 80% at 8% -8%, rgba(248, 252, 200, 0.26) 0%, rgba(248, 252, 200, 0.11) 38%, rgba(248, 252, 200, 0.00) 72%),   /* morning sun from the upper left (borrowed from the "light" study, at half strength) */
+      radial-gradient(ellipse 130% 110% at 40% 10%, rgba(0, 0, 0, 0) 55%, rgba(0, 16, 6, 0.34) 100%),
+      radial-gradient(ellipse 90% 70% at 20% -10%, rgba(240, 250, 215, 0.26) 0%, rgba(240, 250, 215, 0.10) 40%, rgba(240, 250, 215, 0) 72%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='t' x='-25%25' y='-25%25' width='150%25' height='150%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.85 0.12' numOctaves='2' seed='3' stitchTiles='stitch' x='0' y='0' width='256' height='256' result='n'/%3E %3CfeTile in='n' result='nt'/%3E %3CfeTurbulence type='fractalNoise' baseFrequency='0.025' numOctaves='2' seed='33' stitchTiles='stitch' x='0' y='0' width='256' height='256' result='w'/%3E %3CfeTile in='w' result='wt'/%3E %3CfeDisplacementMap in='nt' in2='wt' scale='7' xChannelSelector='R' yChannelSelector='G' result='d'/%3E %3CfeColorMatrix in='d' values='0 0 0 0 0.84 0 0 0 0 0.95 0 0 0 0 0.6 1.5 0 0 0 -0.66'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23t)'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='g' x='-25%25' y='-25%25' width='150%25' height='150%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72 0.17' numOctaves='3' seed='7' stitchTiles='stitch' x='0' y='0' width='256' height='256' result='n'/%3E %3CfeTile in='n' result='nt'/%3E %3CfeTurbulence type='fractalNoise' baseFrequency='0.03' numOctaves='2' seed='21' stitchTiles='stitch' x='0' y='0' width='256' height='256' result='w'/%3E %3CfeTile in='w' result='wt'/%3E %3CfeDisplacementMap in='nt' in2='wt' scale='5' xChannelSelector='R' yChannelSelector='G' result='d'/%3E %3CfeColorMatrix in='d' values='0.62 0 0 0 0.190 0.62 0 0 0 0.190 0.62 0 0 0 0.190 0 0 0 0 0.6' result='c'/%3E %3CfeComponentTransfer in='c'%3E%3CfeFuncR type='table' tableValues='0 0.15 0.5 0.85 1'/%3E%3CfeFuncG type='table' tableValues='0 0.15 0.5 0.85 1'/%3E%3CfeFuncB type='table' tableValues='0 0.15 0.5 0.85 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='u' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.17 0.1' numOctaves='2' seed='5' stitchTiles='stitch'/%3E %3CfeColorMatrix values='0.36 0 0 0 0.320 0.36 0 0 0 0.320 0.36 0 0 0 0.320 0 0 0 0 0.5'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23u)'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='512' height='512'%3E%3Cfilter id='m' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.013 0.018' numOctaves='3' seed='11' stitchTiles='stitch'/%3E %3CfeColorMatrix values='0.26 0.4 0 0 0.17 0.1 0.4 0 0 0.25 -0.14 0.4 0 0 0.37 0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='460' height='900'%3E%3Cdefs%3E%3ClinearGradient id='g' gradientUnits='userSpaceOnUse' x1='0' y1='0' x2='92' y2='0' spreadMethod='repeat'%3E %3Cstop offset='0' stop-color='%233d8a52'/%3E%3Cstop offset='0.451' stop-color='%233d8a52'/%3E%3Cstop offset='0.549' stop-color='%2327643f'/%3E%3Cstop offset='0.951' stop-color='%2327643f'/%3E%3Cstop offset='1' stop-color='%233d8a52'/%3E%3C/linearGradient%3E %3Cfilter id='d' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.004 0.008' numOctaves='2' seed='13' result='n'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='n' scale='9' xChannelSelector='R' yChannelSelector='G'/%3E%3C/filter%3E%3C/defs%3E %3Crect x='-40' y='-40' width='540' height='980' fill='url(%23g)' filter='url(%23d)'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192'%3E%3Cfilter id='r' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.3 0.2' numOctaves='3' seed='2' stitchTiles='stitch' result='n'/%3E %3CfeColorMatrix in='n' values='0.28 0 0 0 -0.020 0.4 0.08 0 0 0.025 0.24 0 0 0 0.040 0 0 0 0 1' result='base'/%3E %3CfeTurbulence type='turbulence' baseFrequency='0.5 0.24' numOctaves='2' seed='4' stitchTiles='stitch' result='f'/%3E %3CfeColorMatrix in='f' values='0 0 0 0 0.5 0 0 0 0 0.7 0 0 0 0 0.34 1.6 0 0 0 -0.52' result='fib'/%3E %3CfeMerge%3E%3CfeMergeNode in='base'/%3E%3CfeMergeNode in='fib'/%3E%3C/feMerge%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23r)'/%3E%3C/svg%3E");
+    background-size: auto, auto, auto, 256px 256px, 256px 256px, 256px 256px, 512px 512px, auto, 192px 192px;
+    background-origin: border-box, border-box, border-box, padding-box, padding-box, padding-box, padding-box, padding-box, border-box;
+    background-clip: border-box, border-box, border-box, padding-box, padding-box, padding-box, padding-box, padding-box, border-box;
+    background-blend-mode: overlay, multiply, overlay, normal, overlay, overlay, soft-light, normal, normal;
+    background-color: #17351f;
+    box-shadow:
+      inset 0 0 0 1px rgba(0, 14, 4, 0.5),
+      inset 0 0 7px 4px rgba(216, 238, 172, 0.08),
+      inset 0 0 18px 6px rgba(0, 18, 6, 0.22),
+      0 0 0 1px rgba(8, 26, 14, 0.45),
+      0 10px 30px rgba(0, 0, 0, 0.18);
   }
-  .bubbles canvas { display: block; width: 100%; height: 100%; cursor: grab; -webkit-tap-highlight-color: transparent; }
+  .bubbles::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; box-sizing: border-box;
+    border-radius: 10px; padding: 3px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='c' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5 0.22' numOctaves='2' seed='6' stitchTiles='stitch'/%3E %3CfeColorMatrix values='0 0 0 0 0.72 0 0 0 0 0.9 0 0 0 0 0.52 0.9 0 0 0 -0.33'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)'/%3E%3C/svg%3E") 0 0 / 128px 128px;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; }
+  .bubbles canvas { display: block; width: 100%; height: 100%; cursor: grab; -webkit-tap-highlight-color: transparent; position: relative; z-index: 2; transform: translateZ(0); }
   /* a game is on: the arena takes the screen and the words get out of the way */
   body.playing { padding: calc(4px + env(safe-area-inset-top, 0px)) 6px calc(4px + env(safe-area-inset-bottom, 0px)); }
   body.playing #pick > :not(.arena-wrap) { display: none !important; }
