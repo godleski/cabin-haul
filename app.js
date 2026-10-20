@@ -3101,12 +3101,14 @@
     }
     // everyone, for Jess
     var all = $('hib-all'), rows = '', counts = {}, plates = 0, tips = 0;
+    var canMark = me === HIBACHI_HOST || me === HIBACHI_PAYEE.name;   // the host and the one collecting can mark anyone paid
     HIB_NAMES.forEach(function (n) {
       var o = orders[n];
       if (o && o.locked) {
         var isH = n === HIBACHI_HOST, p = isH ? hibTotal(o) : hibOwed(n, o); plates += hibPrice(o); tips += hibTip(o);
         hibChefLines(o).forEach(function (l) { counts[l] = (counts[l] || 0) + 1; });
-        rows += '<div class="hib-row' + (n === me ? ' me' : '') + (o.paid && !isH ? ' paid' : '') + '"><span class="who">' + esc(n) + (isH ? ' <span class="pd treat">covered</span>' : o.paid ? ' <span class="pd">paid</span>' : n === HIBACHI_PAYEE.name ? '' : ' <span class="pd owes">owes</span>') + '</span><span class="amt">' + money(o.paid && !isH && o.paid_amt != null ? o.paid_amt : p) + '</span><span class="det">' + esc(hibChefLines(o).join(', ')) + (o.note ? ' · “' + esc(o.note) + '”' : '') + (isH ? ' · split ' + hibSplitWays() + ' ways, ' + money(hibShare()) + ' each' : '') + (function () { var d = isH ? 0 : hibDrift(o, p); return d > 0 ? ' · <b>now ' + money(p) + ', owes ' + money(d) + ' more</b>' : d < 0 ? ' · now ' + money(p) + ', ' + money(-d) + ' back' : ''; })() + '</span></div>';
+        rows += '<div class="hib-row' + (n === me ? ' me' : '') + (o.paid && !isH ? ' paid' : '') + '"><span class="who">' + esc(n) + (isH ? ' <span class="pd treat">covered</span>' : o.paid ? ' <span class="pd">paid</span>' : n === HIBACHI_PAYEE.name ? '' : ' <span class="pd owes">owes</span>') +
+          (canMark && !isH && n !== me ? ' <button type="button" class="hib-mark" data-hib-mark="' + esc(n) + '">' + (o.paid ? 'Unmark' : 'Mark paid') + '</button>' : '') + '</span><span class="amt">' + money(o.paid && !isH && o.paid_amt != null ? o.paid_amt : p) + '</span><span class="det">' + esc(hibChefLines(o).join(', ')) + (o.note ? ' · “' + esc(o.note) + '”' : '') + (isH ? ' · split ' + hibSplitWays() + ' ways, ' + money(hibShare()) + ' each' : '') + (function () { var d = isH ? 0 : hibDrift(o, p); return d > 0 ? ' · <b>now ' + money(p) + ', owes ' + money(d) + ' more</b>' : d < 0 ? ' · now ' + money(p) + ', ' + money(-d) + ' back' : ''; })() + '</span></div>';
       } else {
         rows += '<div class="hib-row waiting"><span class="who">' + esc(n) + '</span><span class="amt">—</span><span class="det">not in yet</span></div>';
       }
@@ -3157,6 +3159,18 @@
       var left = HIB_NAMES.filter(function (nm) { var o = hibOrders()[nm]; return !(o && o.locked); }).length;
       var paidAlready = HIB_NAMES.filter(function (nm) { var o = hibOrders()[nm]; return nm !== HIBACHI_HOST && o && o.locked && o.paid; }).length;
       toast(me === HIBACHI_PAYEE.name ? (left ? 'Locked in. ' + left + ' to go.' : 'Locked in. That’s everyone!') : me === HIBACHI_HOST ? (paidAlready && prev && hibTotal(prev) !== hibTotal(order) ? 'Locked in. ' + paidAlready + ' already paid at the old split; they’ll see the difference.' : 'Locked in. The group’s got your plate.') : 'Locked in. Now Venmo ' + HIBACHI_PAYEE.name + ' ' + money(hibOwed(me, order)) + ' (plate, tip and ' + money(hibShare()) + ' for ' + HIBACHI_HOST + '’s).');
+      return;
+    }
+    var mk = e.target.closest('[data-hib-mark]');
+    if (mk && (me === HIBACHI_HOST || me === HIBACHI_PAYEE.name)) {   // marking someone else paid, on their behalf
+      var who = mk.getAttribute('data-hib-mark'), their = hibOrders()[who]; if (!their) return;
+      var paying = !their.paid, upd2 = Object.assign({}, their, { paid: paying, at: new Date().toISOString() }); delete upd2.preset;
+      if (paying) upd2.paid_amt = hibOwed(who, their); else delete upd2.paid_amt;
+      var js2 = JSON.stringify(upd2);
+      store.vote(HIBACHI_Q, who, js2).catch(function (err) { toast('That didn’t save: ' + ((err && err.message) || err)); });
+      votes = votes.filter(function (v) { return !(v.voter === who && v.question_id === HIBACHI_Q); });
+      votes.push({ question_id: HIBACHI_Q, voter: who, pick: js2 });
+      renderHibachi(); buzz(8); toast(paying ? who + ' marked paid.' : who + ' marked as not paid yet.');
       return;
     }
     if (e.target.closest('#hib-copy')) { copyText(hibCopyText(), 'Copied. Paste it to the hibachi company.'); buzz(6); return; }

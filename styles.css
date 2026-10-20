@@ -1032,6 +1032,8 @@
   #page-hibachi .ticket .hib-row .det { color: #5d5d5d; }
   #page-hibachi .ticket .hib-row.waiting .who, #page-hibachi .ticket .hib-row.waiting .amt { color: #9a9a9a; }
   #page-hibachi .ticket .hib-row.me .who { color: var(--hr); }
+  .hib-mark { margin-left: 6px; border: 1px solid currentColor; background: transparent; color: var(--hr, var(--pine)); font: 700 0.64rem var(--body); letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; cursor: pointer; vertical-align: 1px; }
+  .hib-row.paid .hib-mark { color: #777; }
   #page-hibachi .ticket .pd { background: #e3efe8; color: #2d6a4f; } #page-hibachi .ticket .pd.owes { background: #fbe9db; color: #b5561c; } #page-hibachi .ticket .pd.treat { background: #fff3c4; color: #8a6400; }
   #page-hibachi .hib-pay.host { background: #1b5e2b; border-color: #39d353; } #page-hibachi .hib-pay.host .pt b { color: #9ef0ae; }
   #page-hibachi .ticket .hib-totals { color: #5d5d5d; }
