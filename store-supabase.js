@@ -166,23 +166,23 @@
       });
     },
 
-    // Mini golf: kv key "golf".
+    // Mini golf: kv key "golf9" (nine-hole board; the old three-hole "golf" key is retired).
     golfScores: function (onDoc) {
       if (!ensure()) return;
-      var read = reader(function () { sb.from('kv').select('value').eq('key', 'golf').maybeSingle().then(function (res) { if (ok(res, 'golf')) onDoc((res.data && res.data.value) || { by: {} }); }); });
+      var read = reader(function () { sb.from('kv').select('value').eq('key', 'golf9').maybeSingle().then(function (res) { if (ok(res, 'golf9')) onDoc((res.data && res.data.value) || { by: {} }); }); });
       try { sb.channel('cabin-golf').on('postgres_changes', { event: '*', schema: 'public', table: 'kv' }, read).subscribe(); } catch (e) { /* ignore */ }
       read();
     },
     recordGolf: function (name, strokes) {
       if (!ensure()) return Promise.reject(new Error('not connected'));
-      return sb.from('kv').select('value').eq('key', 'golf').maybeSingle().then(function (res) {
+      return sb.from('kv').select('value').eq('key', 'golf9').maybeSingle().then(function (res) {
         var sc = (res.data && res.data.value) || { by: {} };
         sc.by = sc.by || {};
         var p = sc.by[name] || { best: null, rounds: 0 };
         p.rounds++; p.last = strokes; p.last_at = new Date().toISOString();
         if (p.best == null || strokes < p.best) p.best = strokes;
         sc.by[name] = p;
-        return sb.from('kv').upsert({ key: 'golf', value: sc }).then(one);
+        return sb.from('kv').upsert({ key: 'golf9', value: sc }).then(one);
       });
     }
   };

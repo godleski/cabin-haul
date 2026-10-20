@@ -163,13 +163,13 @@
     golfScores: function (onDoc) {
       ensure().then(function () {
         if (!db) return;
-        db.doc('meta/golf').onSnapshot(function (snap) { onDoc(snap.exists ? Object.assign({}, snap.data()) : { by: {} }); }, function () { /* ignore */ });
+        db.doc('meta/golf9').onSnapshot(function (snap) { onDoc(snap.exists ? Object.assign({}, snap.data()) : { by: {} }); }, function () { /* ignore */ });
       });
     },
     recordGolf: function (name, strokes) {
       return ensure().then(function () {
         if (!db) throw new Error('not signed in');
-        var ref = db.doc('meta/golf');
+        var ref = db.doc('meta/golf9');
         return ref.get().then(function (snap) {
           var sc = snap.exists ? JSON.parse(JSON.stringify(snap.data())) : { by: {} };
           sc.by = sc.by || {};

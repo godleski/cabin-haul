@@ -107,7 +107,7 @@
     }, onGolfDone: function (total) {
       var who = golfer; golfer = null;
       if (!who || !store || !store.recordGolf) return;
-      var par = 9, d = golfToPar(total, par);
+      var par = 27, d = golfToPar(total, par);
       store.recordGolf(who, total).then(function () { toast(who + ' finished ' + (d === 'E' ? 'even' : d) + '. On the board.'); }).catch(function (err) { toast('Couldn\u2019t post that: ' + ((err && err.message) || err)); });
     } });
   }
@@ -117,7 +117,7 @@
     var el = $('golf-post'); if (!el) return;
     if (!show) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false;
-    el.innerHTML = '<div class="gp-card"><div class="gp-title">Who\u2019s putting?</div><div class="info-sub">Three random holes, par 9. Your best round goes on the board.</div>' +
+    el.innerHTML = '<div class="gp-card"><div class="gp-title">Who\u2019s putting?</div><div class="info-sub">Nine holes, par 27. Your best round goes on the board.</div>' +
       '<div class="name-grid">' + NAMES.map(function (n) { return '<button type="button" data-golfer="' + esc(n) + '" aria-pressed="false">' + esc(n) + '</button>'; }).join('') + '</div>' +
       '<div class="mafia-actions"><button type="button" class="linkbtn" id="golf-skip">Never mind</button></div></div>';
     $('roster').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -490,7 +490,17 @@
       { name: 'Hourglass', poly: [[0.08, 0.05], [0.92, 0.05], [0.92, 0.36], [0.62, 0.5], [0.92, 0.64], [0.92, 0.97], [0.08, 0.97], [0.08, 0.64], [0.38, 0.5], [0.08, 0.36]], walls: [], tee: [0.5, 0.87], cup: [0.3, 0.19],
         slots: [{ x: 0.5, y: 0.5, kinds: ['windmill', 'slider', null], s: 0.55 }, { x: 0.7, y: 0.22, kinds: ['sand', 'water', 'block'], s: 0.6 }] }
     ];
-    var GOLF_PAR = 3, GOLF_HOLES = 3;
+    COURSES.push(
+      { name: 'Switchback', poly: OCT, walls: [[[0.07, 0.3], [0.65, 0.3]], [[0.93, 0.52], [0.35, 0.52]], [[0.07, 0.74], [0.65, 0.74]]], tee: [0.3, 0.9], cup: [0.5, 0.14],
+        slots: [{ x: 0.8, y: 0.41, kinds: ['sand', 'boost', null], dir: [0, -1], s: 0.55 }, { x: 0.2, y: 0.63, kinds: ['sand', 'water', null], s: 0.55 }] },
+      { name: 'Island', poly: OCT, walls: [], tee: [0.5, 0.88], cup: [0.5, 0.14],
+        slots: [{ x: 0.5, y: 0.5, kinds: ['water'], s: 1.1 }, { x: 0.5, y: 0.29, kinds: ['sand', 'slider', null], s: 0.6 }] },
+      { name: 'Funnel', poly: [[0.38, 0.05], [0.62, 0.05], [0.62, 0.42], [0.94, 0.6], [0.94, 0.9], [0.86, 0.97], [0.14, 0.97], [0.06, 0.9], [0.06, 0.6], [0.38, 0.42]], walls: [], tee: [0.5, 0.88], cup: [0.5, 0.12],
+        slots: [{ x: 0.5, y: 0.75, kinds: ['sand', 'block', 'windmill', null], s: 0.6 }, { x: 0.5, y: 0.3, kinds: ['boost', 'sand', null], dir: [0, -1], s: 0.5 }] },
+      { name: 'The Hook', poly: [[0.06, 0.05], [0.54, 0.05], [0.62, 0.13], [0.62, 0.55], [0.94, 0.55], [0.94, 0.9], [0.86, 0.97], [0.52, 0.97], [0.44, 0.9], [0.44, 0.68], [0.14, 0.68], [0.06, 0.6]], walls: [], tee: [0.72, 0.9], cup: [0.2, 0.15],
+        slots: [{ x: 0.32, y: 0.3, kinds: ['sand', 'windmill', null], s: 0.6 }, { x: 0.3, y: 0.6, kinds: ['boost', 'sand', null], dir: [-1, 0], s: 0.5 }] }
+    );
+    var GOLF_PAR = 3, GOLF_HOLES = 9;   // every layout once, par 27
     function pickOne(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
     function startGolf() {
       markFound('golf');
@@ -1836,10 +1846,11 @@
   }
   function renderGolfBoard() {
     var body = $('golfboard-body'), st = $('golfboard-status'); if (!body) return;
-    var by = (golfScores && golfScores.by) || {}, par = 9;   // three random holes, all par 3
+    var by = (golfScores && golfScores.by) || {}, par = 27;   // nine holes, all par 3
     var rows = Object.keys(by).map(function (n) { return { name: n, best: by[n].best, rounds: by[n].rounds || 0 }; })
       .sort(function (a, b) { return a.best - b.best || b.rounds - a.rounds || a.name.localeCompare(b.name); });
-    st.innerHTML = 'Par ' + par + (rows.length ? ' · <b>' + esc(rows[0].name === me ? 'you lead' : rows[0].name + ' leads') + '</b>' : ' · best round');
+    // the card is half the screen wide, so the status is one short phrase: the leader once there is one, the course until then
+    st.innerHTML = rows.length ? '<b>' + esc(rows[0].name === me ? 'you lead' : rows[0].name + ' leads') + '</b>' : '9 holes \u00b7 par ' + par;
     if (!rows.length) { body.innerHTML = '<div class="lb-empty">Nobody yet</div>'; golfScrollCue(); return; }
     body.innerHTML = '<div class="lb">' + rows.map(function (r, i) {
       var dtxt = golfToPar(r.best, par);
