@@ -3221,16 +3221,39 @@
   $('wall').addEventListener('click', function (e) { predClick(e); });
   // the wall opens as a sheet from the floating button
   var chatOpen = false;
+  // ---- Sheets on a phone: the page behind stays put, the sheet follows the keyboard ----
+  // iOS scrolls the page under a sheet unless the body is pinned, and the keyboard shrinks the visible area without
+  // telling layout. While a sheet is open the body is fixed at its scroll position, and the sheet is sized to the
+  // visual viewport so it sits above the keyboard instead of behind it.
+  var pageLock = { on: false, y: 0 };
+  function fitSheets() {
+    var vv = window.visualViewport, root = document.documentElement;
+    if (!vv || !pageLock.on) { root.style.removeProperty('--vv-h'); root.style.removeProperty('--vv-top'); return; }
+    root.style.setProperty('--vv-h', Math.round(vv.height) + 'px'); root.style.setProperty('--vv-top', Math.round(vv.offsetTop) + 'px');
+  }
+  function syncLock() {
+    var on = chatOpen || expanded !== null;
+    if (on === pageLock.on) return;
+    if (on) { pageLock.y = window.scrollY || 0; document.body.style.top = -pageLock.y + 'px'; document.body.classList.add('sheet-open'); }
+    else { document.body.classList.remove('sheet-open'); document.body.style.top = ''; window.scrollTo(0, pageLock.y); }
+    pageLock.on = on; fitSheets();
+  }
+  if (window.visualViewport) { window.visualViewport.addEventListener('resize', fitSheets); window.visualViewport.addEventListener('scroll', fitSheets); }
+  function wallToBottom(smooth) { var wb = $('wall-body'); if (wb) wb.scrollTo({ top: wb.scrollHeight, behavior: smooth ? 'smooth' : 'auto' }); }
   function openChat() {
     if (chatOpen || !me) return;
-    chatOpen = true; $('chat-sheet').hidden = false; document.body.classList.add('chat-open');
+    chatOpen = true; $('chat-sheet').hidden = false; document.body.classList.add('chat-open'); syncLock();
     renderWall(true); markWallSeen(); buzz(6);
+    // the newest message, every time: once now, once after the sheet has finished sliding up
+    wallToBottom(false); requestAnimationFrame(function () { wallToBottom(false); }); setTimeout(function () { wallToBottom(false); }, 320);
   }
   function closeChat() {
     if (!chatOpen) return;
-    chatOpen = false; $('chat-sheet').hidden = true; document.body.classList.remove('chat-open');
+    chatOpen = false; $('chat-sheet').hidden = true; document.body.classList.remove('chat-open'); syncLock();
     updateChatBadge();
   }
+  // the keyboard: keep the thread's end in view once the viewport has settled
+  $('wall-input').addEventListener('focus', function () { setTimeout(function () { wallToBottom(false); }, 350); });
   $('chat-fab').addEventListener('click', openChat);
   $('chat-sheet').addEventListener('click', function (e) { if (e.target.closest('#chat-close') || e.target.id === 'chat-back') closeChat(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && chatOpen) closeChat(); });
@@ -3255,11 +3278,11 @@
     var body = $('sheet-body'), atBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 40 || wrap.hidden;
     body.innerHTML = html;
     var inp = $('chat-input'); if (inp && inp.value !== draft) inp.value = draft;
-    wrap.hidden = false;
+    wrap.hidden = false; syncLock();
     if (atBottom) body.scrollTop = body.scrollHeight;
   }
   function openSheet(i) { expanded = i; draft = ''; pickerFor = null; markQSeen(QUESTIONS[i].id); renderPredictions(); renderSheet(); var body = $('sheet-body'); if (body) body.scrollTop = 0; }
-  function closeSheet() { expanded = null; draft = ''; $('pred-sheet').hidden = true; }
+  function closeSheet() { expanded = null; draft = ''; $('pred-sheet').hidden = true; syncLock(); }
   function agoText(iso) { var a = ago(iso); return !a || a === 'just now' ? a : a + ' ago'; }
   function ago(iso) {
     var t = Date.parse(iso || ''); if (!t) return '';

@@ -155,8 +155,10 @@
   .rx-picker button { width: 40px; height: 36px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); font-size: 1.2rem; cursor: pointer; }
   .rx-picker button.mine { border-color: var(--pine); background: var(--pine-soft); }
   /* bottom sheet: the breakdown and chat for one question */
-  .sheet-wrap { position: fixed; inset: 0; z-index: 40; }
-  .sheet-back { position: absolute; inset: 0; background: rgba(8, 18, 12, 0.5); animation: fadein 180ms both; }
+  /* a sheet covers the visible area, which is smaller than the page when the keyboard is up (see fitSheets) */
+  .sheet-wrap { position: fixed; left: 0; right: 0; top: var(--vv-top, 0px); height: var(--vv-h, 100%); z-index: 40; }
+  .sheet-back { position: absolute; inset: 0; background: rgba(8, 18, 12, 0.5); animation: fadein 180ms both; touch-action: none; }
+  body.sheet-open { position: fixed; left: 0; right: 0; width: 100%; overflow: hidden; }   /* the page behind a sheet never scrolls */
   @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
   .sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 88dvh; background: var(--surface); border-radius: 22px 22px 0 0; display: flex; flex-direction: column; animation: sheetup 280ms cubic-bezier(0.2, 0.9, 0.3, 1) both; box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25); padding-bottom: env(safe-area-inset-bottom); }
   @keyframes sheetup { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -164,10 +166,11 @@
   .sheet-head { display: flex; align-items: flex-start; gap: 10px; padding: 10px 18px 8px; flex: none; }
   .sheet-q { font: 700 1.15rem/1.25 var(--display); letter-spacing: -0.01em; flex: 1; }
   .sheet-x { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--bg); color: var(--fg); font-size: 1.3rem; line-height: 1; cursor: pointer; }
-  .sheet-body { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 18px 14px; flex: 1; min-height: 0; }
+  .sheet-body { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 0 18px 14px; flex: 1; min-height: 0; }
   .sheet-foot { flex: none; display: flex; gap: 8px; padding: 10px 18px; border-top: 1px solid var(--line); background: var(--surface); }
   .sheet-foot input { flex: 1; }
-  .sheet.tall { height: 88dvh; }
+  .sheet.tall { height: 88dvh; height: calc(var(--vv-h, 100dvh) * 0.88); }
+  .sheet { max-height: calc(var(--vv-h, 100dvh) * 0.88); overscroll-behavior: contain; }
   .sheet-heading { flex: 1; min-width: 0; }
   .sheet-sub { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
   /* the wall floats as a button above the dock */
