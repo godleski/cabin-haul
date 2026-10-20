@@ -2954,5 +2954,67 @@
     copyText(listText(), 'List copied. Paste it in the group text.');
   });
 
+  // ---- Quiet self-update ----
+  // The live site is static files, so a copy that's already open (Safari, or the home-screen icon) keeps running
+  // whatever it loaded until it reloads. This watches app.js with a tiny conditional request (a 304 when nothing has
+  // changed) each time the app comes back to the foreground and every few minutes while it's showing. When a new
+  // build is up it reloads, but only at a quiet moment: no game, no finger down, no sheet or chat open, no half-built
+  // hibachi order, no questionnaire, nothing being typed, and nothing touched for a few seconds. The tab comes back
+  // after the reload; the name and the link password are in storage anyway. Not wired up in the artifact
+  // prototype, which bundles everything into one file, so there's no app.js to watch.
+  (function () {
+    var tag = document.querySelector('script[src$="app.js"]'), src = tag && tag.getAttribute('src');
+    if (!src || !/^https?:$/.test(location.protocol) || !window.fetch || !window.sessionStorage) return;
+    var known = null, pending = null, lastTouch = Date.now(), lastCheck = 0, down = false, reloading = false;
+    var ssGet = function (k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } };
+    var ssSet = function (k, v) { try { sessionStorage.setItem(k, v); } catch (e) { /* ignore */ } };
+    // pick up where the page left off when it reloaded itself a moment ago
+    try {
+      var r = JSON.parse(ssGet('cabin-haul-resume') || 'null'); sessionStorage.removeItem('cabin-haul-resume');
+      if (r && Date.now() - r.at < 60000 && TABS.indexOf(r.tab) >= 0 && me) tab = r.tab;
+    } catch (e) { /* ignore */ }
+    window.addEventListener('pointerdown', function () { down = true; lastTouch = Date.now(); }, { capture: true, passive: true });
+    ['pointerup', 'pointercancel'].forEach(function (ev) { window.addEventListener(ev, function () { down = false; lastTouch = Date.now(); }, { capture: true, passive: true }); });
+    ['keydown', 'scroll', 'touchmove'].forEach(function (ev) { window.addEventListener(ev, function () { lastTouch = Date.now(); }, { capture: true, passive: true }); });
+    function stamp(res) { return (res.headers.get('ETag') || '').replace(/^W\//, '') || res.headers.get('Last-Modified') || ''; }
+    function quiet() {
+      var a = document.activeElement;
+      if (down || reloading || document.body.classList.contains('playing') || chatOpen || expanded !== null || hibDraft || !$('predict').hidden) return false;
+      if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable)) return false;
+      return Date.now() - lastTouch > 6000;
+    }
+    function check(force) {
+      if (reloading || document.visibilityState !== 'visible') return;
+      var gap = Date.now() - lastCheck;
+      if (gap < (force ? 45000 : 240000)) return;   // on return to the foreground, at most every 45s; otherwise every four minutes
+      lastCheck = Date.now();
+      // the first look uses whatever the browser already has (no revalidation): that is the copy that's running now
+      var opts = known ? { cache: 'no-store', headers: known.charAt(0) === '"' ? { 'If-None-Match': known } : { 'If-Modified-Since': known } } : { cache: 'force-cache' };
+      fetch(src, opts).then(function (res) {
+        if (res.status === 304 || !res.ok) return;
+        var t = stamp(res); if (!t) return;
+        if (!known) { known = t; return; }
+        if (t !== known && ssGet('cabin-haul-updated-for') !== t) { pending = t; settle(); }
+      }).catch(function () { /* offline or blocked: look again later */ });
+    }
+    function settle() {
+      if (!pending || !quiet()) return;
+      var t = pending; pending = null; reloading = true;
+      ssSet('cabin-haul-updated-for', t);   // one reload per build, so a bad ETag can never loop the page
+      ssSet('cabin-haul-resume', JSON.stringify({ tab: tab, at: Date.now() }));
+      // refresh the browser's copies first so the reload runs the new files, not the cached ones
+      var files = [location.href.split('#')[0]];
+      Array.prototype.forEach.call(document.querySelectorAll('script[src], link[rel="stylesheet"][href]'), function (el) {
+        var u = el.getAttribute('src') || el.getAttribute('href'); if (u && !/^(https?:)?\/\//.test(u)) files.push(u);
+      });
+      Promise.all(files.map(function (f) { return fetch(f, { cache: 'reload' }).catch(function () { /* ignore */ }); }))
+        .then(function () { location.reload(); });
+    }
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { if (pending) settle(); else check(true); } });
+    setInterval(function () { if (pending) settle(); else check(false); }, 15000);
+    setTimeout(function () { check(true); }, 4000);
+    window.__cabinUpdate = { check: function () { lastCheck = 0; check(true); }, state: function () { return { known: known, pending: pending, reloading: reloading, quiet: quiet() }; } };
+  })();
+
   showScreen();
 })();
