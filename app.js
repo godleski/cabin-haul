@@ -2939,7 +2939,16 @@
     el.innerHTML = html;
     if (expanded !== null) renderSheet();
   }
-  function msgHtml(c) {
+  // every voice gets its own colour, the same on every phone
+  var WHO_COLORS = ['#2d6a4f', '#d2691e', '#3f7cae', '#8e44ad', '#c0392b', '#9a7d0a', '#16a085', '#b03a2e', '#1f618d', '#7d3c98', '#117a65', '#a04000', '#5b2c6f'];
+  function whoColor(name) {
+    var i = NAMES.indexOf(name);
+    if (i < 0) { i = 0; for (var k = 0; k < (name || '').length; k++) i = (i * 31 + name.charCodeAt(k)) % 9973; }
+    return WHO_COLORS[i % WHO_COLORS.length];
+  }
+  // consecutive messages from the same person within five minutes read as one run: the name shows once
+  function sameRun(prev, c) { return !!prev && prev.author === c.author && Math.abs(Date.parse(c.created_at || '') - Date.parse(prev.created_at || '')) < 300000; }
+  function msgHtml(c, cont) {
     var g = reactionsFor(c.id), keys = Object.keys(g).sort(function (a, b) { return g[b].length - g[a].length; });
     var rx = '';
     if (c.id) {
@@ -2949,7 +2958,7 @@
       }).join('') + '<button type="button" class="rx-add" data-picker="' + esc(c.id) + '" aria-label="React">' + (pickerFor === c.id ? '\u00d7' : '+\uD83D\uDE42') + '</button></div>';
       if (pickerFor === c.id) rx += '<div class="rx-picker">' + EMOJI.map(function (e) { return '<button type="button" data-react="' + e + '" data-cid="' + esc(c.id) + '"' + (g[e] && g[e].indexOf(me) >= 0 ? ' class="mine"' : '') + '>' + e + '</button>'; }).join('') + '</div>';
     }
-    return '<div class="msg' + (c.author === me ? ' mine' : c.author === CLAUDE_NAME ? ' claude' : '') + '"><span class="who">' + esc(c.author === me ? 'You' : c.author) + '</span><span class="when">' + esc(ago(c.created_at)) + '</span><div class="txt">' + esc(c.text) + '</div>' + rx + '</div>';
+    return '<div class="msg' + (c.author === me ? ' mine' : c.author === CLAUDE_NAME ? ' claude' : '') + (cont === true ? ' cont' : '') + '" style="--who:' + whoColor(c.author) + '"><span class="who">' + esc(c.author === me ? 'You' : c.author) + '</span><span class="when">' + esc(ago(c.created_at)) + '</span><div class="txt">' + esc(c.text) + '</div>' + rx + '</div>';
   }
   // ---- Hibachi night: everyone's order, locked in one at a time ----
   // One row per person in the predictions table (question_id 'hibachi', voter = name, pick = the order as JSON),
@@ -3187,9 +3196,11 @@
   function renderWall(scroll) {
     var el = $('wall'); if (!el || !me) return;
     var msgs = wallMsgs();
-    if (!msgs.length) { el.innerHTML = claudeBusy[WALL] ? claudeTypingHtml() : '<div class="empty">Nothing on the wall yet. Say something.</div>'; return; }
-    var html = '', lastDay = '';
-    msgs.forEach(function (c) { var d = dayLabel(c.created_at); if (d && d !== lastDay) { html += '<div class="day">' + esc(d) + '</div>'; lastDay = d; } html += msgHtml(c); });
+    var meta = $('wall-meta');
+    if (meta) { var voices = {}; msgs.forEach(function (c) { voices[c.author] = true; }); meta.textContent = msgs.length ? msgs.length + (msgs.length === 1 ? ' note' : ' notes') + ' · ' + Object.keys(voices).length + (Object.keys(voices).length === 1 ? ' voice' : ' voices') : 'Plans, trash, who’s got the aux.'; }
+    if (!msgs.length) { el.innerHTML = claudeBusy[WALL] ? claudeTypingHtml() : '<div class="empty"><span class="pin">📌</span><b>Nothing on the wall yet</b>Say something. Or type @Claude and see what happens.</div>'; return; }
+    var html = '', lastDay = '', prev = null;
+    msgs.forEach(function (c) { var d = dayLabel(c.created_at); if (d && d !== lastDay) { html += '<div class="day"><span>' + esc(d) + '</span></div>'; lastDay = d; prev = null; } html += msgHtml(c, sameRun(prev, c)); prev = c; });
     if (claudeBusy[WALL]) html += claudeTypingHtml();
     var grew = msgs.length > wallRendered; wallRendered = msgs.length;
     el.innerHTML = html;
@@ -3238,7 +3249,7 @@
     var thread = comments.filter(function (c) { return c.question_id === q.id; });
     html += '<div class="chat"><div class="chat-head">Trash talk' + (thread.length ? ' <span class="k">' + thread.length + '</span>' : '') + '</div>';
     if (!thread.length) html += '<div class="chat-empty">Nobody’s said anything yet. Stir the pot.</div>';
-    html += '<div class="chat-list" id="chat-list">' + thread.map(msgHtml).join('') + (claudeBusy[q.id] ? claudeTypingHtml() : '') + '</div></div>';
+    html += '<div class="chat-list" id="chat-list">' + thread.map(function (c, i) { return msgHtml(c, sameRun(thread[i - 1], c)); }).join('') + (claudeBusy[q.id] ? claudeTypingHtml() : '') + '</div></div>';
     var body = $('sheet-body'), atBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 40 || wrap.hidden;
     body.innerHTML = html;
     var inp = $('chat-input'); if (inp && inp.value !== draft) inp.value = draft;

@@ -173,10 +173,10 @@
   /* the wall floats as a button above the dock */
   .fab {
     position: fixed; right: 14px; bottom: calc(88px + env(safe-area-inset-bottom, 0px)); z-index: 7; width: 44px; height: 44px; border-radius: 50%;
-    border: 1px solid color-mix(in srgb, var(--line) 70%, transparent); background: var(--surface); background: color-mix(in srgb, var(--surface) 62%, transparent);
+    border: 1px solid rgba(255, 255, 255, 0.16); background: #15161a; background: rgba(20, 22, 30, 0.78);   /* the dock's dark glass */
     -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
-    color: var(--pine); opacity: 0.82; display: grid; place-items: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
-    box-shadow: 0 6px 16px rgba(10, 30, 18, 0.14), 0 1px 2px rgba(0, 0, 0, 0.06);
+    color: #fff; opacity: 0.94; display: grid; place-items: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     transition: transform 220ms cubic-bezier(0.2, 0.9, 0.3, 1.4), opacity 200ms; animation: fabin 460ms cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
   }
   .fab:has(.badge:not([hidden])) { opacity: 1; }   /* wakes up when there's something unread */
@@ -210,7 +210,8 @@
   .msg .who { font-weight: 700; font-size: 0.78rem; }
   .msg .when { font-size: 0.7rem; color: var(--muted); margin-left: 4px; }
   .msg .txt { overflow-wrap: anywhere; margin-top: 1px; }
-  .msg.claude { background: linear-gradient(135deg, #fff3e3, #ffe9d2); border: 1px solid #f3c99b; } .msg.claude .who::before { content: "\2726 "; color: #d2691e; }
+  .msg.claude { background: linear-gradient(135deg, #fff3e3, #ffe9d2); border: 1px solid #f3c99b; color: #3b2410; } .msg.claude .who { color: #b4561a; } .msg.claude .when { color: #9a6a45; } .msg.claude .who::before { content: "\2726 "; color: #d2691e; }
+  .msg.claude .rx-chip, .msg.claude .rx-add { background: rgba(255, 255, 255, 0.7); border-color: #e9c9a3; color: #3b2410; } .msg.claude .rx-chip.mine { border-color: #d2691e; background: #fff; }
   .msg.claude.typing .txt { color: var(--muted); font-style: italic; white-space: nowrap; } .msg.typing .tdots i { font-style: normal; animation: dotpulse 1.2s infinite; } .msg.typing .tdots i:nth-child(2) { animation-delay: 0.2s; } .msg.typing .tdots i:nth-child(3) { animation-delay: 0.4s; }
   @keyframes dotpulse { 0%, 60%, 100% { opacity: 0.25; } 30% { opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { .msg.typing .tdots i { animation: none; } }
@@ -1107,9 +1108,41 @@
   .note-card { background: var(--ember-soft); border-color: var(--ember); }
   .note-card .info-title { color: var(--ember); }
   /* ---- Chat wall ---- */
-  .wall { display: grid; gap: 8px; margin-top: 6px; }
-  .wall .msg { max-width: 86%; }
-  .wall .day { text-align: center; font-size: 0.72rem; color: var(--muted); margin: 8px 0 2px; letter-spacing: 0.06em; text-transform: uppercase; }
+  /* ---- The wall: a cabin notice board. Night-sky header, warm paper, every voice in its own colour ---- */
+  .wall-sheet { background: #f7f3ec; }
+  .wall-top { flex: none; position: relative; overflow: hidden; border-radius: 22px 22px 0 0; padding-bottom: 14px; color: #fff; background: radial-gradient(120% 90% at 88% 0%, #4a3222 0%, #1a1c24 48%, #0b1220 100%); }
+  .wall-top::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 18% 30%, rgba(255, 255, 255, 0.55) 0 1px, transparent 2px), radial-gradient(circle at 62% 18%, rgba(255, 255, 255, 0.45) 0 1px, transparent 2px), radial-gradient(circle at 80% 62%, rgba(255, 255, 255, 0.4) 0 1px, transparent 2px), radial-gradient(circle at 40% 70%, rgba(255, 255, 255, 0.35) 0 1px, transparent 2px); }
+  .wall-top::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, rgba(255, 179, 71, 0.8), transparent); }
+  .wall-top .sheet-grip { background: rgba(255, 255, 255, 0.3); }
+  .wall-head { display: flex; align-items: flex-start; gap: 10px; padding: 10px 18px 0; position: relative; }
+  .wall-heading { flex: 1; min-width: 0; }
+  .wall-eyebrow { font: 700 0.64rem var(--body); letter-spacing: 0.16em; text-transform: uppercase; color: #ffb347; }
+  .wall-title { font: 800 1.7rem/1 var(--display); letter-spacing: -0.02em; margin-top: 3px; }
+  .wall-meta { font-size: 0.78rem; color: rgba(255, 255, 255, 0.72); margin-top: 5px; }
+  .wall-top .sheet-x { background: rgba(255, 255, 255, 0.12); color: #fff; margin-top: 4px; }
+  .wall-body { background: #f7f3ec; background-image: radial-gradient(rgba(27, 42, 34, 0.08) 1px, transparent 1.2px); background-size: 14px 14px; padding-top: 12px; }
+  .wall { display: grid; gap: 5px; margin-top: 0; }
+  .wall .day { text-align: center; margin: 12px 0 6px; } .wall .day span { display: inline-block; background: #e9e2d6; color: #5f5648; border-radius: 999px; padding: 3px 11px; font: 700 0.64rem var(--body); letter-spacing: 0.12em; text-transform: uppercase; }
+  .wall .msg { max-width: 84%; background: #fff; border-radius: 18px 18px 18px 6px; padding: 9px 13px 8px; box-shadow: 0 1px 2px rgba(27, 42, 34, 0.08), 0 4px 14px rgba(27, 42, 34, 0.05); }
+  .wall .msg .who { color: var(--who, var(--pine)); font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase; }
+  .wall .msg .txt { font-size: 0.95rem; line-height: 1.4; }
+  .wall .msg.cont { border-radius: 6px 18px 18px 6px; } .wall .msg.cont .who, .wall .msg.cont .when { display: none; }
+  .wall .msg.mine { background: var(--pine); color: #fff; border-radius: 18px 18px 6px 18px; box-shadow: 0 4px 14px rgba(45, 106, 79, 0.28); }
+  .wall .msg.mine { display: flex; flex-direction: column; } .wall .msg.mine .who { display: none; } .wall .msg.mine .txt { order: 1; } .wall .msg.mine .rxs { order: 2; }
+  .wall .msg.mine .when { order: 3; align-self: flex-end; color: rgba(255, 255, 255, 0.7); margin: 3px 0 0; font-size: 0.64rem; }
+  .wall .msg.mine.cont { border-radius: 18px 6px 6px 18px; }
+  .wall .msg.mine .rx-chip, .wall .msg.mine .rx-add { background: rgba(255, 255, 255, 0.14); border-color: rgba(255, 255, 255, 0.35); color: #fff; } .wall .msg.mine .rx-chip.mine { background: rgba(255, 255, 255, 0.3); }
+  .wall .msg.claude { background: linear-gradient(135deg, #fff6e8, #ffe6c6); border: 1px solid #f0c48a; box-shadow: 0 4px 14px rgba(210, 105, 30, 0.14); }
+  .wall .msg.claude .who { color: #b4561a; }
+  .wall .empty { margin: 8px 0; background: #fff; border: 0; border-radius: 18px; padding: 26px 18px; box-shadow: 0 4px 14px rgba(27, 42, 34, 0.06); color: var(--muted); }
+  .wall .empty .pin { display: block; font-size: 2rem; line-height: 1; margin-bottom: 8px; } .wall .empty b { display: block; font: 800 1.15rem var(--display); color: var(--fg); margin-bottom: 3px; }
+  .wall-form { background: #f7f3ec; border-top: 1px solid #e6dfd3; align-items: center; gap: 8px; }
+  .wall-form input { flex: 1; border-radius: 999px; padding: 11px 16px; background: #fff; border: 1px solid #e0d9cc; font-size: 1rem; }
+  .wall-send { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--pine); color: #fff; display: grid; place-items: center; cursor: pointer; box-shadow: 0 4px 12px rgba(45, 106, 79, 0.3); transition: transform 120ms; -webkit-tap-highlight-color: transparent; }
+  .wall-send svg { width: 20px; height: 20px; fill: currentColor; transform: translateX(1px); } .wall-send:active { transform: scale(0.9); }
+  /* the thread under a prediction borrows the voice colours and the grouping */
+  .chat-list .msg .who { color: var(--who, var(--pine)); } .chat-list .msg.cont { border-radius: 6px 14px 14px 6px; } .chat-list .msg.cont .who, .chat-list .msg.cont .when { display: none; } .chat-list .msg.mine.cont { border-radius: 14px 6px 6px 14px; }
+  body.tab-home:not(.plain-picks) .chat-list .msg:not(.claude) .who { filter: brightness(1.9) saturate(0.85); }   /* the dark sportsbook sheet needs the voice colours lifted */
   .badge { position: absolute; top: -4px; right: -8px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--ember); color: #fff; font: 700 0.62rem/16px var(--body); text-align: center; box-shadow: 0 0 0 2px var(--surface); animation: pop 300ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both; }
 
   .haptic { position: fixed; left: 0; bottom: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }

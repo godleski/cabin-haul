@@ -337,11 +337,13 @@
 <button type="button" class="fab" id="chat-fab" hidden aria-label="Open the wall"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg><span class="badge" id="chat-badge" hidden></span></button>
 <div class="sheet-wrap" id="chat-sheet" hidden>
   <div class="sheet-back" id="chat-back"></div>
-  <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="chat-title">
-    <div class="sheet-grip"></div>
-    <div class="sheet-head"><div class="sheet-heading"><div class="sheet-q" id="chat-title">The wall</div><div class="sheet-sub">One thread for the whole trip. Plans, trash, who's got the aux.</div></div><button type="button" class="sheet-x" id="chat-close" aria-label="Close">×</button></div>
-    <div class="sheet-body" id="wall-body"><div class="wall" id="wall"><p class="skeleton">Loading…</p></div></div>
-    <form class="sheet-foot chat-form" id="wall-form"><input type="text" id="wall-input" maxlength="300" placeholder="Say something…" autocomplete="off"><button type="submit" class="btn primary">Send</button></form>
+  <div class="sheet tall wall-sheet" role="dialog" aria-modal="true" aria-labelledby="chat-title">
+    <div class="wall-top">
+      <div class="sheet-grip"></div>
+      <div class="wall-head"><div class="wall-heading"><div class="wall-eyebrow">One thread · all weekend</div><div class="wall-title" id="chat-title">The wall</div><div class="wall-meta" id="wall-meta">Plans, trash, who's got the aux.</div></div><button type="button" class="sheet-x" id="chat-close" aria-label="Close">×</button></div>
+    </div>
+    <div class="sheet-body wall-body" id="wall-body"><div class="wall" id="wall"><p class="skeleton">Loading…</p></div></div>
+    <form class="sheet-foot wall-form" id="wall-form"><input type="text" id="wall-input" maxlength="300" placeholder="Say something… or @Claude" autocomplete="off"><button type="submit" class="wall-send" aria-label="Send"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 20.5 4 13 21.5l-2.3-7.2z"/></svg></button></form>
   </div>
 </div>
 <div class="sheet-wrap" id="pred-sheet" hidden>
