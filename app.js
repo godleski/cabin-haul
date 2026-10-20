@@ -3484,7 +3484,9 @@
     }
     document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { if (pending) settle(); else check(true); } });
     setInterval(function () { if (pending) settle(); else check(false); }, 15000);
-    setTimeout(function () { check(true); }, 4000);
+    // the first look only records what's running; a real check follows soon after, so a launch that came out of a stale
+    // cache (the home-screen app keeps files for ten minutes) corrects itself within seconds rather than minutes
+    setTimeout(function () { check(true); setTimeout(function () { lastCheck = 0; check(true); }, 8000); }, 4000);
     window.__cabinUpdate = { check: function () { lastCheck = 0; check(true); }, state: function () { return { known: known, pending: pending, reloading: reloading, quiet: quiet() }; } };
   })();
 
