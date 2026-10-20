@@ -138,6 +138,17 @@
       if (!ensure()) return Promise.reject(new Error('not connected'));
       return sb.from('kv').upsert({ key: 'game-' + name, value: doc }).then(one);
     },
+    // Every game doc whose name starts with a prefix (Fishbowl keeps one doc of words per person: game-fb-<name>).
+    games: function (prefix, onRows) {
+      if (!ensure()) return;
+      var read = reader(function () {
+        sb.from('kv').select('key,value').like('key', 'game-' + prefix + '%').then(function (res) {
+          if (ok(res, 'game-' + prefix + '*')) onRows((res.data || []).map(function (r) { return { name: r.key.slice(5), doc: r.value }; }));
+        });
+      });
+      try { sb.channel('cabin-games-' + prefix).on('postgres_changes', { event: '*', schema: 'public', table: 'kv' }, read).subscribe(); } catch (e) { /* ignore */ }
+      read();
+    },
 
     // Air hockey tally: one row in the "kv" table, key "hockey".
     scores: function (onScores) {

@@ -2007,7 +2007,7 @@
       var info = ROLES[myRole] || ROLES.villager, dead = (g.dead || []).indexOf(me) >= 0;
       var mates = isMafiaRole(myRole) ? g.players.filter(function (p) { return p !== me && isMafiaRole(g.roles[p]); }) : [];
       var partner = myRole === 'lover' ? g.players.filter(function (p) { return p !== me && g.roles[p] === 'lover'; })[0] : null;
-      html += '<div class="role-card' + (revealHold ? ' revealed' : '') + (mafiaDealAnim ? ' dealin' : '') + '" id="role-card"><div class="role-inner">' +
+      html += '<div class="role-card' + (revealHold && revealWhere === 'mafia' ? ' revealed' : '') + (mafiaDealAnim ? ' dealin' : '') + '" id="role-card"><div class="role-inner">' +
         '<div class="role-face back"><div class="icon">🃏</div><div class="hold">Hold to flip your card</div><div class="sub">Keep your thumb on it. Lifting hides it again.</div></div>' +
         '<div class="role-face front ' + info.side + '"><div class="icon">' + info.icon + '</div><div class="sub">You are</div><div class="role">' + esc(info.title) + '</div><div class="desc">' + esc(info.desc) + '</div>' +
         (info.night ? '<div class="night"><b>At night:</b> ' + esc(info.night) + '</div>' : '') +
@@ -2110,14 +2110,311 @@
     }
   });
   // hold-to-reveal for your own role
+  var revealWhere = null;   // which card is being held: 'mafia' or 'spyfall'
   function holdStart(e) {
-    var card = e.target.closest('#role-card'); if (!card || revealHold) return;
-    revealHold = true; card.classList.add('revealed'); buzz(15); e.preventDefault();
+    var card = e.target.closest('.role-card'); if (!card || revealHold) return;
+    revealHold = true; revealWhere = card.closest('#spyfall-body') ? 'spyfall' : 'mafia'; card.classList.add('revealed'); buzz(15); e.preventDefault();
   }
-  function holdEnd() { if (!revealHold) return; revealHold = false; var card = $('role-card'); if (card) card.classList.remove('revealed'); }
+  function holdEnd() { if (!revealHold) return; revealHold = false; revealWhere = null; Array.prototype.forEach.call(document.querySelectorAll('.role-card.revealed'), function (c) { c.classList.remove('revealed'); }); }
   $('mafia-body').addEventListener('pointerdown', holdStart);
   window.addEventListener('pointerup', holdEnd); window.addEventListener('pointercancel', holdEnd);
   $('mafia-body').addEventListener('contextmenu', function (e) { if (e.target.closest('#role-card')) e.preventDefault(); });
+
+  // ---- Spyfall, cabin edition ----
+  // Everyone gets the same place and a job there, except the spy, who gets nothing and has to bluff through the
+  // questions. Any phone deals; each player holds their own card to see it, like Mafia. A countdown runs from the
+  // deal. When it's up, the table votes, then someone taps Reveal. Never the same place twice running.
+  var SPY_PLACES = [
+    { k: 'hottub', name: 'The hot tub', icon: '🛁', roles: ['Towel runner', 'Temperature critic', 'Cannonballer', 'The one who won’t get in', 'Drink holder', 'Jet hog'] },
+    { k: 'lift', name: 'The ski lift', icon: '🚡', roles: ['Lift operator', 'Snowboarder with one strap', 'Safety-bar enforcer', 'Dropped a pole', 'First-timer', 'Line cutter'] },
+    { k: 'hibachi', name: 'The hibachi grill', icon: '🍤', roles: ['Chef', 'Onion-volcano fan', 'Shrimp catcher', 'Sake bomber', 'Birthday liar', 'Bill splitter'] },
+    { k: 'liquor', name: 'The liquor store run', icon: '🍾', roles: ['Driver', 'Cart pusher', 'ID checker', 'Forgot the mixers', 'Budget keeper', 'Box-wine advocate'] },
+    { k: 'i70', name: 'The drive up I-70', icon: '🚗', roles: ['Driver', 'DJ', 'Snack dispenser', 'Asleep in the back', 'Navigator', 'Carsick one'] },
+    { k: 'deck', name: 'The deck at sunrise', icon: '☕', roles: ['Coffee maker', 'Blanket thief', 'Photographer', 'Hungover', 'Bird spotter', 'Up way too early'] },
+    { k: 'sled', name: 'The sledding hill', icon: '🛷', roles: ['Tube pilot', 'Hill climber', 'Crash victim', 'Starter', 'Judge', 'Cocoa runner'] },
+    { k: 'bunk', name: 'The bunk room', icon: '🛏️', roles: ['Top bunk', 'Snorer', 'Phone-light reader', 'Blanket hog', 'Earplug dealer', 'Night talker'] },
+    { k: 'fire', name: 'The fire pit', icon: '🔥', roles: ['Fire starter', 'Marshmallow burner', 'Storyteller', 'Smoke dodger', 'Log hauler', 'Guitar guy'] },
+    { k: 'kitchen', name: 'The kitchen at breakfast', icon: '🍳', roles: ['Pancake flipper', 'Bacon guard', 'Dish avoider', 'Coffee refiller', 'Orange-juice police', 'Taste tester'] },
+    { k: 'rental', name: 'The ski rental shop', icon: '🎿', roles: ['Boot fitter', 'Lied about their height', 'Helmet refuser', 'Waiver signer', 'Line waiter', 'Wrong-size skis'] },
+    { k: 'brewery', name: 'The brewery in town', icon: '🍺', roles: ['Flight sharer', 'Designated driver', 'Pretzel orderer', 'Trivia captain', 'Bartender', 'IPA snob'] },
+    { k: 'gondola', name: 'The gondola', icon: '🚠', roles: ['Window fogger', 'Hates heights', 'Selfie taker', 'Door holder', 'Tourist', 'Operator'] },
+    { k: 'mafia', name: 'Mafia night', icon: '🕵️', roles: ['Moderator', 'Dead on night one', 'Loud accuser', 'Quiet mafia', 'Medic who saves themselves', 'Rules lawyer'] },
+    { k: 'grocery', name: 'The grocery run', icon: '🛒', roles: ['List keeper', 'Cart driver', 'Impulse buyer', 'Coupon finder', 'Bag carrier', 'Snack-aisle lurker'] },
+    { k: 'checkin', name: 'Check-in at the house', icon: '🔑', roles: ['Door-code enterer', 'Room claimer', 'Bag hauler', 'Thermostat setter', 'Wi-Fi finder', 'Tour guide'] },
+    { k: 'trail', name: 'The trailhead', icon: '🥾', roles: ['Pace setter', 'Water carrier', 'Bear-bell wearer', 'Photo stopper', 'Shortcut suggester', 'Dog walker'] },
+    { k: 'pong', name: 'The beer pong table', icon: '🏓', roles: ['Rack straightener', 'Bounce-shot artist', 'Elbow referee', 'Cup refiller', 'Heckler', 'Rookie'] },
+    { k: 'springs', name: 'The hot springs', icon: '♨️', roles: ['Towel guard', 'Pool hopper', 'Sulfur complainer', 'Lifeguard', 'Lost the locker key', 'Floater'] },
+    { k: 'movie', name: 'Movie night on the couch', icon: '🍿', roles: ['Remote holder', 'Plot explainer', 'Popcorn maker', 'Asleep by the credits', 'Phone scroller', 'Volume adjuster'] }
+  ];
+  var spy = null, spyLoaded = false, spySub = false, spyDraft = null, spyBuzzed = null, spyDealAnim = false;
+  function subscribeSpyfall() {
+    if (spySub || !store || !store.game) return;
+    spySub = true;
+    store.game('spyfall', function (doc) { var same = spyLoaded && sameDoc(doc, spy); spy = doc; spyLoaded = true; if (!same) renderSpyfall(); });
+  }
+  function spyDefaults() { return { players: NAMES.slice(), spies: 1, mins: 8, guests: [] }; }
+  function spyPlace(g) { return SPY_PLACES.filter(function (p) { return p.k === g.place; })[0] || SPY_PLACES[0]; }
+  function spyLeft(g) { return Math.max(0, new Date(g.dealt_at).getTime() + g.mins * 60000 - Date.now()); }
+  function mmss(ms) { var s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+  function renderSpyfall() {
+    var body = $('spyfall-body'), status = $('spyfall-status'); if (!body) return;
+    if (!spyLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
+    var g = spy && spy.status === 'dealt' ? spy : null, html = '';
+    if (!g) {
+      var d = spyDraft || (spyDraft = spyDefaults()), n = d.players.length, maxSpies = n >= 7 ? 2 : 1, spies = Math.min(d.spies, maxSpies);
+      status.textContent = 'No round running';
+      html += '<p class="info-sub">Everyone gets the same place and a job there, except the spy, who gets nothing and has to bluff. Take turns asking each other questions about the place. Don’t give it away, and don’t get caught. Anyone can deal.</p>';
+      html += '<div class="name-grid">' + NAMES.concat(guestsOf(d)).map(function (nm) {
+        return '<button type="button" data-player="' + esc(nm) + '" aria-pressed="' + (d.players.indexOf(nm) >= 0) + '"' + (guestsOf(d).indexOf(nm) >= 0 ? ' class="is-guest"' : '') + '>' + esc(nm === me ? 'You' : nm) + '</button>';
+      }).join('') + '</div>';
+      html += guestRowHtml(d, 'spyfall-guest');
+      html += '<div class="mafia-opts">' +
+        '<div class="opt-row"><span>Spies <span class="info-sub">(' + n + ' playing' + (maxSpies === 1 ? ' · two needs 7+' : '') + ')</span></span><span class="stepper"><button type="button" data-step="-1">−</button><b>' + spies + '</b><button type="button" data-step="1">+</button></span></div>' +
+        '<div class="opt-row"><span>Minutes on the clock</span><span class="stepper"><button type="button" data-mins="-1">−</button><b>' + d.mins + '</b><button type="button" data-mins="1">+</button></span></div></div>';
+      html += '<div class="mafia-actions"><button type="button" class="big-btn" id="spy-deal"' + (n < 3 ? ' disabled' : '') + '>🔍 Deal the round</button></div>';
+      if (spy && spy.status === 'ended') html += '<p class="info-sub" style="margin-top:10px">Last round ' + esc(agoText(spy.ended_at)) + ': ' + esc(spyPlace(spy).name) + ', spy ' + esc((spy.spies || []).join(' and ')) + '.</p>';
+      body.innerHTML = html; return;
+    }
+    var place = spyPlace(g), left = spyLeft(g), inRound = g.players.indexOf(me) >= 0, isSpy = g.spies.indexOf(me) >= 0;
+    status.textContent = g.players.length + ' playing · ' + (g.revealed ? 'revealed' : left > 0 ? mmss(left) + ' left' : 'time’s up');
+    html += '<div class="spy-clock' + (left > 0 && !g.revealed ? '' : ' up') + '">' + (g.revealed ? 'Revealed' : left > 0 ? '<span data-spy-clock>' + mmss(left) + '</span>' : 'Time’s up. Vote on the spy, then reveal.') + '</div>';
+    if (g.revealed) {
+      html += '<div class="spy-reveal"><div class="icon">' + place.icon + '</div><div class="sub">The place was</div><div class="role">' + esc(place.name) + '</div><div class="mates">' + esc(g.spies.length > 1 ? 'The spies were ' + g.spies.join(' and ') : 'The spy was ' + g.spies[0]) + '</div></div>';
+    } else if (inRound) {
+      html += '<div class="role-card' + (revealHold && revealWhere === 'spyfall' ? ' revealed' : '') + (spyDealAnim ? ' dealin' : '') + '"><div class="role-inner">' +
+        '<div class="role-face back"><div class="icon">🔍</div><div class="hold">Hold to see your card</div><div class="sub">Keep your thumb on it. Lifting hides it again.</div></div>' +
+        (isSpy
+          ? '<div class="role-face front mafia"><div class="icon">🕵️</div><div class="sub">You are</div><div class="role">The spy</div><div class="desc">You don’t know where everyone is. Listen, bluff, and work out the place before they work out you.</div>' + (g.spies.length > 1 ? '<div class="mates">Your fellow spy: ' + esc(g.spies.filter(function (p) { return p !== me; }).join(', ')) + '</div>' : '') + '</div>'
+          : '<div class="role-face front town"><div class="icon">' + place.icon + '</div><div class="sub">You’re at</div><div class="role">' + esc(place.name) + '</div><div class="desc">Your job: <b>' + esc(g.roles[me]) + '</b>. Answer like you’re there, but don’t make it easy for the spy.</div></div>') +
+        '</div></div>';
+    } else html += '<p class="info-sub">You’re not in this round. ' + esc(g.by === me ? 'You' : g.by) + ' dealt it.</p>';
+    html += '<details class="spy-places"><summary>All ' + SPY_PLACES.length + ' places</summary><div class="spy-grid">' + SPY_PLACES.map(function (p) { return '<span' + (g.revealed && p.k === g.place ? ' class="hit"' : '') + '>' + p.icon + ' ' + esc(p.name) + '</span>'; }).join('') + '</div></details>';
+    html += '<div class="mafia-actions">' + (g.revealed
+      ? '<button type="button" class="big-btn" id="spy-again">🔍 Deal another</button><button type="button" class="btn" id="spy-end">Done</button>'
+      : '<button type="button" class="btn" id="spy-reveal">Reveal the spy</button><button type="button" class="btn" id="spy-again">Re-deal</button>') + '</div>';
+    html += '<div class="cheat">Dealt by ' + esc(g.by === me ? 'you' : g.by) + ' ' + esc(agoText(g.dealt_at)) + '. Go round the room asking questions about the place. When the clock runs out, vote on who the spy is, then reveal. The spy wins by naming the place, or by surviving the vote.</div>';
+    body.innerHTML = html; spyDealAnim = false;
+  }
+  function dealSpyfall(d) {
+    var n = d.players.length; if (n < 3) { toast('Need at least three players.'); return; }
+    var spies = Math.min(d.spies, n >= 7 ? 2 : 1);
+    var choices = SPY_PLACES.filter(function (p) { return !spy || p.k !== spy.place; }), place = choices[Math.floor(Math.random() * choices.length)];
+    var order = shuffled(d.players), spyList = order.slice(0, spies), roles = {}, jobs = shuffled(place.roles);
+    order.slice(spies).forEach(function (p, i) { roles[p] = jobs[i % jobs.length]; });
+    var doc = { status: 'dealt', by: me, players: d.players.slice(), guests: guestsOf(d).slice(), spies: spyList, place: place.k, roles: roles, mins: d.mins, dealt_at: new Date().toISOString(), revealed: false };
+    spy = doc; spyDealAnim = true; spyBuzzed = null; renderSpyfall(); buzz([20, 50, 20, 50, 20]);
+    toast('Dealt. Everyone, hold your card.');
+    store.setGame('spyfall', doc).catch(function (e) { toast('Couldn’t deal: ' + ((e && e.message) || e)); });
+  }
+  function spyTick() {
+    var g = spy && spy.status === 'dealt' ? spy : null; if (!g || g.revealed) return;
+    var left = spyLeft(g), el = document.querySelector('[data-spy-clock]'), st = $('spyfall-status');
+    if (left > 0) { if (el) el.textContent = mmss(left); if (st) st.textContent = g.players.length + ' playing · ' + mmss(left) + ' left'; return; }
+    if (spyBuzzed === g.dealt_at) return;
+    spyBuzzed = g.dealt_at; renderSpyfall();
+    if (g.players.indexOf(me) >= 0) { buzz([60, 40, 60, 40, 120]); toast('Spyfall: time’s up. Vote!'); }
+  }
+  $('spyfall-body').addEventListener('submit', function (e) {
+    if (e.target.id !== 'spyfall-guest') return;
+    e.preventDefault();
+    var d = spyDraft || (spyDraft = spyDefaults()), inp = e.target.querySelector('input');
+    if (addGuest(d, inp.value)) { renderSpyfall(); var again = document.querySelector('#spyfall-guest input'); if (again) again.focus(); buzz(6); }
+  });
+  $('spyfall-body').addEventListener('click', function (e) {
+    var d = spyDraft || (spyDraft = spyDefaults());
+    var dg = e.target.closest('[data-drop-guest]'); if (dg) { dropGuest(d, dg.getAttribute('data-drop-guest')); renderSpyfall(); return; }
+    var pl = e.target.closest('[data-player]');
+    if (pl) { var nm = pl.getAttribute('data-player'); if (d.players.indexOf(nm) >= 0) d.players = d.players.filter(function (x) { return x !== nm; }); else d.players.push(nm); renderSpyfall(); return; }
+    var st = e.target.closest('[data-step]'); if (st) { d.spies = Math.max(1, Math.min(2, d.spies + (+st.getAttribute('data-step')))); renderSpyfall(); return; }
+    var mn = e.target.closest('[data-mins]'); if (mn) { d.mins = Math.max(3, Math.min(15, d.mins + (+mn.getAttribute('data-mins')))); renderSpyfall(); return; }
+    if (e.target.closest('#spy-deal')) { dealSpyfall(d); return; }
+    if (e.target.closest('#spy-again') && spy) { spyDraft = { players: spy.players.slice(), guests: (spy.guests || []).slice(), spies: (spy.spies || []).length || 1, mins: spy.mins || 8 }; dealSpyfall(spyDraft); return; }
+    if (e.target.closest('#spy-reveal') && spy) {
+      var rv = Object.assign({}, spy, { revealed: true });
+      store.setGame('spyfall', rv).then(function () { spy = rv; renderSpyfall(); buzz([30, 40, 30]); }).catch(function (err) { toast('Couldn’t reveal: ' + ((err && err.message) || err)); });
+      return;
+    }
+    if (e.target.closest('#spy-end') && spy) {
+      var ended = Object.assign({}, spy, { status: 'ended', ended_at: new Date().toISOString() });
+      store.setGame('spyfall', ended).then(function () { spy = ended; spyDraft = null; renderSpyfall(); }).catch(function (err) { toast('Couldn’t end it: ' + ((err && err.message) || err)); });
+    }
+  });
+  $('spyfall-body').addEventListener('pointerdown', holdStart);
+  $('spyfall-body').addEventListener('contextmenu', function (e) { if (e.target.closest('.role-card')) e.preventDefault(); });
+
+  // ---- Fishbowl ----
+  // Everyone drops three things in the bowl from their own phone. Two teams, three rounds on the same words: describe
+  // it, one word, act it out. Turns are a minute. The phone that starts a turn runs it: it shows the card and takes
+  // Got it or Skip; every other phone shows the score and the clock. Words live in one document per person
+  // (game-fb-<name>), so thirteen people typing at once never overwrite each other; the game itself is one document.
+  var FB_WORDS = 3, FB_TURN = 60, FB_ROUNDS = [
+    { name: 'Describe it', rule: 'Say anything except the words on the card. No rhymes-with, no spelling it out.' },
+    { name: 'One word', rule: 'One word, then silence. Choose it well.' },
+    { name: 'Act it out', rule: 'No words, no sounds. Charades.' }
+  ];
+  var fb = null, fbLoaded = false, fbSub = false, fbWords = {}, fbWordsLoaded = false, fbPreview = null, fbExpiredFor = null;
+  function subscribeFishbowl() {
+    if (fbSub || !store || !store.game) return;
+    fbSub = true;
+    store.game('fishbowl', function (doc) { var same = fbLoaded && sameDoc(doc, fb); fb = doc; fbLoaded = true; if (!same) renderFishbowl(); });
+    if (!store.games) { fbWordsLoaded = true; return; }
+    store.games('fb-', function (rows) {
+      var next = {}; rows.forEach(function (r) { if (r.doc && r.doc.by) next[r.doc.by] = r.doc; });
+      var same = fbWordsLoaded && sameDoc(next, fbWords); fbWords = next; fbWordsLoaded = true; if (!same) renderFishbowl();
+    });
+  }
+  function fbSession() { return (fb && fb.session) || 'first'; }
+  function fbMine() { var d = fbWords[me]; return d && d.session === fbSession() ? (d.words || []) : []; }
+  function fbPool() {   // who has words in this bowl, and the words themselves
+    var s = fbSession(), out = { people: [], words: [] };
+    NAMES.forEach(function (n) {
+      var d = fbWords[n]; if (!d || d.session !== s || !d.words || !d.words.length) return;
+      out.people.push(n); d.words.forEach(function (w, i) { out.words.push({ id: n + ':' + i, t: w, by: n }); });
+    });
+    return out;
+  }
+  function fbTeamName(g, i) { return TEAM_EMOJI[g.ti[i]] + ' ' + TEAM_NAMES[g.ti[i]]; }
+  function fbWinner(g) { return g.score[0] === g.score[1] ? -1 : g.score[0] > g.score[1] ? 0 : 1; }
+  function fbWinnerText(g) { var w = fbWinner(g); return w < 0 ? 'A tie, ' + g.score[0] + ' all.' : fbTeamName(g, w) + ' won ' + g.score[w] + '–' + g.score[1 - w] + '.'; }
+  function fbLeft(g) { return Math.max(0, new Date(g.turn.started_at).getTime() + FB_TURN * 1000 - Date.now()); }
+  function teamHtml(members, ti) {
+    return '<div class="team" style="--tc:' + TEAM_COLORS[ti] + '"><div class="tname"><span class="mascot">' + TEAM_EMOJI[ti] + '</span>Team ' + TEAM_NAMES[ti] + '<small>' + members.length + '</small></div><div class="tmem">' +
+      members.map(function (m) { return '<span class="' + (m === me ? 'me' : '') + '">' + esc(m) + '</span>'; }).join('') + '</div></div>';
+  }
+  function renderFishbowl() {
+    var body = $('fishbowl-body'), status = $('fishbowl-status'); if (!body) return;
+    if (!fbLoaded || !fbWordsLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
+    var g = fb && (fb.status === 'play' || fb.status === 'over') ? fb : null, html = '';
+    if (!g) {   // filling the bowl
+      var pool = fbPool(), mine = fbMine(), can = pool.people.length >= 4;
+      status.textContent = pool.words.length ? pool.words.length + ' in the bowl' : 'Bowl’s empty';
+      html += '<p class="info-sub">Everyone drops ' + FB_WORDS + ' things in the bowl from their own phone: people, places, movies, inside jokes. Two teams, three rounds on the same words: describe it, one word, act it out. A minute a turn.</p>';
+      html += '<div class="fb-mine"><div class="rl-head">Your ' + FB_WORDS + ' <span class="info-sub">(' + mine.length + ' in)</span></div>' +
+        mine.map(function (w, i) { return '<span class="guest">' + esc(w) + '<button type="button" data-fb-drop="' + i + '" aria-label="Take out ' + esc(w) + '">×</button></span>'; }).join('') +
+        (mine.length < FB_WORDS ? '<form class="guest-add" id="fb-add"><input type="text" maxlength="40" placeholder="Something to guess" autocomplete="off" autocapitalize="words"><button type="submit" class="btn">Drop in</button></form>' : '<span class="info-sub">You’re in. Sit tight.</span>') + '</div>';
+      html += '<div class="fb-pool">' + (pool.people.length ? pool.people.map(function (n) { var c = fbWords[n].words.length; return '<span class="guest' + (c >= FB_WORDS ? ' full' : '') + '">' + esc(n === me ? 'You' : n) + ' <b>' + c + '</b></span>'; }).join('') : '<span class="info-sub">Nobody’s dropped anything in yet.</span>') + '</div>';
+      if (fbPreview && !sameDoc(fbPreview.people, pool.people)) fbPreview = null;   // someone joined or left: roll again
+      if (fbPreview) {
+        html += '<div class="team-list">' + fbPreview.teams.map(function (members, i) { return teamHtml(members, fbPreview.ti[i]); }).join('') + '</div>';
+        html += '<div class="mafia-actions"><button type="button" class="big-btn" id="fb-start">🐟 Start the game</button><button type="button" class="btn" id="fb-teams">Roll again</button></div>';
+      } else {
+        html += '<div class="mafia-actions"><button type="button" class="big-btn" id="fb-teams"' + (can ? '' : ' disabled') + '>🎲 Make the teams</button></div>';
+        if (!can) html += '<div class="deal-sum">Needs four people with something in the bowl.</div>';
+      }
+      if (fb && fb.status === 'over') html += '<p class="info-sub" style="margin-top:10px">Last game: ' + esc(fbWinnerText(fb)) + '</p>';
+      if (pool.words.length) html += '<div class="mafia-actions"><button type="button" class="linkbtn" id="fb-new">Empty the bowl</button></div>';
+      body.innerHTML = html; return;
+    }
+    var t = g.turn, running = !!t.started_at, left = running ? fbLeft(g) : 0, meRunner = running && t.runner === myId(), over = g.status === 'over';
+    status.textContent = over ? (fbWinner(g) < 0 ? 'Tie, ' + g.score[0] + ' all' : TEAM_NAMES[g.ti[fbWinner(g)]] + ' won ' + g.score[fbWinner(g)] + '\u2013' + g.score[1 - fbWinner(g)]) : 'Round ' + g.round + ' \u00b7 ' + g.score[0] + '\u2013' + g.score[1];
+    html += '<div class="fb-score">' + [0, 1].map(function (i) {
+      return '<div class="fb-team' + (!over && t.team === i ? ' up' : '') + (over && fbWinner(g) === i ? ' won' : '') + '" style="--tc:' + TEAM_COLORS[g.ti[i]] + '"><span class="n">' + g.score[i] + '</span><small>' + fbTeamName(g, i) + '</small><span class="names">' + esc(g.teams[i].join(', ')) + '</span></div>';
+    }).join('') + '</div>';
+    if (over) {
+      html += '<div class="fb-round"><b>Game over.</b> ' + esc(fbWinnerText(g)) + '</div>';
+      html += '<div class="fb-rounds">' + FB_ROUNDS.map(function (rr, i) { return '<span>' + esc(rr.name) + ' <b>' + g.rounds[i][0] + '–' + g.rounds[i][1] + '</b></span>'; }).join('') + '</div>';
+      html += '<div class="mafia-actions"><button type="button" class="big-btn" id="fb-again">🐟 Same words, play again</button><button type="button" class="btn" id="fb-new">New bowl</button></div>';
+      body.innerHTML = html; return;
+    }
+    var r = FB_ROUNDS[g.round - 1], teamName = fbTeamName(g, t.team);
+    html += '<div class="fb-round"><b>Round ' + g.round + ' of 3: ' + esc(r.name) + '.</b> ' + esc(r.rule) + ' <span class="info-sub">' + g.left.length + ' of ' + g.entries.length + ' left in the bowl.</span></div>';
+    if (!running) {
+      html += '<div class="fb-up"><span class="sub">Up next for ' + teamName + '</span><span class="who">' + esc(t.giver === me ? 'You' : t.giver) + '</span></div>';
+      html += '<div class="mafia-actions"><button type="button" class="big-btn" id="fb-go">▶ ' + (t.giver === me ? 'Start my turn' : 'Start ' + esc(t.giver) + '’s turn on this phone') + '</button><button type="button" class="btn" id="fb-pass">Skip to the next person</button></div>';
+    } else if (meRunner) {
+      var cur = g.entries.filter(function (e) { return e.id === t.cur; })[0];
+      html += '<div class="fb-clock' + (left <= 10000 ? ' low' : '') + '" id="fb-clock"><span data-fb-clock>' + mmss(left) + '</span></div>';
+      html += '<div class="fb-card"><div class="w">' + esc(cur ? cur.t : '…') + '</div><div class="sub">' + (cur ? 'from ' + esc(cur.by) : '') + '</div></div>';
+      html += '<div class="fb-btns"><button type="button" class="big-btn got" id="fb-got">✓ Got it</button><button type="button" class="btn skip" id="fb-skip"' + (g.left.length < 2 ? ' disabled' : '') + '>Skip</button></div>';
+      html += '<div class="info-sub" style="margin-top:8px;text-align:center">' + t.got + ' this turn</div>';
+    } else {
+      html += '<div class="fb-up live"><span class="sub">' + teamName + ' · ' + esc(t.giver === me ? 'your turn is running on another phone' : t.giver + ' is up') + '</span><span class="who" data-fb-clock>' + mmss(left) + '</span><span class="sub">' + t.got + ' so far this turn</span></div>';
+      if (left <= 0) html += '<div class="mafia-actions"><button type="button" class="btn" id="fb-timeout">That phone went quiet. Next turn.</button></div>';
+    }
+    html += '<div class="mafia-actions"><button type="button" class="linkbtn" id="fb-end">End the game</button></div>';
+    body.innerHTML = html;
+  }
+  function fbWrite(doc, what) {
+    fb = doc; renderFishbowl();
+    return store.setGame('fishbowl', doc).catch(function (e) { toast((what || 'Couldn’t save that') + ': ' + ((e && e.message) || e)); });
+  }
+  function fbSaveMine(words) {
+    var doc = { by: me, session: fbSession(), words: words, at: new Date().toISOString() };
+    fbWords = Object.assign({}, fbWords); fbWords[me] = doc; renderFishbowl();
+    store.setGame('fb-' + me, doc).catch(function (e) { toast('Couldn’t save that: ' + ((e && e.message) || e)); });
+  }
+  function fbNextGiver(g, team) { var list = g.teams[team], i = g.next[team] % list.length; g.next[team] = i + 1; return list[i]; }
+  function fbPick(g, not) { var ids = g.left.filter(function (id) { return id !== not; }); if (!ids.length) ids = g.left; return ids[Math.floor(Math.random() * ids.length)] || null; }
+  function fbEndTurn(g) { var team = 1 - g.turn.team; g.turn = { team: team, giver: fbNextGiver(g, team), started_at: null, runner: null, cur: null, got: 0 }; return g; }
+  function fbFresh(base) {   // a new game on the same teams and words
+    var g = Object.assign({}, base, { status: 'play', at: new Date().toISOString(), round: 1, left: base.entries.map(function (e) { return e.id; }), score: [0, 0], rounds: [[0, 0], [0, 0], [0, 0]], next: [0, 0], turn: { team: Math.random() < 0.5 ? 0 : 1, giver: null, started_at: null, runner: null, cur: null, got: 0 } });
+    delete g.over_at; g.turn.giver = fbNextGiver(g, g.turn.team); return g;
+  }
+  function fbStart() {
+    var pool = fbPool(); if (!fbPreview || pool.people.length < 4) return;
+    var doc = fbFresh({ session: fbSession(), by: me, teams: fbPreview.teams, ti: fbPreview.ti, entries: shuffled(pool.words) });
+    fbPreview = null; buzz([20, 50, 20]); fbWrite(doc, 'Couldn’t start');
+  }
+  function fbGo() {
+    var g = JSON.parse(JSON.stringify(fb)); if (g.turn.started_at) return;
+    g.turn.started_at = new Date().toISOString(); g.turn.runner = myId(); g.turn.cur = fbPick(g, null); g.turn.got = 0;
+    buzz([15, 40, 15]); fbWrite(g, 'Couldn’t start the turn');
+  }
+  function fbGot() {
+    var g = JSON.parse(JSON.stringify(fb)), t = g.turn; if (!t.started_at || t.runner !== myId() || !t.cur) return;
+    g.left = g.left.filter(function (id) { return id !== t.cur; }); g.score[t.team]++; g.rounds[g.round - 1][t.team]++; t.got++;
+    buzz(12);
+    if (g.left.length) t.cur = fbPick(g, t.cur);
+    else if (g.round >= 3) { g.status = 'over'; g.over_at = new Date().toISOString(); buzz([40, 40, 40, 40, 120]); }
+    else { g.round++; g.left = g.entries.map(function (e) { return e.id; }); fbEndTurn(g); toast('Bowl’s empty. Round ' + g.round + ': ' + FB_ROUNDS[g.round - 1].name + '.'); }
+    fbWrite(g, 'Couldn’t score that');
+  }
+  function fbSkip() { var g = JSON.parse(JSON.stringify(fb)), t = g.turn; if (!t.started_at || t.runner !== myId() || g.left.length < 2) return; t.cur = fbPick(g, t.cur); buzz(6); fbWrite(g); }
+  function fbTimeUp() {
+    var g = JSON.parse(JSON.stringify(fb)); if (!g.turn.started_at) return;
+    fbEndTurn(g); buzz([60, 40, 60, 40, 120]); toast('Time! ' + g.turn.giver + ' is up for ' + fbTeamName(g, g.turn.team) + '.'); fbWrite(g);
+  }
+  function fbTick() {
+    var g = fb && fb.status === 'play' ? fb : null; if (!g || !g.turn.started_at) return;
+    var left = fbLeft(g);
+    Array.prototype.forEach.call(document.querySelectorAll('[data-fb-clock]'), function (el) { el.textContent = mmss(left); });
+    var clock = $('fb-clock'); if (clock) clock.classList.toggle('low', left <= 10000);
+    if (left > 0) return;
+    if (g.turn.runner === myId()) fbTimeUp();
+    else if (fbExpiredFor !== g.turn.started_at) { fbExpiredFor = g.turn.started_at; renderFishbowl(); }   // show the "went quiet" button once
+  }
+  $('fishbowl-body').addEventListener('submit', function (e) {
+    if (e.target.id !== 'fb-add') return;
+    e.preventDefault();
+    var inp = e.target.querySelector('input'), w = String(inp.value || '').replace(/\s+/g, ' ').trim().slice(0, 40), mine = fbMine();
+    if (!w) return;
+    if (mine.some(function (x) { return x.toLowerCase() === w.toLowerCase(); })) { toast('That one’s already in.'); return; }
+    if (mine.length >= FB_WORDS) return;
+    fbSaveMine(mine.concat([w])); buzz(6);
+    var again = document.querySelector('#fb-add input'); if (again) again.focus();
+  });
+  $('fishbowl-body').addEventListener('click', function (e) {
+    var dr = e.target.closest('[data-fb-drop]'); if (dr) { var i = +dr.getAttribute('data-fb-drop'); fbSaveMine(fbMine().filter(function (x, k) { return k !== i; })); return; }
+    if (e.target.closest('#fb-teams')) {
+      var pool = fbPool(); if (pool.people.length < 4) return;
+      var ti = shuffled([0, 1, 2, 3, 4, 5]).slice(0, 2);
+      fbPreview = { people: pool.people.slice(), teams: makeTeams(pool.people, 2, true), ti: ti }; buzz([15, 60, 15]); renderFishbowl(); return;
+    }
+    if (e.target.closest('#fb-start')) { fbStart(); return; }
+    if (!fb) return;
+    if (e.target.closest('#fb-go')) { fbGo(); return; }
+    if (e.target.closest('#fb-got')) { fbGot(); return; }
+    if (e.target.closest('#fb-skip')) { fbSkip(); return; }
+    if (e.target.closest('#fb-timeout')) { fbTimeUp(); return; }
+    if (e.target.closest('#fb-pass')) { var g = JSON.parse(JSON.stringify(fb)); if (g.turn.started_at) return; g.turn.giver = fbNextGiver(g, g.turn.team); fbWrite(g); return; }
+    if (e.target.closest('#fb-end')) { if (!window.confirm('End the game for everyone?')) return; var ge = JSON.parse(JSON.stringify(fb)); ge.status = 'over'; ge.over_at = new Date().toISOString(); fbWrite(ge, 'Couldn’t end it'); return; }
+    if (e.target.closest('#fb-again')) { fbWrite(fbFresh(fb), 'Couldn’t restart'); return; }
+    if (e.target.closest('#fb-new')) {
+      var sid = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      fbPreview = null; fbWrite({ status: 'bowl', session: sid, by: me, at: new Date().toISOString() }, 'Couldn’t empty it');
+    }
+  });
+  setInterval(function () { spyTick(); fbTick(); }, 1000);
 
   // ---- Cabin tab ----
   var CABIN_PHOTOS = [    // published alongside the page
@@ -2833,6 +3130,8 @@
     booted = true;
     subscribePredictions();
     subscribeMafia();
+    subscribeSpyfall();
+    subscribeFishbowl();
     subscribeTeams();
     subscribeLiv();
     subscribeSmash();

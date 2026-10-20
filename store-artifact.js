@@ -132,6 +132,15 @@
     setGame: function (name, doc) {
       return ensure().then(function () { if (!db) throw new Error('not signed in'); return db.doc('meta/game-' + name).set(doc); });
     },
+    // Every game doc whose name starts with a prefix (Fishbowl keeps one doc of words per person: game-fb-<name>).
+    games: function (prefix, onRows) {
+      ensure().then(function () {
+        if (!db) return;
+        db.collection('meta').onSnapshot(function (qs) {
+          onRows(qs.docs.filter(function (d) { return d.exists && d.id.indexOf('game-' + prefix) === 0; }).map(function (d) { return { name: d.id.slice(5), doc: Object.assign({}, d.data()) }; }));
+        }, function () { /* ignore */ });
+      });
+    },
 
     // Air hockey tally: one shared document.
     scores: function (onScores) {
