@@ -2175,24 +2175,24 @@
       if (spy && spy.status === 'ended') html += '<p class="info-sub" style="margin-top:10px">Last round ' + esc(agoText(spy.ended_at)) + ': ' + esc(spyPlace(spy).name) + ', spy ' + esc((spy.spies || []).join(' and ')) + '.</p>';
       body.innerHTML = html; return;
     }
-    var place = spyPlace(g), left = spyLeft(g), inRound = g.players.indexOf(me) >= 0, isSpy = g.spies.indexOf(me) >= 0;
-    status.textContent = g.players.length + ' playing · ' + (g.revealed ? 'revealed' : left > 0 ? mmss(left) + ' left' : 'time’s up');
-    html += '<div class="spy-clock' + (left > 0 && !g.revealed ? '' : ' up') + '">' + (g.revealed ? 'Revealed' : left > 0 ? '<span data-spy-clock>' + mmss(left) + '</span>' : 'Time’s up. Vote on the spy, then reveal.') + '</div>';
-    if (g.revealed) {
+    var place = spyPlace(g), left = spyLeft(g), inRound = g.players.indexOf(me) >= 0, isSpy = g.spies.indexOf(me) >= 0, revealed = g.revealed || left <= 0;   // the spy can come clean early; otherwise the clock reveals them
+    status.textContent = g.players.length + ' playing · ' + (revealed ? 'revealed' : mmss(left) + ' left');
+    html += '<div class="spy-clock' + (revealed ? ' up' : '') + '">' + (g.revealed ? 'The spy came clean' : left > 0 ? '<span data-spy-clock>' + mmss(left) + '</span>' : 'Time’s up') + '</div>';
+    if (revealed) {
       html += '<div class="spy-reveal"><div class="icon">' + place.icon + '</div><div class="sub">The place was</div><div class="role">' + esc(place.name) + '</div><div class="mates">' + esc(g.spies.length > 1 ? 'The spies were ' + g.spies.join(' and ') : 'The spy was ' + g.spies[0]) + '</div></div>';
     } else if (inRound) {
       html += '<div class="role-card' + (revealHold && revealWhere === 'spyfall' ? ' revealed' : '') + (spyDealAnim ? ' dealin' : '') + '"><div class="role-inner">' +
         '<div class="role-face back"><div class="icon">🔍</div><div class="hold">Hold to see your card</div><div class="sub">Keep your thumb on it. Lifting hides it again.</div></div>' +
         (isSpy
-          ? '<div class="role-face front mafia"><div class="icon">🕵️</div><div class="sub">You are</div><div class="role">The spy</div><div class="desc">You don’t know where everyone is. Listen, bluff, and work out the place before they work out you.</div>' + (g.spies.length > 1 ? '<div class="mates">Your fellow spy: ' + esc(g.spies.filter(function (p) { return p !== me; }).join(', ')) + '</div>' : '') + '</div>'
+          ? '<div class="role-face front mafia"><div class="icon">🕵️</div><div class="sub">You are</div><div class="role">The spy</div><div class="desc">You don’t know where everyone is. Listen, bluff, and work out the place before the clock runs out. Sure of it? Reveal yourself and call it.</div>' + (g.spies.length > 1 ? '<div class="mates">Your fellow spy: ' + esc(g.spies.filter(function (p) { return p !== me; }).join(', ')) + '</div>' : '') + '</div>'
           : '<div class="role-face front town"><div class="icon">' + place.icon + '</div><div class="sub">You’re at</div><div class="role">' + esc(place.name) + '</div><div class="desc">Your job: <b>' + esc(g.roles[me]) + '</b>. Answer like you’re there, but don’t make it easy for the spy.</div></div>') +
         '</div></div>';
     } else html += '<p class="info-sub">You’re not in this round. ' + esc(g.by === me ? 'You' : g.by) + ' dealt it.</p>';
-    html += '<details class="spy-places"><summary>All ' + SPY_PLACES.length + ' places</summary><div class="spy-grid">' + SPY_PLACES.map(function (p) { return '<span' + (g.revealed && p.k === g.place ? ' class="hit"' : '') + '>' + p.icon + ' ' + esc(p.name) + '</span>'; }).join('') + '</div></details>';
-    html += '<div class="mafia-actions">' + (g.revealed
+    html += '<details class="spy-places"><summary>All ' + SPY_PLACES.length + ' places</summary><div class="spy-grid">' + SPY_PLACES.map(function (p) { return '<span' + (revealed && p.k === g.place ? ' class="hit"' : '') + '>' + p.icon + ' ' + esc(p.name) + '</span>'; }).join('') + '</div></details>';
+    html += '<div class="mafia-actions">' + (revealed
       ? '<button type="button" class="big-btn" id="spy-again">🔍 Deal another</button><button type="button" class="btn" id="spy-end">Done</button>'
-      : '<button type="button" class="btn" id="spy-reveal">Reveal the spy</button><button type="button" class="btn" id="spy-again">Re-deal</button>') + '</div>';
-    html += '<div class="cheat">Dealt by ' + esc(g.by === me ? 'you' : g.by) + ' ' + esc(agoText(g.dealt_at)) + '. Go round the room asking questions about the place. When the clock runs out, vote on who the spy is, then reveal. The spy wins by naming the place, or by surviving the vote.</div>';
+      : (isSpy ? '<button type="button" class="btn" id="spy-reveal">I’m the spy: reveal me</button>' : '') + '<button type="button" class="btn" id="spy-again">Re-deal</button>') + '</div>';
+    html += '<div class="cheat">Dealt by ' + esc(g.by === me ? 'you' : g.by) + ' ' + esc(agoText(g.dealt_at)) + '. Go round the room asking questions about the place. Accuse whoever sounds lost before the clock runs out: when it does, every phone shows the place and the spy. Only the spy can reveal early, to call the place and claim the win.</div>';
     body.innerHTML = html; spyDealAnim = false;
   }
   function dealSpyfall(d) {
@@ -2212,7 +2212,7 @@
     if (left > 0) { if (el) el.textContent = mmss(left); if (st) st.textContent = g.players.length + ' playing · ' + mmss(left) + ' left'; return; }
     if (spyBuzzed === g.dealt_at) return;
     spyBuzzed = g.dealt_at; renderSpyfall();
-    if (g.players.indexOf(me) >= 0) { buzz([60, 40, 60, 40, 120]); toast('Spyfall: time’s up. Vote!'); }
+    if (g.players.indexOf(me) >= 0) { buzz([60, 40, 60, 40, 120]); toast('Spyfall: time’s up. ' + (g.spies.length > 1 ? 'The spies were ' + g.spies.join(' and ') : 'The spy was ' + g.spies[0]) + '.'); }
   }
   $('spyfall-body').addEventListener('submit', function (e) {
     if (e.target.id !== 'spyfall-guest') return;
@@ -2229,7 +2229,7 @@
     var mn = e.target.closest('[data-mins]'); if (mn) { d.mins = Math.max(3, Math.min(15, d.mins + (+mn.getAttribute('data-mins')))); renderSpyfall(); return; }
     if (e.target.closest('#spy-deal')) { dealSpyfall(d); return; }
     if (e.target.closest('#spy-again') && spy) { spyDraft = { players: spy.players.slice(), guests: (spy.guests || []).slice(), spies: (spy.spies || []).length || 1, mins: spy.mins || 8 }; dealSpyfall(spyDraft); return; }
-    if (e.target.closest('#spy-reveal') && spy) {
+    if (e.target.closest('#spy-reveal') && spy && spy.spies.indexOf(me) >= 0) {   // only the spy's own tap reveals
       var rv = Object.assign({}, spy, { revealed: true });
       store.setGame('spyfall', rv).then(function () { spy = rv; renderSpyfall(); buzz([30, 40, 30]); }).catch(function (err) { toast('Couldn’t reveal: ' + ((err && err.message) || err)); });
       return;
