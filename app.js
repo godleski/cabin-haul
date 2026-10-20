@@ -2998,10 +2998,10 @@
   var HIBACHI_HOST = 'Mitch';   // the host eats free: his plate and tip are split evenly across everyone else
   var HIBACHI_GUESTS = ['Jessie', 'Conner'];   // hibachi only: not on the roster and not in the app; Mitch collects for them
   var HIB_NAMES = NAMES.concat(HIBACHI_GUESTS);
-  var HIBACHI_PRESETS = {   // orders that are in from the start: the host's (he can change it) and the guests' (fixed, marked paid)
+  var HIBACHI_PRESETS = {   // orders that are in from the start: the host's (he can change it) and the guests' (fixed; Mitch or Jess marks them paid)
     Mitch: { picks: { plate: ['s-filet'] }, note: '', locked: true, preset: true },
-    Jessie: { picks: { plate: ['c-fsh'] }, note: '', locked: true, paid: true, preset: true },
-    Conner: { picks: { plate: ['c-nc'] }, note: '', locked: true, paid: true, preset: true }
+    Jessie: { picks: { plate: ['c-fsh'] }, note: '', locked: true, paid: false, preset: true },
+    Conner: { picks: { plate: ['c-nc'] }, note: '', locked: true, paid: false, preset: true }
   };
   var hibJustLocked = false;
   function hibPayUrl(amount, note) {   // Venmo's pay link: opens the app on a phone with recipient, amount and note filled in
