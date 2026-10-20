@@ -3362,7 +3362,7 @@
     lines.push(mode === 'chime'
       ? 'Nobody tagged you. You are butting in on the last message with one short roast or quip aimed at someone in the thread by name, using what they just said or what the boards say. If there is nothing to work with, go after Kyle’s golf or Luke’s Smash record. One sentence, two at most. Never mention that you were not asked.'
       : mode === 'arrive'
-        ? 'You have just been added to the group chat. Say hello in one short line, then roast Kyle’s mini golf game using the board: his best round to par if he is on it, or the fact that he has not posted a round if he is not. Three sentences at most. Make it sting and keep it friendly.'
+        ? 'You have just been added to the group chat. Say hello in one short line, then roast Kyle’s mini golf game using the board: his best round to par if he is on it, or the fact that he has not posted a round if he is not. Three sentences at most. Make it sting and keep it friendly. Model it closely on this opener, same shape and same jokes, with the real numbers swapped in: "Hey all, Claude here, the fourteenth member and the only one who can’t drink. Kyle’s best round is +9 on a par 27, which works out to four strokes a hole on a course built for children. Kelly, you might want to hide the putter before he hurts himself or the windmill." If Kyle is not on the board yet, keep the first and last sentences and make the middle one about him hiding from the board.'
         : 'Someone tagged you. Answer them.');
     return lines.join('\n\n');
   }
