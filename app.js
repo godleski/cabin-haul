@@ -2998,7 +2998,7 @@
   var HIBACHI_HOST = 'Mitch';   // the host eats free: his plate and tip are split evenly across everyone else
   var HIBACHI_GUESTS = ['Jessie', 'Conner'];   // hibachi only: not on the roster and not in the app; Mitch collects for them
   var HIB_NAMES = NAMES.concat(HIBACHI_GUESTS);
-  var HIBACHI_PRESETS = {   // orders that are in from the start: the host's (he can change it) and the guests' (fixed; Mitch or Jess marks them paid)
+  var HIBACHI_PRESETS = {   // orders that are in from the start: the host's (he can change it) and the guests' (fixed; Mitch marks them paid)
     Mitch: { picks: { plate: ['s-filet'] }, note: '', locked: true, preset: true },
     Jessie: { picks: { plate: ['c-fsh'] }, note: '', locked: true, paid: false, preset: true },
     Conner: { picks: { plate: ['c-nc'] }, note: '', locked: true, paid: false, preset: true }
@@ -3101,7 +3101,7 @@
     }
     // everyone, for Jess
     var all = $('hib-all'), rows = '', counts = {}, plates = 0, tips = 0;
-    var canMark = me === HIBACHI_HOST || me === HIBACHI_PAYEE.name;   // the host and the one collecting can mark anyone paid
+    var canMark = me === HIBACHI_HOST;   // only the host marks people paid
     HIB_NAMES.forEach(function (n) {
       var o = orders[n];
       if (o && o.locked) {
@@ -3162,7 +3162,7 @@
       return;
     }
     var mk = e.target.closest('[data-hib-mark]');
-    if (mk && (me === HIBACHI_HOST || me === HIBACHI_PAYEE.name)) {   // marking someone else paid, on their behalf
+    if (mk && me === HIBACHI_HOST) {   // marking someone else paid, on their behalf
       var who = mk.getAttribute('data-hib-mark'), their = hibOrders()[who]; if (!their) return;
       var paying = !their.paid, upd2 = Object.assign({}, their, { paid: paying, at: new Date().toISOString() }); delete upd2.preset;
       if (paying) upd2.paid_amt = hibOwed(who, their); else delete upd2.paid_amt;
