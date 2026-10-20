@@ -210,6 +210,10 @@
   .msg .who { font-weight: 700; font-size: 0.78rem; }
   .msg .when { font-size: 0.7rem; color: var(--muted); margin-left: 4px; }
   .msg .txt { overflow-wrap: anywhere; margin-top: 1px; }
+  .msg.claude { background: linear-gradient(135deg, #fff3e3, #ffe9d2); border: 1px solid #f3c99b; } .msg.claude .who::before { content: "\2726 "; color: #d2691e; }
+  .msg.claude.typing .txt { color: var(--muted); font-style: italic; white-space: nowrap; } .msg.typing .dots i { font-style: normal; animation: dotpulse 1.2s infinite; } .msg.typing .dots i:nth-child(2) { animation-delay: 0.2s; } .msg.typing .dots i:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dotpulse { 0%, 60%, 100% { opacity: 0.25; } 30% { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .msg.typing .dots i { animation: none; } }
   .chat-form input { flex: 1; }
 
   /* ---- Main ---- */

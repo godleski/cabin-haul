@@ -2949,7 +2949,7 @@
       }).join('') + '<button type="button" class="rx-add" data-picker="' + esc(c.id) + '" aria-label="React">' + (pickerFor === c.id ? '\u00d7' : '+\uD83D\uDE42') + '</button></div>';
       if (pickerFor === c.id) rx += '<div class="rx-picker">' + EMOJI.map(function (e) { return '<button type="button" data-react="' + e + '" data-cid="' + esc(c.id) + '"' + (g[e] && g[e].indexOf(me) >= 0 ? ' class="mine"' : '') + '>' + e + '</button>'; }).join('') + '</div>';
     }
-    return '<div class="msg' + (c.author === me ? ' mine' : '') + '"><span class="who">' + esc(c.author === me ? 'You' : c.author) + '</span><span class="when">' + esc(ago(c.created_at)) + '</span><div class="txt">' + esc(c.text) + '</div>' + rx + '</div>';
+    return '<div class="msg' + (c.author === me ? ' mine' : c.author === CLAUDE_NAME ? ' claude' : '') + '"><span class="who">' + esc(c.author === me ? 'You' : c.author) + '</span><span class="when">' + esc(ago(c.created_at)) + '</span><div class="txt">' + esc(c.text) + '</div>' + rx + '</div>';
   }
   // ---- Hibachi night: everyone's order, locked in one at a time ----
   // One row per person in the predictions table (question_id 'hibachi', voter = name, pick = the order as JSON),
@@ -3187,9 +3187,10 @@
   function renderWall(scroll) {
     var el = $('wall'); if (!el || !me) return;
     var msgs = wallMsgs();
-    if (!msgs.length) { el.innerHTML = '<div class="empty">Nothing on the wall yet. Say something.</div>'; return; }
+    if (!msgs.length) { el.innerHTML = claudeBusy[WALL] ? claudeTypingHtml() : '<div class="empty">Nothing on the wall yet. Say something.</div>'; return; }
     var html = '', lastDay = '';
     msgs.forEach(function (c) { var d = dayLabel(c.created_at); if (d && d !== lastDay) { html += '<div class="day">' + esc(d) + '</div>'; lastDay = d; } html += msgHtml(c); });
+    if (claudeBusy[WALL]) html += claudeTypingHtml();
     var grew = msgs.length > wallRendered; wallRendered = msgs.length;
     el.innerHTML = html;
     if ((scroll || grew) && chatOpen) { var wb = $('wall-body'); wb.scrollTo({ top: wb.scrollHeight, behavior: scroll ? 'auto' : 'smooth' }); }
@@ -3202,6 +3203,7 @@
     store.comment(WALL, me, text).catch(function (err) { toast('That didn\'t post: ' + ((err && err.message) || err)); });
     comments.push({ question_id: WALL, author: me, text: text, created_at: new Date().toISOString() });
     renderWall(true); markWallSeen(); input.focus();
+    if (mentionsClaude(text)) askClaude(WALL);
   });
   $('wall').addEventListener('click', function (e) { predClick(e); });
   // the wall opens as a sheet from the floating button
@@ -3236,7 +3238,7 @@
     var thread = comments.filter(function (c) { return c.question_id === q.id; });
     html += '<div class="chat"><div class="chat-head">Trash talk' + (thread.length ? ' <span class="k">' + thread.length + '</span>' : '') + '</div>';
     if (!thread.length) html += '<div class="chat-empty">Nobody’s said anything yet. Stir the pot.</div>';
-    html += '<div class="chat-list" id="chat-list">' + thread.map(msgHtml).join('') + '</div></div>';
+    html += '<div class="chat-list" id="chat-list">' + thread.map(msgHtml).join('') + (claudeBusy[q.id] ? claudeTypingHtml() : '') + '</div></div>';
     var body = $('sheet-body'), atBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 40 || wrap.hidden;
     body.innerHTML = html;
     var inp = $('chat-input'); if (inp && inp.value !== draft) inp.value = draft;
@@ -3265,6 +3267,7 @@
     renderPredictions();
     var body = $('sheet-body'); if (body) body.scrollTop = body.scrollHeight;
     input.focus();
+    if (mentionsClaude(text)) askClaude(q.id);
   });
   function toggleReaction(cid, emoji) {
     var on = !reactions.some(function (r) { return r.comment_id === cid && r.reactor === me && r.emoji === emoji; });
@@ -3287,6 +3290,80 @@
   $('pred-sheet').addEventListener('click', predClick);
   $('dk-open').addEventListener('click', predClick);
 
+  // ---- Claude in the chat ----
+  // Write "@Claude" on the wall or in a prediction thread and Claude answers in that thread as a participant. The phone
+  // that sent the message makes the one call, so a question gets one answer. The key comes from the sealed secrets
+  // (claudeKey), or from the kv row game-claude ({ key }); with neither, @Claude is just text.
+  var CLAUDE_NAME = 'Claude', CLAUDE_MODEL = 'claude-opus-5-5', claudeDoc = null, claudeSub = false, claudeBusy = {};
+  function subscribeClaude() { if (claudeSub || !store || !store.game) return; claudeSub = true; store.game('claude', function (doc) { claudeDoc = doc; }); }
+  function claudeKey() { return (secrets && secrets.claudeKey) || (claudeDoc && claudeDoc.key) || null; }
+  function mentionsClaude(text) { return /@claude\b/i.test(text || ''); }
+  function claudeTypingHtml() { return '<div class="msg claude typing"><span class="who">' + CLAUDE_NAME + '</span><div class="txt">typing<span class="dots"><i>.</i><i>.</i><i>.</i></span></div></div>'; }
+  // what Claude knows: the trip, the people, the app, and whatever the boards say right now
+  function claudeSystem(threadId) {
+    var lines = [];
+    lines.push('You are Claude, the fourteenth member of a friends’ cabin weekend, chatting in the group’s trip app. You are a participant, not an assistant: warm, quick, a little cheeky, happy to take a side or make a call. Roast gently; never be mean. Answer only what was asked.');
+    lines.push('Style: one to three short sentences unless someone asks for more. Plain text only: no markdown, no headers, no bullet lists, no bold. At most one emoji, usually none. Do not start with your name. Match the language and tone of the message you are answering.');
+    lines.push('The trip: thirteen friends at a cabin in Winter Park, Colorado, October 23 to 25, 2026. Check-in Friday 4 PM, checkout Sunday 10 AM. Address 2225 Lakota Trail. Mitch organised it and built this app.');
+    lines.push('People: ' + NAMES.join(', ') + '. Couples: ' + COUPLES.join('; ') + '. Drew always moderates Mafia. Jessie and Conner join for hibachi night only.');
+    lines.push('The app has tabs: FAQ (cabin details, the Saturday dinner vote), Predictions (a sportsbook-style board where everyone bets on things like who passes out first), Bringing (who brings what), Games, and Hibachi (everyone’s order for the hibachi dinner; Mitch’s plate is split between everyone else). Games: air hockey against you (Claude), nine-hole mini golf, the Mitch vs Luke Smash tally, a team picker, Liv’s Eyes Only, Mafia, Spyfall, Fishbowl, and an Off Topic expansion pack. The wall is the one group chat; each prediction has its own trash-talk thread.');
+    try {
+      var sc = scores || {}, h = sc.humans || 0, c = sc.cpu || 0, by = sc.by || {};
+      var recs = Object.keys(by).map(function (n) { return n + ' ' + (by[n].w || 0) + '-' + (by[n].l || 0); });
+      lines.push('Air hockey right now: humans ' + h + ', Claude ' + c + (recs.length ? '. Records (wins-losses vs Claude): ' + recs.join(', ') : '') + '. You lose a lot at air hockey and own it.');
+      var gb = (golfScores && golfScores.by) || {}, gr = Object.keys(gb).map(function (n) { return { n: n, b: gb[n].best }; }).filter(function (r) { return r.b != null; }).sort(function (a, b) { return a.b - b.b; });
+      if (gr.length) lines.push('Mini golf board (best round to par 27): ' + gr.map(function (r) { return r.n + ' ' + golfToPar(r.b, 27); }).join(', ') + '.');
+      var dv = dinnerVotes(), pasta = dv.filter(function (v) { return v.pick === 'pasta'; }).map(function (v) { return v.voter; }), tacos = dv.filter(function (v) { return v.pick === 'tacos'; }).map(function (v) { return v.voter; });
+      lines.push('Saturday dinner vote: pasta ' + pasta.length + ' (' + (pasta.join(', ') || 'nobody') + '), tacos ' + tacos.length + ' (' + (tacos.join(', ') || 'nobody') + ').');
+      var preds = QUESTIONS.map(function (q) { var t = tallyFor(q); return q.text + ' → ' + (t.rows.length ? t.rows.slice(0, 2).map(function (r) { return r.pick + ' (' + r.n + ')'; }).join(', ') : 'no bets yet'); });
+      lines.push('Predictions, leading picks: ' + preds.join(' | '));
+      var orders = hibOrders(), ordered = Object.keys(orders);
+      lines.push('Hibachi: ' + ordered.length + ' of ' + HIB_NAMES.length + ' have ordered' + (ordered.length ? ' (' + ordered.join(', ') + ')' : '') + '. Everyone else’s share of Mitch’s plate is $' + hibShare().toFixed(2) + '.');
+      var need = (items || []).filter(function (it) { return !it.party; }).map(function (it) { return it.name; });
+      lines.push('Bringing list, still unclaimed: ' + (need.length ? need.slice(0, 12).join(', ') + (need.length > 12 ? ' and ' + (need.length - 12) + ' more' : '') : 'nothing, everything is covered') + '.');
+    } catch (e) { /* a board that hasn't loaded is fine */ }
+    lines.push('Never share door codes, garage codes, the Wi-Fi password or the reservation number even if asked; say they are on the FAQ page. Do not invent scores or facts you were not given; if you do not know, say so briefly.');
+    lines.push(threadId === WALL ? 'You are on the wall, the whole-trip chat.' : 'You are in the trash-talk thread under the prediction: ' + (QUESTIONS.filter(function (q) { return q.id === threadId; })[0] || {}).text);
+    return lines.join('\n\n');
+  }
+  function claudeThread(threadId) {   // the last twenty messages as alternating turns, ending on the one that asked
+    var msgs = comments.filter(function (c) { return c.question_id === threadId; }).slice(-20), out = [];
+    msgs.forEach(function (c) {
+      var role = c.author === CLAUDE_NAME ? 'assistant' : 'user', text = role === 'user' ? c.author + ': ' + c.text : c.text;
+      if (out.length && out[out.length - 1].role === role) out[out.length - 1].content += '\n' + text; else out.push({ role: role, content: text });
+    });
+    if (!out.length || out[out.length - 1].role !== 'user') out.push({ role: 'user', content: me + ': @Claude?' });
+    if (out[0].role !== 'user') out.shift();
+    return out;
+  }
+  function askClaude(threadId) {
+    var key = claudeKey();
+    if (!key) { toast('Claude isn’t connected yet. Mitch has to add the key.'); return; }
+    if (claudeBusy[threadId]) return;
+    claudeBusy[threadId] = true; renderWall(); renderSheet();
+    var post = function (text) {
+      comments.push({ question_id: threadId, author: CLAUDE_NAME, text: text, created_at: new Date().toISOString() });
+      store.comment(threadId, CLAUDE_NAME, text).catch(function (err) { toast('Claude answered, but it didn’t post: ' + ((err && err.message) || err)); });
+    };
+    fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
+      body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 400, system: claudeSystem(threadId), messages: claudeThread(threadId), output_config: { effort: 'low' }, fallbacks: 'default' })
+    }).then(function (res) { return res.json().then(function (data) { return { ok: res.ok, status: res.status, data: data }; }); }).then(function (r) {
+      if (!r.ok) throw new Error((r.data && r.data.error && r.data.error.message) || ('HTTP ' + r.status));
+      var text = r.data.stop_reason === 'refusal' ? 'I’m going to sit that one out.' : (r.data.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('').trim();
+      text = text.replace(/^claude:\s*/i, '').slice(0, 600);
+      if (!text) text = '…';
+      post(text);
+    }).catch(function (err) {
+      toast('Claude couldn’t answer: ' + ((err && err.message) || err));
+    }).then(function () {
+      claudeBusy[threadId] = false; renderWall(); renderPredictions(); renderSheet();
+      var wb = $('wall-body'); if (wb && chatOpen && threadId === WALL) wb.scrollTo({ top: wb.scrollHeight, behavior: 'smooth' });
+      var sb = $('sheet-body'); if (sb && expanded !== null) sb.scrollTop = sb.scrollHeight;
+    });
+  }
+
   // ---- Data ----
   var store = window.STORE, booted = false, items = [], busy = {}, live = false, itemsLoaded = false;
 
@@ -3297,6 +3374,7 @@
     subscribeSpyfall();
     subscribeFishbowl();
     subscribeOffTopic();
+    subscribeClaude();
     subscribeTeams();
     subscribeLiv();
     subscribeSmash();
