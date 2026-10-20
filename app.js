@@ -1274,7 +1274,7 @@
     mafiaDraft = null; teamsDraft = null; teamsEdit = false; expanded = null; pickerFor = null; modReveal = false;
     renderPredictions(); renderSheet(); renderWall(); updateChatBadge();
     renderMafia(); renderTeams(); renderLiv(); renderSmash();
-    renderHockeyBoard(); renderGolfBoard(); renderArcadeCues(); smashResetPair(); hibDraft = null; renderHibachi(); renderDinnerTally();
+    renderHockeyBoard(); renderGolfBoard(); renderArcadeCues(); smashResetPair(); hibDraft = null; renderHibachi(); renderDinnerTally(); updatePredBadge();
   }
 
   // ---- Bottom dock ----
@@ -2273,6 +2273,7 @@
     });
     if (store.comments) store.comments(function (rows) {
       comments = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? -1 : 1; });
+      if (expanded !== null) markQSeen(QUESTIONS[expanded].id);
       renderPredictions(); renderWall(); if (chatOpen) markWallSeen(); else updateChatBadge();
     });
     if (store.reactions) store.reactions(function (rows) { reactions = rows.slice(); renderPredictions(); renderWall(); });
@@ -2376,8 +2377,23 @@
   var SEG_COLORS = ['#d2691e', '#2d6a4f', '#3f7cae', '#8e44ad', '#b7950b', '#c0392b', '#7f8c8d'];
   var PLAIN_SEG = ['#7b3fe4', '#f5b942', '#3bb2e0', '#ff6b9a', '#38c7a0', '#ff8c42'];   // the plain page: violet first, so the leader matches the name above
   function segColor(k) { var c = plainPicks() ? PLAIN_SEG : SEG_COLORS; return c[k % c.length]; }
+  function qSeen(qid) { return lsGet('cabin-haul-q-seen-' + qid + '-' + me) || ''; }
+  function qThread(qid) { return comments.filter(function (c) { return c.question_id === qid; }); }
+  function qUnread(qid) { var seen = qSeen(qid); return qThread(qid).filter(function (c) { return c.author !== me && (c.created_at || '') > seen; }).length; }
+  function markQSeen(qid) {
+    if (!me) return;
+    var latest = qThread(qid).reduce(function (a, c) { return (c.created_at || '') > a ? c.created_at : a; }, '');
+    if (latest && latest !== qSeen(qid)) { lsSet('cabin-haul-q-seen-' + qid + '-' + me, latest); updatePredBadge(); }
+  }
+  // the Predictions tab wears a badge for comments you haven't seen yet
+  function updatePredBadge() {
+    var el = $('pred-badge'); if (!el) return;
+    var n = me ? QUESTIONS.reduce(function (a, q) { return a + qUnread(q.id); }, 0) : 0;
+    el.hidden = !n; el.textContent = n > 9 ? '9+' : String(n);
+  }
   function renderPredictions() {
     var el = $('pred'); if (!el || !me) return;
+    updatePredBadge();
     if (!store || !store.predictions) { el.hidden = true; return; }
     el.hidden = false;
     var mine = myVotes(), left = QUESTIONS.length - answeredCount();
@@ -2390,17 +2406,17 @@
     html += '<div class="pred-list">';
     QUESTIONS.forEach(function (q, i) {
       var t = tallyFor(q), total = t.rows.reduce(function (a, r) { return a + r.n; }, 0);
-      var cc = comments.filter(function (c) { return c.question_id === q.id; }).length, my = mine[q.id];
+      var cc = qThread(q.id).length, my = mine[q.id], nu = qUnread(q.id);
       if (plainPicks()) {   // the simple card: question, who's winning, a bar, your pick
         var lead = t.rows[0];
-        html += '<button type="button" class="pred-card plain" data-q="' + i + '">' +
+        html += '<button type="button" class="pred-card plain' + (nu ? ' has-new' : '') + '" data-q="' + i + '">' +
           '<div class="pq">' + esc(q.text) + '</div>' +
           '<div class="lead-row"><span class="lead' + (lead ? '' : ' none') + '">' + (lead ? esc(lead.pick) : 'No picks yet') + '</span>' + (lead ? '<span class="share">' + lead.n + ' <small>of ' + total + '</small></span>' : '') + '</div>' +
           (total ? '<div class="seg">' + t.rows.map(function (r, k) { return '<span style="width:' + (100 * r.n / total) + '%;background:' + segColor(k) + '"></span>'; }).join('') + '</div>' : '') +
-          '<div class="sub"><span>' + t.voted + ' of ' + NAMES.length + ' have picked</span>' + (cc ? '<span class="k">\uD83D\uDCAC ' + cc + '</span>' : '') + (my ? '<span class="you">You picked ' + esc(my) + '</span>' : '<span class="you no">You haven\u2019t picked</span>') + '</div>';
-        var th = comments.filter(function (c) { return c.question_id === q.id; }), l2 = th.slice(-2);
+          '<div class="sub"><span>' + t.voted + ' of ' + NAMES.length + ' have picked</span>' + (cc ? '<span class="k' + (nu ? ' new' : '') + '">\uD83D\uDCAC ' + cc + (nu ? ' \u00b7 ' + nu + ' new' : '') + '</span>' : '') + (my ? '<span class="you">You picked ' + esc(my) + '</span>' : '<span class="you no">You haven\u2019t picked</span>') + '</div>';
+        var th = qThread(q.id), l2 = th.slice(-2), seenAt = qSeen(q.id);
         if (!th.length) html += '<div class="pred-chat none"><span class="line"><span class="t">No comments yet. Tap to add one.</span></span></div>';
-        else html += '<div class="pred-chat">' + l2.map(function (c) { var rx = rxSummary(c.id); return '<span class="line"><b>' + esc(c.author === me ? 'You' : c.author) + '</b><span class="t">' + esc(c.text) + '</span>' + (rx ? '<span class="rx">' + rx + '</span>' : '') + '</span>'; }).join('') + (th.length > 2 ? '<span class="more">+' + (th.length - 2) + ' more</span>' : '') + '</div>';
+        else html += '<div class="pred-chat' + (nu ? ' has-new' : '') + '">' + l2.map(function (c) { var rx = rxSummary(c.id), fresh = c.author !== me && (c.created_at || '') > seenAt; return '<span class="line' + (fresh ? ' unread' : '') + '"><b>' + esc(c.author === me ? 'You' : c.author) + '</b><span class="t">' + esc(c.text) + '</span>' + (rx ? '<span class="rx">' + rx + '</span>' : '') + '</span>'; }).join('') + (th.length > 2 ? '<span class="more">+' + (th.length - 2) + ' more</span>' : '') + '</div>';
         html += '</button>';
         return;
       }
@@ -2408,18 +2424,18 @@
       if (!rows.length) rows = NAMES.filter(function (n) { return n !== me; }).slice(0, 3).map(function (n) { return { pick: n, n: 0 }; });
       if (my && !rows.some(function (r) { return r.pick === my; })) rows.push({ pick: my, n: (t.rows.filter(function (r) { return r.pick === my; })[0] || { n: 0 }).n });
       var hot = cc >= 2, top = t.rows.length ? t.rows[0].n : 0;
-      html += '<button type="button" class="pred-card dk" data-q="' + i + '">' +
+      html += '<button type="button" class="pred-card dk' + (nu ? ' has-new' : '') + '" data-q="' + i + '">' +
         '<div class="dk-top">' + (total ? '<span class="live"><i></i>Live</span>' : '<span class="soon">Opens</span>') + '<span class="mk">' + esc(q.text) + '</span>' + (hot ? '<span class="boost">\u26A1 Boosted</span>' : '<span class="sgp">SGP</span>') + '</div>' +
         '<div class="dk-rows">' + rows.map(function (r) {
           var fav = top > 0 && r.n === top, picked = r.pick === my;
           return '<div class="dk-row' + (fav ? ' fav' : '') + (picked ? ' picked' : '') + '"><span class="rn">' + esc(r.pick) + '<small>' + (r.n ? r.n + (r.n === 1 ? ' bet' : ' bets') : 'no action') + '</small>' + (fav ? '<em class="tag fav">Fav</em>' : '') + (picked ? '<em class="tag you">\u2713 Your bet</em>' : '') + '</span><span class="odds">' + oddsForQ(q, r.n) + '</span></div>';
         }).join('') + (function () { var hidden = t.rows.filter(function (r) { return !rows.some(function (x) { return x.pick === r.pick; }); }).length; return hidden ? '<div class="dk-more">+' + hidden + ' more ' + (hidden === 1 ? 'wager' : 'wagers') + '</div>' : ''; })() + '</div>' +
-        '<div class="dk-foot"><span>' + t.voted + ' of ' + NAMES.length + ' bets in</span>' + (cc ? '<span>\uD83D\uDCAC ' + cc + '</span>' : '') + (my ? '<span class="you">\u2713 Your bet: ' + esc(my) + '</span>' : '<span class="you no">No bet placed</span>') + '</div>';
-      var thread = comments.filter(function (c) { return c.question_id === q.id; }), last2 = thread.slice(-2);
+        '<div class="dk-foot"><span>' + t.voted + ' of ' + NAMES.length + ' bets in</span>' + (cc ? '<span class="k' + (nu ? ' new' : '') + '">\uD83D\uDCAC ' + cc + (nu ? ' \u00b7 ' + nu + ' new' : '') + '</span>' : '') + (my ? '<span class="you">\u2713 Your bet: ' + esc(my) + '</span>' : '<span class="you no">No bet placed</span>') + '</div>';
+      var thread = qThread(q.id), last2 = thread.slice(-2), seenDk = qSeen(q.id);
       if (!thread.length) html += '<div class="pred-chat none"><span class="line"><span class="t">No trash talk yet. Start it.</span></span></div>';
-      else html += '<div class="pred-chat">' + last2.map(function (c) {
-        var rx = rxSummary(c.id);
-        return '<span class="line"><b>' + esc(c.author === me ? 'You' : c.author) + '</b><span class="t">' + esc(c.text) + '</span>' + (rx ? '<span class="rx">' + rx + '</span>' : '') + '</span>';
+      else html += '<div class="pred-chat' + (nu ? ' has-new' : '') + '">' + last2.map(function (c) {
+        var rx = rxSummary(c.id), fresh = c.author !== me && (c.created_at || '') > seenDk;
+        return '<span class="line' + (fresh ? ' unread' : '') + '"><b>' + esc(c.author === me ? 'You' : c.author) + '</b><span class="t">' + esc(c.text) + '</span>' + (rx ? '<span class="rx">' + rx + '</span>' : '') + '</span>';
       }).join('') + (thread.length > 2 ? '<span class="more">+' + (thread.length - 2) + ' more</span>' : '') + '</div>';
       html += '</button>';
     });
@@ -2731,7 +2747,7 @@
     wrap.hidden = false;
     if (atBottom) body.scrollTop = body.scrollHeight;
   }
-  function openSheet(i) { expanded = i; draft = ''; pickerFor = null; renderSheet(); var body = $('sheet-body'); if (body) body.scrollTop = 0; }
+  function openSheet(i) { expanded = i; draft = ''; pickerFor = null; markQSeen(QUESTIONS[i].id); renderPredictions(); renderSheet(); var body = $('sheet-body'); if (body) body.scrollTop = 0; }
   function closeSheet() { expanded = null; draft = ''; $('pred-sheet').hidden = true; }
   function agoText(iso) { var a = ago(iso); return !a || a === 'just now' ? a : a + ' ago'; }
   function ago(iso) {

@@ -138,6 +138,15 @@
   .pred-chat .line .rx { flex: none; font-size: 0.72rem; color: var(--muted); }
   .pred-chat .more { font-size: 0.72rem; color: var(--pine); font-weight: 600; }
   .pred-chat.none .t { color: var(--muted); }
+  /* new comments since you last opened that question: a pill on the count, the card edge, and the fresh lines themselves */
+  .pred-card .sub .k, .dk-foot .k { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: var(--pine-soft); color: var(--pine); font-weight: 600; }
+  .pred-card .sub .k.new, .dk-foot .k.new { background: var(--ember); color: #fff; }
+  .pred-card.has-new { box-shadow: inset 3px 0 0 var(--ember); }
+  .pred-chat .line.unread { font-weight: 600; } .pred-chat .line.unread .t { color: var(--fg); }
+  .pred-chat .line.unread b::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ember); margin-right: 5px; vertical-align: 1px; }
+  .pred-card.dk .dk-foot .k { background: rgba(83, 211, 55, 0.14); color: var(--dkg); } .pred-card.dk .dk-foot .k.new { background: var(--ember); color: #1a1200; }
+  .pred-card.dk.has-new { box-shadow: inset 3px 0 0 var(--ember); }
+  .nav-badge { top: 3px; right: calc(50% - 22px); box-shadow: 0 0 0 2px var(--surface); }
   .msg .rxs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; align-items: center; }
   .rx-chip, .rx-add { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 2px 8px; font: 500 0.76rem var(--body); cursor: pointer; line-height: 1.4; -webkit-tap-highlight-color: transparent; }
   .rx-chip.mine { border-color: var(--pine); background: var(--pine-soft); font-weight: 700; }
