@@ -4,6 +4,20 @@
 (function () {
   'use strict';
 
+  // If the script dies while wiring up, nothing draws. The usual cause is a page and a script from two different
+  // deploys, which a cache can serve for a few minutes after a push. Refetch the page's files past the cache and
+  // reload, no more than every 45 seconds and six times a session, so a broken deploy can never loop the phone.
+  var started = false;
+  window.addEventListener('error', function () {
+    if (started || !/^https?:$/.test(location.protocol) || !window.fetch) return;
+    var rec = { at: 0, n: 0 }; try { rec = JSON.parse(sessionStorage.getItem('cabin-haul-recover')) || rec; } catch (e) { /* ignore */ }
+    if (Date.now() - rec.at < 45000 || rec.n >= 6) return;
+    try { sessionStorage.setItem('cabin-haul-recover', JSON.stringify({ at: Date.now(), n: rec.n + 1 })); } catch (e) { /* ignore */ }
+    var files = [location.href.split('#')[0]];
+    Array.prototype.forEach.call(document.querySelectorAll('script[src], link[rel="stylesheet"][href]'), function (el) { var u = el.getAttribute('src') || el.getAttribute('href'); if (u && !/^(https?:)?\/\//.test(u)) files.push(u); });
+    Promise.all(files.map(function (f) { return fetch(f, { cache: 'reload' }).catch(function () { /* ignore */ }); })).then(function () { setTimeout(function () { location.reload(); }, 1500); });
+  });
+
   // ---- Who's coming. Edit here; the first name in a pair is just display order. ----
   var PARTIES = [
     ['Joe', 'Katelyn'],
@@ -28,6 +42,7 @@
   function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
   function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
   function $(id) { return document.getElementById(id); }
+  function listen(id, ev, fn, opts) { var el = $(id); if (el) el.addEventListener(ev, fn, opts); }   // no-op when the page predates the element
 
   var toastEl = $('toast'), toastTimer;
   function toast(msg) {
@@ -1849,9 +1864,9 @@
     var pct = function (r) { return r.w + r.l ? r.w / (r.w + r.l) : 1; };
     var worst = rows.slice(1).sort(function (a, b) { return pct(a) - pct(b) || b.l - a.l || a.w - b.w || a.name.localeCompare(b.name); })[0];
     var rec = function (label, r) { return '<span><small>' + label + '</small><span class="nm' + (r.name === me ? ' me' : '') + '">' + esc(r.name === me ? 'You' : r.name) + '</span><b><span class="w">' + r.w + '</span>\u2013<span class="l">' + r.l + '</span></b></span>'; };
-    var tally = $('hockeyboard-tally');
-    if (tally) tally.innerHTML = '<div class="hb-side' + (h > c ? ' lead' : '') + '"><span class="n">' + h + '</span><small>Humans</small></div><span class="hb-vs">vs</span><div class="hb-side claude' + (c > h ? ' lead' : '') + '"><span class="n">' + c + '</span><small>Claude</small></div>';
-    body.innerHTML = rows.length ? '<div class="hb-rec"><div class="hb-rec-list">' + rec('Best', rows[0]) + (worst ? rec('Worst', worst) : '') + '</div></div>' : '';
+    var tally = $('hockeyboard-tally'), tallyHtml = '<div class="hb-side' + (h > c ? ' lead' : '') + '"><span class="n">' + h + '</span><small>Humans</small></div><span class="hb-vs">vs</span><div class="hb-side claude' + (c > h ? ' lead' : '') + '"><span class="n">' + c + '</span><small>Claude</small></div>';
+    if (tally) tally.innerHTML = tallyHtml;   // beside the title; on an older page, in the body
+    body.innerHTML = (tally ? '' : '<div class="hb">' + tallyHtml + '</div>') + (rows.length ? '<div class="hb-rec"><div class="hb-rec-list">' + rec('Best', rows[0]) + (worst ? rec('Worst', worst) : '') + '</div></div>' : '');
   }
   function renderGolfBoard() {
     var body = $('golfboard-body'), st = $('golfboard-status'); if (!body) return;
@@ -2222,13 +2237,13 @@
     spyBuzzed = g.dealt_at; renderSpyfall();
     if (g.players.indexOf(me) >= 0) { buzz([60, 40, 60, 40, 120]); toast('Spyfall: time’s up. ' + (g.spies.length > 1 ? 'The spies were ' + g.spies.join(' and ') : 'The spy was ' + g.spies[0]) + '.'); }
   }
-  $('spyfall-body').addEventListener('submit', function (e) {
+  listen('spyfall-body', 'submit', function (e) {
     if (e.target.id !== 'spyfall-guest') return;
     e.preventDefault();
     var d = spyDraft || (spyDraft = spyDefaults()), inp = e.target.querySelector('input');
     if (addGuest(d, inp.value)) { renderSpyfall(); var again = document.querySelector('#spyfall-guest input'); if (again) again.focus(); buzz(6); }
   });
-  $('spyfall-body').addEventListener('click', function (e) {
+  listen('spyfall-body', 'click', function (e) {
     var d = spyDraft || (spyDraft = spyDefaults());
     var dg = e.target.closest('[data-drop-guest]'); if (dg) { dropGuest(d, dg.getAttribute('data-drop-guest')); renderSpyfall(); return; }
     var pl = e.target.closest('[data-player]');
@@ -2247,8 +2262,8 @@
       store.setGame('spyfall', ended).then(function () { spy = ended; spyDraft = null; renderSpyfall(); }).catch(function (err) { toast('Couldn’t end it: ' + ((err && err.message) || err)); });
     }
   });
-  $('spyfall-body').addEventListener('pointerdown', holdStart);
-  $('spyfall-body').addEventListener('contextmenu', function (e) { if (e.target.closest('.role-card')) e.preventDefault(); });
+  listen('spyfall-body', 'pointerdown', holdStart);
+  listen('spyfall-body', 'contextmenu', function (e) { if (e.target.closest('.role-card')) e.preventDefault(); });
 
   // ---- Fishbowl ----
   // Everyone drops three things in the bowl from their own phone. Two teams, three rounds on the same words: describe
@@ -2391,7 +2406,7 @@
     if (g.turn.runner === myId()) fbTimeUp();
     else if (fbExpiredFor !== g.turn.started_at) { fbExpiredFor = g.turn.started_at; renderFishbowl(); }   // show the "went quiet" button once
   }
-  $('fishbowl-body').addEventListener('submit', function (e) {
+  listen('fishbowl-body', 'submit', function (e) {
     if (e.target.id !== 'fb-add') return;
     e.preventDefault();
     var inp = e.target.querySelector('input'), w = String(inp.value || '').replace(/\s+/g, ' ').trim().slice(0, 40), mine = fbMine();
@@ -2401,7 +2416,7 @@
     fbSaveMine(mine.concat([w])); buzz(6);
     var again = document.querySelector('#fb-add input'); if (again) again.focus();
   });
-  $('fishbowl-body').addEventListener('click', function (e) {
+  listen('fishbowl-body', 'click', function (e) {
     var dr = e.target.closest('[data-fb-drop]'); if (dr) { var i = +dr.getAttribute('data-fb-drop'); fbSaveMine(fbMine().filter(function (x, k) { return k !== i; })); return; }
     if (e.target.closest('#fb-teams')) {
       var pool = fbPool(); if (pool.people.length < 4) return;
@@ -2555,7 +2570,7 @@
     otBuzzed = g.started_at; renderOffTopic();
     if (!$('offtopic-body').hidden) { buzz([80, 40, 80, 40, 160]); toast('Off Topic: pencils down!'); }
   }
-  $('offtopic-body').addEventListener('click', function (e) {
+  listen('offtopic-body', 'click', function (e) {
     var op = e.target.closest('[data-ot-opt]'); if (op) { var o = otOptions(), key = op.getAttribute('data-ot-opt'); o[key] = !o[key]; buzz(6); renderOffTopic(); return; }
     if (e.target.closest('#ot-deal') || e.target.closest('#ot-next')) { otDeal(); return; }
     if (!ot) return;
@@ -3469,26 +3484,34 @@
         if (t !== known && ssGet('cabin-haul-updated-for') !== t) { pending = t; settle(); }
       }).catch(function () { /* offline or blocked: look again later */ });
     }
+    var holdUntil = 0, tries = 0;
     function settle() {
-      if (!pending || !quiet()) return;
-      var t = pending; pending = null; reloading = true;
-      ssSet('cabin-haul-updated-for', t);   // one reload per build, so a bad ETag can never loop the page
-      ssSet('cabin-haul-resume', JSON.stringify({ tab: tab, at: Date.now() }));
+      if (!pending || !quiet() || Date.now() < holdUntil) return;
+      var t = pending; reloading = true;
       // refresh the browser's copies first so the reload runs the new files, not the cached ones
       var files = [location.href.split('#')[0]];
       Array.prototype.forEach.call(document.querySelectorAll('script[src], link[rel="stylesheet"][href]'), function (el) {
         var u = el.getAttribute('src') || el.getAttribute('href'); if (u && !/^(https?:)?\/\//.test(u)) files.push(u);
       });
-      Promise.all(files.map(function (f) { return fetch(f, { cache: 'reload' }).catch(function () { /* ignore */ }); }))
-        .then(function () { location.reload(); });
+      Promise.all(files.map(function (f) { return fetch(f, { cache: 'reload' }).then(function (r) { return r.headers.get('Last-Modified') || ''; }).catch(function () { return ''; }); })).then(function (stamps) {
+        // every file of one deploy carries the same Last-Modified; a mix means the cache is still handing out part of
+        // the old deploy, and a page from one deploy with a script from another draws nothing. Look again in a minute.
+        var seen = {}; stamps.forEach(function (st) { if (st) seen[st] = true; });
+        if (Object.keys(seen).length > 1 && tries < 3) { tries++; reloading = false; holdUntil = Date.now() + 60000; return; }
+        pending = null;
+        ssSet('cabin-haul-updated-for', t);   // one reload per build, so a bad ETag can never loop the page
+        ssSet('cabin-haul-resume', JSON.stringify({ tab: tab, at: Date.now() }));
+        location.reload();
+      });
     }
     document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { if (pending) settle(); else check(true); } });
     setInterval(function () { if (pending) settle(); else check(false); }, 15000);
     // the first look only records what's running; a real check follows soon after, so a launch that came out of a stale
     // cache (the home-screen app keeps files for ten minutes) corrects itself within seconds rather than minutes
     setTimeout(function () { check(true); setTimeout(function () { lastCheck = 0; check(true); }, 8000); }, 4000);
-    window.__cabinUpdate = { check: function () { lastCheck = 0; check(true); }, state: function () { return { known: known, pending: pending, reloading: reloading, quiet: quiet() }; } };
+    window.__cabinUpdate = { check: function () { lastCheck = 0; check(true); }, state: function () { return { known: known, pending: pending, reloading: reloading, quiet: quiet(), tries: tries, held: Date.now() < holdUntil }; } };
   })();
 
   showScreen();
+  started = true;
 })();
