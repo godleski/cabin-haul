@@ -499,6 +499,20 @@
       golf = { hole: 0, strokes: 0, total: 0, t0: performance.now(), msg: null, done: false, courses: order };
       loadHole();
     }
+    // how far a bar centred at (x, y) can reach before the lane beside it closes: the distance from x to the farther of the two
+    // playable edges (outer rail or inner wall) on that row, minus the rail's thickness
+    function laneRoom(g, x, y) {
+      var xs = [];
+      g.segs.forEach(function (sg) {
+        var a = sg[0], c = sg[1]; if ((a[1] > y) === (c[1] > y)) return;
+        xs.push(a[0] + (y - a[1]) * (c[0] - a[0]) / (c[1] - a[1]));
+      });
+      xs.sort(function (p, q) { return p - q; });
+      var left = -Infinity, right = Infinity;
+      xs.forEach(function (v) { if (v <= x && v > left) left = v; if (v > x && v < right) right = v; });
+      if (left === -Infinity) left = 0; if (right === Infinity) right = W;
+      return Math.max(x - left, right - x) - WALL_R;
+    }
     function inPoly(poly, x, y) {
       var inside = false;
       for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -527,8 +541,10 @@
       def.slots.forEach(function (sl) {
         var kind = pickOne(sl.kinds); if (!kind) return;
         var s = sl.s || 1, x = sl.x * W, y = sl.y * H, o = { kind: kind, x: x, y: y };
-        if (kind === 'block') { o.w = 0.4 * s * W; o.h = 0.045 * H; o.rect = { x: x - o.w / 2, y: y - o.h / 2, w: o.w, h: o.h }; }
-        else if (kind === 'slider') { o.w = 0.22 * s * W; o.h = 0.045 * H; o.travel = 0.12 * s * W; o.period = 2400 + Math.random() * 800; o.rect = { x: x - o.w / 2, y: y - o.h / 2, w: o.w, h: o.h }; o.vx = 0; }
+        // a bar can never seal the hole: it has to leave a lane at least a ball-and-a-half wide to the nearer-open rail
+        var room = kind === 'block' || kind === 'slider' ? laneRoom(g, x, y) : 0, LANE = 30;
+        if (kind === 'block') { o.w = Math.min(0.4 * s * W, 2 * (room - LANE)); if (o.w < 24) return; o.h = 0.045 * H; o.rect = { x: x - o.w / 2, y: y - o.h / 2, w: o.w, h: o.h }; }
+        else if (kind === 'slider') { o.w = Math.min(0.22 * s * W, 2 * (room - LANE)); if (o.w < 24) return; o.h = 0.045 * H; o.travel = Math.max(0, Math.min(0.12 * s * W, room - LANE - o.w / 2)); o.period = 2400 + Math.random() * 800; o.rect = { x: x - o.w / 2, y: y - o.h / 2, w: o.w, h: o.h }; o.vx = 0; }
         else if (kind === 'sand') { o.rx = 0.17 * s * W; o.ry = 0.085 * s * W; }
         else if (kind === 'water') { o.w = 0.3 * s * W; o.h = 0.12 * s * H; o.rect = { x: x - o.w / 2, y: y - o.h / 2, w: o.w, h: o.h }; }
         else if (kind === 'boost') { var d = sl.dir || [0, -1], along = 0.18 * H * s, across = 0.12 * W * s; o.dir = d; o.w = d[0] ? along : across; o.h = d[0] ? across : along; o.rect = { x: x - o.w / 2, y: y - o.h / 2, w: o.w, h: o.h }; }
