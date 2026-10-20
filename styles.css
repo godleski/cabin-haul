@@ -310,9 +310,11 @@
   .boards { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 16px; }   /* one board above the other, each the full width */
   .board-card { padding: 12px 12px 10px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); min-width: 0; display: flex; flex-direction: column; position: relative; }
   .bc-title, .bc-sub { flex: none; }
-  #hockeyboard-body { flex: 1; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+  #hockeyboard-body { flex: none; }
+  .bc-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; } .bc-head > div:first-child { min-width: 0; } .bc-head .bc-sub { margin-bottom: 0; }
+  .hb.mini { padding: 0; gap: 8px; flex: none; } .hb.mini .hb-side .n { font-size: 1.7rem; } .hb.mini .hb-side small { font-size: 0.5rem; margin-top: 2px; letter-spacing: 0.1em; } .hb.mini .hb-vs { font-size: 0.68rem; }
   /* the golf list takes no part in sizing the row (contain: size), so both cards stay the air hockey card's height and the list scrolls inside */
-  #golfboard-body { flex: 1; min-height: 0; max-height: 375px; overflow-y: auto; -webkit-overflow-scrolling: touch; position: relative; }   /* seven rows on the Games tab, then it scrolls and idles through the rest */
+  #golfboard-body { flex: 1; min-height: 0; max-height: 150px; overflow-y: auto; -webkit-overflow-scrolling: touch; position: relative; }   /* a short list, as tall as the card was before; it scrolls and idles through the rest, then it scrolls and idles through the rest */
   #golfboard.scrolls:not(.at-end)::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 34px; background: linear-gradient(transparent, var(--surface)); pointer-events: none; z-index: 1; border-radius: 0 0 14px 14px; }
   .lb-scroll { position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%); z-index: 2; pointer-events: none; font: 700 0.64rem var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ac); background: var(--surface); border: 1px solid var(--ac); border-radius: 999px; padding: 2px 8px; white-space: nowrap; animation: lbcue 1.2s ease-in-out infinite; }
   @keyframes lbcue { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 3px); } }
@@ -339,7 +341,7 @@
   .hb-side small { display: block; margin-top: 4px; font: 600 0.62rem var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
   .hb-vs { font: 700 0.8rem var(--body); color: var(--muted); }
   /* everyone's record against Claude, under the tally */
-  .hb-rec { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line); }
+  .hb-rec { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
   .hb-rec-h { font: 600 0.62rem var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
   .hb-rec-list { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; font-size: 0.8rem; }
   .hb-rec-list > span { display: flex; justify-content: space-between; gap: 8px; min-width: 0; } .hb-rec-list .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .hb-rec-list .nm.me { font-weight: 700; }
@@ -931,8 +933,8 @@
   #page-games .hb-rec { border-top-color: #3a3f7a; } #page-games .hb-rec-h { font-family: var(--mono); color: #9aa3d6; }
   #page-games .hb-rec-list { font-family: var(--mono); color: #c9cff2; } #page-games .hb-rec-list .nm.me { color: #fff; }
   #page-games .hb-rec-list b .w { color: #ffcc00; } #page-games .hb-rec-list b .l { color: #ff4757; }
-  #page-games .lb-row { background: #0d0e24; border-radius: 0; font-family: var(--mono); } #page-games .lb-row .rank { color: #ffcc00; } #page-games .lb-row.me { box-shadow: inset 0 0 0 2px #ffcc00; }
-  #page-games .lb-row .stat { background: transparent; border: 1px solid #3a3f7a; border-radius: 0; }
+  #page-games .lb-row { background: #0d0e24; border-radius: 0; font-family: var(--mono); padding: 3px 8px; } #page-games .lb-row .rank { color: #ffcc00; } #page-games .lb-row.me { box-shadow: inset 0 0 0 2px #ffcc00; }
+  #page-games .lb-row .stat { background: transparent; border: 1px solid #3a3f7a; border-radius: 0; padding: 3px 8px; }
   #page-games #golfboard.scrolls:not(.at-end)::before { background: linear-gradient(rgba(0, 0, 0, 0), #000 80%); border-radius: 0; }
   #page-games .lb-scroll { font-family: var(--mono); color: #ffcc00; border-color: #ffcc00; background: #000; border-radius: 0; animation: lbcue 0.9s steps(2) infinite; }
   @media (prefers-reduced-motion: reduce) { .lb-scroll { animation: none; } }

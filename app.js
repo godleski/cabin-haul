@@ -1845,8 +1845,9 @@
     st.textContent = h === c ? (h ? 'Dead even' : 'No matches yet') : h > c ? 'Humans lead' : 'Claude leads';
     var by = sc.by || {}, rows = Object.keys(by).map(function (n) { return { name: n, w: by[n].w || 0, l: by[n].l || 0 }; })
       .sort(function (a, b) { return b.w - a.w || a.l - b.l || a.name.localeCompare(b.name); });
-    body.innerHTML = '<div class="hb"><div class="hb-side' + (h > c ? ' lead' : '') + '"><span class="n">' + h + '</span><small>Humans</small></div><span class="hb-vs">vs</span><div class="hb-side claude' + (c > h ? ' lead' : '') + '"><span class="n">' + c + '</span><small>Claude</small></div></div>' +
-      (rows.length ? '<div class="hb-rec"><div class="hb-rec-h">Records \u00b7 wins\u2013losses</div><div class="hb-rec-list">' + rows.map(function (r) {
+    var tally = $('hockeyboard-tally');
+    if (tally) tally.innerHTML = '<div class="hb-side' + (h > c ? ' lead' : '') + '"><span class="n">' + h + '</span><small>Humans</small></div><span class="hb-vs">vs</span><div class="hb-side claude' + (c > h ? ' lead' : '') + '"><span class="n">' + c + '</span><small>Claude</small></div>';
+    body.innerHTML = (rows.length ? '<div class="hb-rec"><div class="hb-rec-h">Records \u00b7 wins\u2013losses</div><div class="hb-rec-list">' + rows.map(function (r) {
         return '<span><span class="nm' + (r.name === me ? ' me' : '') + '">' + esc(r.name === me ? 'You' : r.name) + '</span><b><span class="w">' + r.w + '</span>\u2013<span class="l">' + r.l + '</span></b></span>';
       }).join('') + '</div></div>' : '');
   }
