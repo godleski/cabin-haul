@@ -3298,7 +3298,7 @@
   function subscribeClaude() { if (claudeSub || !store || !store.game) return; claudeSub = true; store.game('claude', function (doc) { claudeDoc = doc; }); }
   function claudeKey() { return (secrets && secrets.claudeKey) || (claudeDoc && claudeDoc.key) || null; }
   function mentionsClaude(text) { return /@claude\b/i.test(text || ''); }
-  function claudeTypingHtml() { return '<div class="msg claude typing"><span class="who">' + CLAUDE_NAME + '</span><div class="txt">typing<span class="dots"><i>.</i><i>.</i><i>.</i></span></div></div>'; }
+  function claudeTypingHtml() { return '<div class="msg claude typing"><span class="who">' + CLAUDE_NAME + '</span><div class="txt">typing<span class="tdots"><i>.</i><i>.</i><i>.</i></span></div></div>'; }
   // what Claude knows: the trip, the people, the app, and whatever the boards say right now
   function claudeSystem(threadId) {
     var lines = [];
