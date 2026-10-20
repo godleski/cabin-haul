@@ -1290,6 +1290,7 @@
       b.classList.remove('bump'); if (on && changed) { void b.offsetWidth; b.classList.add('bump'); }
     });
     document.body.classList.toggle('tab-home', tab === 'home');
+    document.body.setAttribute('data-tab', tab);   // the dock tints its pill to the page
     if (tab === 'games') { golfScrollCue(); renderArcadeCues(); if (smashResetPair()) renderSmash(); }   // the page was hidden until now, so the measurements were zero; Smash opens on the main event
     moveNavInd();
     updateChatBadge();

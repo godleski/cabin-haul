@@ -146,7 +146,7 @@
   .pred-chat .line.unread b::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ember); margin-right: 5px; vertical-align: 1px; }
   .pred-card.dk .dk-foot .k { background: rgba(83, 211, 55, 0.14); color: var(--dkg); } .pred-card.dk .dk-foot .k.new { background: var(--ember); color: #1a1200; }
   .pred-card.dk.has-new { box-shadow: inset 3px 0 0 var(--ember); }
-  .nav-badge { top: 3px; right: calc(50% - 22px); box-shadow: 0 0 0 2px var(--surface); }
+  .nav-badge { top: 3px; right: calc(50% - 22px); box-shadow: 0 0 0 2px #15171c; }
   .msg .rxs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; align-items: center; }
   .rx-chip, .rx-add { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 2px 8px; font: 500 0.76rem var(--body); cursor: pointer; line-height: 1.4; -webkit-tap-highlight-color: transparent; }
   .rx-chip.mine { border-color: var(--pine); background: var(--pine-soft); font-weight: 700; }
@@ -233,15 +233,22 @@
   .nav {
     position: fixed; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); z-index: 5;
     max-width: 536px; margin-inline: auto; display: flex; padding: 6px; border-radius: 24px;
-    background: var(--surface); background: color-mix(in srgb, var(--surface) 82%, transparent);
-    -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
-    border: 1px solid var(--line); box-shadow: 0 12px 32px rgba(10, 30, 18, 0.18), 0 1px 2px rgba(0, 0, 0, 0.06);
+    --nav-ac: #d2691e; --nav-ink: #fff;
+    background: rgba(17, 19, 24, 0.80);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
+    border: 1px solid rgba(255, 255, 255, 0.10); box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     transition: transform 280ms cubic-bezier(0.2, 0.9, 0.3, 1), opacity 240ms;
   }
+  body[data-tab="cabin"] .nav { --nav-ac: #d2691e; --nav-ink: #fff; }
+  body[data-tab="home"] .nav { --nav-ac: #53d337; --nav-ink: #06200a; }
+  body.plain-picks[data-tab="home"] .nav { --nav-ac: #6d3ddb; --nav-ink: #fff; }
+  body[data-tab="bringing"] .nav { --nav-ac: #1769d6; --nav-ink: #fff; }
+  body[data-tab="games"] .nav { --nav-ac: #ffcc00; --nav-ink: #1a1200; }
+  body[data-tab="hibachi"] .nav { --nav-ac: #d63a1f; --nav-ink: #fff; }
   .nav.away { transform: translateY(calc(100% + 28px)); opacity: 0; pointer-events: none; }
   .nav-ind {
-    position: absolute; top: 6px; bottom: 6px; left: 0; width: 60px; border-radius: 18px; background: var(--pine-soft);
-    transition: transform 340ms cubic-bezier(0.2, 0.9, 0.3, 1), width 340ms cubic-bezier(0.2, 0.9, 0.3, 1);
+    position: absolute; top: 6px; bottom: 6px; left: 0; width: 60px; border-radius: 18px; background: var(--nav-ac); box-shadow: 0 4px 14px color-mix(in srgb, var(--nav-ac) 45%, transparent);
+    transition: transform 340ms cubic-bezier(0.2, 0.9, 0.3, 1), width 340ms cubic-bezier(0.2, 0.9, 0.3, 1), background-color 300ms;
   }
   .nav-ind.noanim { transition: none; }
   .nav-btn {
@@ -251,7 +258,8 @@
   .nav-btn span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nav-ico { position: relative; display: inline-grid; }
   .nav-btn svg { width: 23px; height: 23px; fill: currentColor; transition: transform 320ms cubic-bezier(0.2, 0.9, 0.3, 1.5); }
-  .nav-btn[aria-selected="true"] { color: var(--pine); }
+  .nav-btn { color: rgba(255, 255, 255, 0.62); }
+  .nav-btn[aria-selected="true"] { color: var(--nav-ink); }
   .nav-btn[aria-selected="true"] svg { transform: translateY(-1px) scale(1.1); }
   .nav-btn:active svg { transform: scale(0.86); transition-duration: 80ms; }
   .nav-btn.bump svg { animation: tabbump 420ms cubic-bezier(0.2, 0.9, 0.3, 1.4); }
