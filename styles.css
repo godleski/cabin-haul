@@ -586,6 +586,9 @@
   .dt-bar { display: flex; height: 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); overflow: hidden; margin-top: 6px; }
   .dt-bar i { display: block; height: 100%; transition: width 400ms cubic-bezier(0.2, 0.9, 0.3, 1); }
   .dt-bar .p { background: #ffd166; } .dt-bar .t { background: var(--fire); }
+  .dt-who { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; margin-top: 8px; font-size: 0.74rem; line-height: 1.4; color: var(--cmuted); overflow-wrap: anywhere; }
+  .dt-who .right { text-align: right; }
+  .dt-who b { color: var(--cw); font-weight: 700; }
 
   /* ---- Predictions: a mock sportsbook app. Black board, lime green odds, bet slip in the header. ---- */
   #page-home {

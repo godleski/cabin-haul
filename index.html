@@ -40,7 +40,7 @@
     <div class="dinner" id="dinner" hidden>
       <div class="eyebrow">Saturday night dinner</div>
       <h1>Pasta or tacos?</h1>
-      <p class="lede">A quick vote on what we cook at the house Saturday night. One tap, and nobody sees who picked what.</p>
+      <p class="lede">A quick vote on what we cook at the house Saturday night. One tap per person. The tally on the FAQ shows who picked what.</p>
       <div class="dinner-opts">
         <button type="button" class="dinner-opt" data-dinner="pasta" aria-pressed="false"><span class="em">🍝</span>Pasta</button>
         <button type="button" class="dinner-opt" data-dinner="tacos" aria-pressed="false"><span class="em">🌮</span>Tacos</button>
@@ -148,10 +148,11 @@
       <div class="info-card dinner-card" id="dinner-tally">
         <div class="info-row">
           <span class="info-icon">🍽️</span>
-          <div class="info-body"><div class="info-title">Saturday night: pasta or tacos?</div><div class="info-sub" id="dt-sub">Everyone gets asked once. Votes are anonymous.</div></div>
+          <div class="info-body"><div class="info-title">Saturday night: pasta or tacos?</div><div class="info-sub" id="dt-sub">Everyone gets asked once.</div></div>
         </div>
         <div class="dt-row"><span class="dt-side" id="dt-pasta">🍝 Pasta <b>0</b></span><span class="dt-side right" id="dt-tacos"><b>0</b> Tacos 🌮</span></div>
         <div class="dt-bar"><i class="p" id="dt-bar-p"></i><i class="t" id="dt-bar-t"></i></div>
+        <div class="dt-who" id="dt-who" hidden><span id="dt-who-p"></span><span class="right" id="dt-who-t"></span></div>
       </div>
 
       <div class="carousel" id="carousel" aria-label="Cabin photos"></div>

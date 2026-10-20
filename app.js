@@ -2224,17 +2224,14 @@
   function firstUnanswered() { var m = myVotes(); for (var i = 0; i < QUESTIONS.length; i++) if (!m[QUESTIONS[i].id]) return i; return 0; }
   // Only ever prompt someone who has made no picks at all, and only once their votes have actually loaded.
   // Anyone with picks (even partial) changes them from the Predictions tab instead.
-  // Saturday dinner: one anonymous tap per phone, asked before the predictions. The vote is keyed by the phone's
-  // random id, never a name, so nothing in the database says who picked what.
+  // Saturday dinner: one tap per person, asked before the predictions. The vote is keyed by the name on the phone (like
+  // the predictions), so Safari and the home-screen icon count as the same person, and the tally on the FAQ shows who
+  // picked what. The first version keyed it by a random id per browser instead, which is how 13 people cast 15 votes;
+  // those old rows (voter "dev-...") are ignored rather than counted.
   var DINNER_Q = 'dinner', askedDinnerThisVisit = false, dinnerBusy = false;
-  var DINNER_PER_NAME = false;   // true asks every name on a phone (handy for testing); false is once per phone, the real setting
-  function dinnerVoter() {
-    if (!DINNER_PER_NAME) return 'dev-' + myId();
-    var k = 'cabin-haul-dinner-' + me, v = lsGet(k);   // a random id per name on this phone; still no names in the database
-    if (!v) { v = 'anon-' + ((window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)); lsSet(k, v); }
-    return v;
-  }
-  function myDinner() { var id = dinnerVoter(), v = votes.filter(function (x) { return x.question_id === DINNER_Q && x.voter === id; })[0]; return v ? v.pick : null; }
+  function dinnerVoter() { return me; }
+  function dinnerVotes() { return votes.filter(function (v) { return v.question_id === DINNER_Q && NAMES.indexOf(v.voter) >= 0; }); }
+  function myDinner() { var id = dinnerVoter(), v = dinnerVotes().filter(function (x) { return x.voter === id; })[0]; return v ? v.pick : null; }
   function shouldAskDinner() { return !!(me && store && store.predictions && predLoaded && !askedDinnerThisVisit && !myDinner()); }
   function openDinner() {
     closeChat();
@@ -2246,13 +2243,16 @@
   }
   function renderDinnerTally() {
     var el = $('dinner-tally'); if (!el) return;
-    var p = 0, t = 0;
-    votes.forEach(function (v) { if (v.question_id !== DINNER_Q) return; if (v.pick === 'pasta') p++; else if (v.pick === 'tacos') t++; });
-    var total = p + t;
+    var who = { pasta: [], tacos: [] };
+    dinnerVotes().forEach(function (v) { if (who[v.pick]) who[v.pick].push(v.voter); });
+    var p = who.pasta.length, t = who.tacos.length, total = p + t;
+    var names = function (list) { list = list.sort(); if (list.indexOf(me) > 0) list.splice(0, 0, list.splice(list.indexOf(me), 1)[0]); return list.map(function (n) { return n === me ? '<b>you</b>' : esc(n); }).join(', '); };   // you first, then A to Z
     $('dt-pasta').querySelector('b').textContent = p; $('dt-tacos').querySelector('b').textContent = t;
     $('dt-pasta').classList.toggle('lead', p > t); $('dt-tacos').classList.toggle('lead', t > p);
     $('dt-bar-p').style.width = total ? (100 * p / total) + '%' : '0'; $('dt-bar-t').style.width = total ? (100 * t / total) + '%' : '0';
-    $('dt-sub').textContent = total ? total + ' of ' + NAMES.length + ' have voted \u00b7 ' + (p === t ? 'dead heat' : p > t ? 'pasta leads' : 'tacos lead') + ' \u00b7 anonymous' : 'Everyone gets asked once. Votes are anonymous.';
+    $('dt-who-p').innerHTML = names(who.pasta); $('dt-who-t').innerHTML = names(who.tacos);
+    $('dt-who').hidden = !total;
+    $('dt-sub').textContent = total ? total + ' of ' + NAMES.length + ' have voted \u00b7 ' + (p === t ? 'dead heat' : p > t ? 'pasta leads' : 'tacos lead') : 'Everyone gets asked once.';
   }
   $('dinner').addEventListener('click', function (e) {
     var b = e.target.closest('[data-dinner]'); if (!b || dinnerBusy) return;
@@ -2264,7 +2264,7 @@
     votes.push({ question_id: DINNER_Q, voter: id, pick: pick, updated_at: new Date().toISOString() });
     store.vote(DINNER_Q, id, pick).catch(function (err) { toast('That didn\'t save: ' + ((err && err.message) || err)); });
     renderDinnerTally();
-    toast(pick === 'pasta' ? 'Pasta. Counted, anonymously.' : 'Tacos. Counted, anonymously.');
+    toast(pick === 'pasta' ? 'Pasta. Counted.' : 'Tacos. Counted.');
     setTimeout(function () { dinnerBusy = false; $('dinner').hidden = true; $('predict').classList.remove('dinner-open'); tab = 'cabin'; showScreen(); }, 480);   // the vote always lands on the FAQ
   });
   var predLoaded = false, askedThisVisit = false, qAuto = false, qSingle = false;   // qSingle: opened from a card's sheet for one question only   // qAuto: the questionnaire opened itself on first visit, so finishing it lands on the FAQ
