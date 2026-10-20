@@ -2769,8 +2769,10 @@
     });
     if (store.comments) store.comments(function (rows) {
       comments = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? -1 : 1; });
+      commentsLoaded = true;
       if (expanded !== null) markQSeen(QUESTIONS[expanded].id);
       renderPredictions(); renderWall(); if (chatOpen) markWallSeen(); else updateChatBadge();
+      claudeArrival();
     });
     if (store.reactions) store.reactions(function (rows) { reactions = rows.slice(); renderPredictions(); renderWall(); });
   }
@@ -3306,7 +3308,20 @@
   // that sent the message makes the one call, so a question gets one answer. The key comes from the sealed secrets
   // (claudeKey), or from the kv row game-claude ({ key }); with neither, @Claude is just text.
   var CLAUDE_NAME = 'Claude', CLAUDE_MODEL = 'claude-opus-5-5', claudeDoc = null, claudeSub = false, claudeBusy = {};
-  function subscribeClaude() { if (claudeSub || !store || !store.game) return; claudeSub = true; store.game('claude', function (doc) { claudeDoc = doc; }); }
+  function subscribeClaude() { if (claudeSub || !store || !store.game) return; claudeSub = true; store.game('claude', function (doc) { claudeDoc = doc; claudeArrival(); }); }
+  // Claude's entrance: the first time the key is in place, Mitch's phone has Claude open with a roast of Kyle's golf
+  // on the wall. The kv row remembers it happened, so no other phone and no reload repeats it.
+  var commentsLoaded = false, claudeArrived = false;
+  function claudeArrival() {
+    if (claudeArrived || me !== 'Mitch' || !commentsLoaded || !claudeKey() || (claudeDoc && claudeDoc.arrived) || !store || !store.setGame) return;
+    if (comments.some(function (c) { return c.question_id === WALL && c.author === CLAUDE_NAME; })) return;
+    claudeArrived = true;
+    setTimeout(function () {   // a moment for the boards to load, so the roast has Kyle's numbers
+      if (claudeDoc && claudeDoc.arrived) return;
+      var doc = Object.assign({}, claudeDoc || {}, { arrived: new Date().toISOString() }); claudeDoc = doc;
+      store.setGame('claude', doc).then(function () { askClaude(WALL, 'arrive'); }).catch(function () { claudeArrived = false; });
+    }, 2500);
+  }
   function claudeKey() { return (secrets && secrets.claudeKey) || (claudeDoc && claudeDoc.key) || null; }
   function mentionsClaude(text) { return /@claude\b/i.test(text || ''); }
   // uninvited: about a third of the time, and never twice in two minutes in the same thread
@@ -3346,15 +3361,18 @@
     lines.push(threadId === WALL ? 'You are on the wall, the whole-trip chat.' : 'You are in the trash-talk thread under the prediction: ' + (QUESTIONS.filter(function (q) { return q.id === threadId; })[0] || {}).text);
     lines.push(mode === 'chime'
       ? 'Nobody tagged you. You are butting in on the last message with one short roast or quip aimed at someone in the thread by name, using what they just said or what the boards say. If there is nothing to work with, go after Kyle’s golf or Luke’s Smash record. One sentence, two at most. Never mention that you were not asked.'
-      : 'Someone tagged you. Answer them.');
+      : mode === 'arrive'
+        ? 'You have just been added to the group chat. Say hello in one short line, then roast Kyle’s mini golf game using the board: his best round to par if he is on it, or the fact that he has not posted a round if he is not. Three sentences at most. Make it sting and keep it friendly.'
+        : 'Someone tagged you. Answer them.');
     return lines.join('\n\n');
   }
-  function claudeThread(threadId) {   // the last twenty messages as alternating turns, ending on the one that asked
+  function claudeThread(threadId, mode) {   // the last twenty messages as alternating turns, ending on the one that asked
     var msgs = comments.filter(function (c) { return c.question_id === threadId; }).slice(-20), out = [];
     msgs.forEach(function (c) {
       var role = c.author === CLAUDE_NAME ? 'assistant' : 'user', text = role === 'user' ? c.author + ': ' + c.text : c.text;
       if (out.length && out[out.length - 1].role === role) out[out.length - 1].content += '\n' + text; else out.push({ role: role, content: text });
     });
+    if (mode === 'arrive') out.push({ role: 'user', content: 'Mitch: Claude just joined the chat.' });
     if (!out.length || out[out.length - 1].role !== 'user') out.push({ role: 'user', content: me + ': @Claude?' });
     if (out[0].role !== 'user') out.shift();
     return out;
@@ -3371,7 +3389,7 @@
     fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
-      body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 400, system: claudeSystem(threadId, mode || 'asked'), messages: claudeThread(threadId), output_config: { effort: 'low' }, fallbacks: 'default' })
+      body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 400, system: claudeSystem(threadId, mode || 'asked'), messages: claudeThread(threadId, mode), output_config: { effort: 'low' }, fallbacks: 'default' })
     }).then(function (res) { return res.json().then(function (data) { return { ok: res.ok, status: res.status, data: data }; }); }).then(function (r) {
       if (!r.ok) throw new Error((r.data && r.data.error && r.data.error.message) || ('HTTP ' + r.status));
       var text = r.data.stop_reason === 'refusal' ? 'I’m going to sit that one out.' : (r.data.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('').trim();
