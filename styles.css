@@ -386,6 +386,7 @@
   #page-games .guest { border-radius: 0; } #page-games .guest-add input { border-radius: 0; }
   .mafia-opts { display: grid; gap: 8px; margin-top: 12px; }
   .opt-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 0.92rem; }
+  .opt-row > span:first-child { min-width: 0; } .opt-row .toggle, .opt-row .stepper { flex: none; }   /* a long label wraps; the control never shrinks */
   .stepper { display: inline-flex; align-items: center; gap: 6px; }
   .stepper button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font-size: 1.1rem; cursor: pointer; }
   .stepper b { min-width: 18px; text-align: center; font-variant-numeric: tabular-nums; }
