@@ -118,6 +118,7 @@
     if (!show) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false;
     el.innerHTML = '<div class="gp-card"><div class="gp-title">Who\u2019s putting?</div><div class="info-sub">Nine holes, par 27. Your best round goes on the board.</div>' +
+      (foundGame('golf') ? '<div class="gp-hint">\u26F3 You\u2019ve found this one already. Pick your name, and the Mini golf board on the Games tab starts a round. No hunting.</div>' : '') +
       '<div class="name-grid">' + NAMES.map(function (n) { return '<button type="button" data-golfer="' + esc(n) + '" aria-pressed="false">' + esc(n) + '</button>'; }).join('') + '</div>' +
       '<div class="mafia-actions"><button type="button" class="linkbtn" id="golf-skip">Never mind</button></div></div>';
     $('roster').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1301,7 +1302,7 @@
     });
     document.body.classList.toggle('tab-home', tab === 'home');
     document.body.setAttribute('data-tab', tab);   // the dock tints its pill to the page
-    if (tab === 'games') { golfScrollCue(); renderArcadeCues(); if (smashResetPair()) renderSmash(); }   // the page was hidden until now, so the measurements were zero; Smash opens on the main event
+    if (tab === 'games') { golfScrollCue(); golfCycle(); renderArcadeCues(); if (smashResetPair()) renderSmash(); } else { clearTimeout(cycleTimer); }   // the page was hidden until now, so the measurements were zero; Smash opens on the main event
     moveNavInd();
     updateChatBadge();
     window.scrollTo(0, 0); lastY = 0; setNavAway(false);
@@ -1851,13 +1852,35 @@
       .sort(function (a, b) { return a.best - b.best || b.rounds - a.rounds || a.name.localeCompare(b.name); });
     // the card is half the screen wide, so the status is one short phrase: the leader once there is one, the course until then
     st.innerHTML = rows.length ? '<b>' + esc(rows[0].name === me ? 'you lead' : rows[0].name + ' leads') + '</b>' : '9 holes \u00b7 par ' + par;
-    if (!rows.length) { body.innerHTML = '<div class="lb-empty">Nobody yet</div>'; golfScrollCue(); return; }
+    if (!rows.length) { body.innerHTML = '<div class="lb-empty">Nobody yet</div>'; golfScrollCue(); golfCycle(); return; }
     body.innerHTML = '<div class="lb">' + rows.map(function (r, i) {
       var dtxt = golfToPar(r.best, par);
       return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat' + (dtxt.charAt(0) === '-' ? ' under' : dtxt === 'E' ? ' even' : '') + '">' + dtxt + '</span></div>';
     }).join('') + '</div>';
-    golfScrollCue();
+    golfScrollCue(); golfCycle();
   }
+  // Left alone, the board idles through its rows a row at a time, rests at the bottom and starts over, so the
+  // half-height list shows everyone without a scroll. A finger on the list pauses it for a while, and it only runs
+  // while the Games tab is showing, the list actually overflows, and nobody is mid-game.
+  var cycleTimer = null, cyclePauseUntil = 0;
+  function golfCycle() {
+    clearTimeout(cycleTimer);
+    var body = $('golfboard-body'), card = $('golfboard'); if (!body || !card) return;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function live() { return tab === 'games' && !document.hidden && !$('main').hidden && !document.body.classList.contains('playing') && card.classList.contains('scrolls'); }
+    function step() {
+      if (!live()) return;
+      if (Date.now() < cyclePauseUntil) { cycleTimer = setTimeout(step, 800); return; }
+      var rows = body.querySelectorAll('.lb-row'), max = body.scrollHeight - body.clientHeight;
+      var rowH = rows.length > 1 ? rows[1].offsetTop - rows[0].offsetTop : body.clientHeight;
+      var atEnd = body.scrollTop >= max - 1;
+      body.scrollTo({ top: atEnd ? 0 : Math.min(max, body.scrollTop + rowH), behavior: reduce ? 'auto' : 'smooth' });
+      cycleTimer = setTimeout(step, atEnd ? 2600 : 2200);
+    }
+    if (live()) cycleTimer = setTimeout(step, 2600);
+  }
+  ['pointerdown', 'touchstart', 'wheel'].forEach(function (ev) { $('golfboard-body').addEventListener(ev, function () { cyclePauseUntil = Date.now() + 8000; }, { passive: true }); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) golfCycle(); });
   // the golf card is pinned to the air hockey card's height, so the list scrolls inside it: say how many rows are below the fold
   function golfScrollCue() {
     var body = $('golfboard-body'), card = $('golfboard'), cue = $('golfboard-more'); if (!body || !cue) return;
