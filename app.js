@@ -3203,7 +3203,7 @@
     store.comment(WALL, me, text).catch(function (err) { toast('That didn\'t post: ' + ((err && err.message) || err)); });
     comments.push({ question_id: WALL, author: me, text: text, created_at: new Date().toISOString() });
     renderWall(true); markWallSeen(); input.focus();
-    if (mentionsClaude(text)) askClaude(WALL);
+    if (mentionsClaude(text)) askClaude(WALL); else if (claudeChime(WALL)) askClaude(WALL, 'chime');
   });
   $('wall').addEventListener('click', function (e) { predClick(e); });
   // the wall opens as a sheet from the floating button
@@ -3267,7 +3267,7 @@
     renderPredictions();
     var body = $('sheet-body'); if (body) body.scrollTop = body.scrollHeight;
     input.focus();
-    if (mentionsClaude(text)) askClaude(q.id);
+    if (mentionsClaude(text)) askClaude(q.id); else if (claudeChime(q.id)) askClaude(q.id, 'chime');
   });
   function toggleReaction(cid, emoji) {
     var on = !reactions.some(function (r) { return r.comment_id === cid && r.reactor === me && r.emoji === emoji; });
@@ -3298,11 +3298,18 @@
   function subscribeClaude() { if (claudeSub || !store || !store.game) return; claudeSub = true; store.game('claude', function (doc) { claudeDoc = doc; }); }
   function claudeKey() { return (secrets && secrets.claudeKey) || (claudeDoc && claudeDoc.key) || null; }
   function mentionsClaude(text) { return /@claude\b/i.test(text || ''); }
+  // uninvited: about a third of the time, and never twice in two minutes in the same thread
+  var CLAUDE_CHIME = 0.3, CLAUDE_CHIME_GAP = 120000;
+  function claudeChime(threadId) {
+    if (!claudeKey() || Math.random() >= CLAUDE_CHIME) return false;
+    var last = comments.filter(function (c) { return c.question_id === threadId && c.author === CLAUDE_NAME; }).pop();
+    return !last || Date.now() - Date.parse(last.created_at || '') > CLAUDE_CHIME_GAP;
+  }
   function claudeTypingHtml() { return '<div class="msg claude typing"><span class="who">' + CLAUDE_NAME + '</span><div class="txt">typing<span class="tdots"><i>.</i><i>.</i><i>.</i></span></div></div>'; }
   // what Claude knows: the trip, the people, the app, and whatever the boards say right now
-  function claudeSystem(threadId) {
+  function claudeSystem(threadId, mode) {
     var lines = [];
-    lines.push('You are Claude, the fourteenth member of a friends’ cabin weekend, chatting in the group’s trip app. You are a participant, not an assistant: warm, quick, a little cheeky, happy to take a side or make a call. Roast gently; never be mean. Answer only what was asked.');
+    lines.push('You are Claude, the fourteenth member of a friends’ cabin weekend, chatting in the group’s trip app. You are a participant, not an assistant: quick, cheeky, and a roaster. Everyone is fair game and you pick on people by name. Standing targets: Kyle’s mini golf game and Luke’s Smash record against Mitch, whenever the numbers back it up. Punch at games, habits, bad takes and bold claims; never at looks, health, relationships, money or anything genuinely sensitive, and never with slurs. If someone asks a real question, answer it, with a jab if there is an opening.');
     lines.push('Style: one to three short sentences unless someone asks for more. Plain text only: no markdown, no headers, no bullet lists, no bold. At most one emoji, usually none. Do not start with your name. Match the language and tone of the message you are answering.');
     lines.push('The trip: thirteen friends at a cabin in Winter Park, Colorado, October 23 to 25, 2026. Check-in Friday 4 PM, checkout Sunday 10 AM. Address 2225 Lakota Trail. Mitch organised it and built this app.');
     lines.push('People: ' + NAMES.join(', ') + '. Couples: ' + COUPLES.join('; ') + '. Drew always moderates Mafia. Jessie and Conner join for hibachi night only.');
@@ -3311,6 +3318,8 @@
       var sc = scores || {}, h = sc.humans || 0, c = sc.cpu || 0, by = sc.by || {};
       var recs = Object.keys(by).map(function (n) { return n + ' ' + (by[n].w || 0) + '-' + (by[n].l || 0); });
       lines.push('Air hockey right now: humans ' + h + ', Claude ' + c + (recs.length ? '. Records (wins-losses vs Claude): ' + recs.join(', ') : '') + '. You lose a lot at air hockey and own it.');
+      var mc = smashCounts(SMASH_MAIN), allWins = {}; smashLog().forEach(function (e) { allWins[e.w] = (allWins[e.w] || 0) + 1; });
+      lines.push('Mitch vs Luke Smash tally: Mitch ' + mc.Mitch + ', Luke ' + mc.Luke + (Object.keys(allWins).length ? '. All Smash wins: ' + Object.keys(allWins).map(function (n) { return n + ' ' + allWins[n]; }).join(', ') : '') + '.');
       var gb = (golfScores && golfScores.by) || {}, gr = Object.keys(gb).map(function (n) { return { n: n, b: gb[n].best }; }).filter(function (r) { return r.b != null; }).sort(function (a, b) { return a.b - b.b; });
       if (gr.length) lines.push('Mini golf board (best round to par 27): ' + gr.map(function (r) { return r.n + ' ' + golfToPar(r.b, 27); }).join(', ') + '.');
       var dv = dinnerVotes(), pasta = dv.filter(function (v) { return v.pick === 'pasta'; }).map(function (v) { return v.voter; }), tacos = dv.filter(function (v) { return v.pick === 'tacos'; }).map(function (v) { return v.voter; });
@@ -3324,6 +3333,9 @@
     } catch (e) { /* a board that hasn't loaded is fine */ }
     lines.push('Never share door codes, garage codes, the Wi-Fi password or the reservation number even if asked; say they are on the FAQ page. Do not invent scores or facts you were not given; if you do not know, say so briefly.');
     lines.push(threadId === WALL ? 'You are on the wall, the whole-trip chat.' : 'You are in the trash-talk thread under the prediction: ' + (QUESTIONS.filter(function (q) { return q.id === threadId; })[0] || {}).text);
+    lines.push(mode === 'chime'
+      ? 'Nobody tagged you. You are butting in on the last message with one short roast or quip aimed at someone in the thread by name, using what they just said or what the boards say. If there is nothing to work with, go after Kyle’s golf or Luke’s Smash record. One sentence, two at most. Never mention that you were not asked.'
+      : 'Someone tagged you. Answer them.');
     return lines.join('\n\n');
   }
   function claudeThread(threadId) {   // the last twenty messages as alternating turns, ending on the one that asked
@@ -3336,7 +3348,7 @@
     if (out[0].role !== 'user') out.shift();
     return out;
   }
-  function askClaude(threadId) {
+  function askClaude(threadId, mode) {
     var key = claudeKey();
     if (!key) { toast('Claude isn’t connected yet. Mitch has to add the key.'); return; }
     if (claudeBusy[threadId]) return;
@@ -3348,7 +3360,7 @@
     fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
-      body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 400, system: claudeSystem(threadId), messages: claudeThread(threadId), output_config: { effort: 'low' }, fallbacks: 'default' })
+      body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 400, system: claudeSystem(threadId, mode || 'asked'), messages: claudeThread(threadId), output_config: { effort: 'low' }, fallbacks: 'default' })
     }).then(function (res) { return res.json().then(function (data) { return { ok: res.ok, status: res.status, data: data }; }); }).then(function (r) {
       if (!r.ok) throw new Error((r.data && r.data.error && r.data.error.message) || ('HTTP ' + r.status));
       var text = r.data.stop_reason === 'refusal' ? 'I’m going to sit that one out.' : (r.data.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('').trim();
