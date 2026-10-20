@@ -1843,13 +1843,14 @@
     var body = $('hockeyboard-body'), st = $('hockeyboard-status'); if (!body) return;
     var sc = scores || { humans: 0, cpu: 0 }, h = sc.humans || 0, c = sc.cpu || 0;
     st.textContent = h === c ? (h ? 'Dead even' : 'No matches yet') : h > c ? 'Humans lead' : 'Claude leads';
+    // one line of records: the best against Claude and the worst (most losses, fewest wins)
     var by = sc.by || {}, rows = Object.keys(by).map(function (n) { return { name: n, w: by[n].w || 0, l: by[n].l || 0 }; })
       .sort(function (a, b) { return b.w - a.w || a.l - b.l || a.name.localeCompare(b.name); });
+    var worst = rows.slice().sort(function (a, b) { return b.l - a.l || a.w - b.w || a.name.localeCompare(b.name); })[0];
+    var rec = function (label, r) { return '<span><small>' + label + '</small><span class="nm' + (r.name === me ? ' me' : '') + '">' + esc(r.name === me ? 'You' : r.name) + '</span><b><span class="w">' + r.w + '</span>\u2013<span class="l">' + r.l + '</span></b></span>'; };
     var tally = $('hockeyboard-tally');
     if (tally) tally.innerHTML = '<div class="hb-side' + (h > c ? ' lead' : '') + '"><span class="n">' + h + '</span><small>Humans</small></div><span class="hb-vs">vs</span><div class="hb-side claude' + (c > h ? ' lead' : '') + '"><span class="n">' + c + '</span><small>Claude</small></div>';
-    body.innerHTML = (rows.length ? '<div class="hb-rec"><div class="hb-rec-h">Records \u00b7 wins\u2013losses</div><div class="hb-rec-list">' + rows.map(function (r) {
-        return '<span><span class="nm' + (r.name === me ? ' me' : '') + '">' + esc(r.name === me ? 'You' : r.name) + '</span><b><span class="w">' + r.w + '</span>\u2013<span class="l">' + r.l + '</span></b></span>';
-      }).join('') + '</div></div>' : '');
+    body.innerHTML = rows.length ? '<div class="hb-rec"><div class="hb-rec-list">' + rec('Best', rows[0]) + (rows.length > 1 && worst.name !== rows[0].name ? rec('Worst', worst) : '') + '</div></div>' : '';
   }
   function renderGolfBoard() {
     var body = $('golfboard-body'), st = $('golfboard-status'); if (!body) return;
