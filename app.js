@@ -2417,105 +2417,139 @@
   setInterval(function () { spyTick(); fbTick(); otTick(); }, 1000);
 
   // ---- Off Topic ----
-  // Forty fresh category cards to go with the box Mitch owns. Deal one and every phone shows the same card, a letter
-  // from the same twenty the die has, and the two-minute clock. Answers go on the real pads. A dealt card is marked
-  // used so the deck doesn't repeat until it's been shuffled back.
+  // Fifty-two fresh cards to go with the box Mitch owns, eight categories each like the real ones. Deal one and every
+  // phone shows the same card. A letter off the same twenty the die has and a two-minute clock are each optional, so
+  // the table can use the real die or the sand timer instead. Answers go on the real pads. Dealt cards are marked
+  // used so the deck doesn't repeat until it's shuffled back.
   var OT_CARDS = [
-    ['Things you’d find in a glovebox', 'Reasons to leave a party early', 'Bad names for a dog', 'Things that are better cold', 'Something you’d yell from a ski lift', 'Excuses for a hangover', 'Things in a hot tub', 'Celebrities you’d trust to babysit', 'Pizza toppings nobody orders', 'Things you lie to your dentist about'],
-    ['Things that smell worse wet', 'Reasons to call in sick', 'Bad names for a boat', 'Something you’d steal from a hotel', 'Things that are overrated', 'Words that sound dirty but aren’t', 'Things in a junk drawer', 'Reasons to break up with someone', 'Things you shouldn’t microwave', 'Bands that should reunite'],
-    ['Things you’d pack for a cabin weekend', 'Excuses for losing at beer pong', 'Things that are sticky', 'Reasons the Wi-Fi is down', 'Something you’d name a racehorse', 'Things people brag about', 'Things in a bachelor’s fridge', 'Movies that made you cry', 'Reasons to get out of the hot tub', 'Things you can’t say at a funeral'],
-    ['Ski injuries', 'Things you’d do for twenty dollars', 'Bad gifts for a wedding', 'Things that go in a cooler', 'Reasons to hate winter', 'Something a bartender hears too much', 'Things in a dive bar bathroom', 'Famous rivalries', 'Things that are cheaper in bulk', 'Words you can’t spell without thinking'],
-    ['Things you’d find in a cabin closet', 'Reasons you missed the turn', 'Bad superhero names', 'Things that are free', 'Something you’d hear on a group text', 'Foods that look like other foods', 'Things in a ski lodge', 'Reasons to lock the door', 'Jobs that sound fake', 'Things you shouldn’t google at work'],
-    ['Things that happen at 2 a.m.', 'Bad names for a strip club', 'Things in a bowl of chili', 'Reasons to skip the gym', 'Something you’d find under a couch cushion', 'Famous people you’d share a bunk with', 'Things that squeak', 'Reasons for a speeding ticket', 'Things you order at a gas station', 'Ways to annoy the driver'],
-    ['Things you need two of', 'Reasons the dog is barking', 'Bad tattoo ideas', 'Things found on a mountain', 'Something you’d say to a cop', 'Snacks you hide from roommates', 'Things in a tackle box', 'Reasons to leave a group chat', 'Things that are louder than they should be', 'Bad places for a first date'],
-    ['Things you’d bring to a desert island', 'Reasons you’re not drinking tonight', 'Bad names for a cocktail', 'Things in a Winter Park gift shop', 'Something you regret buying', 'Things you can do with one hand', 'Reasons to turn the car around', 'Things that are orange', 'Songs for a road trip', 'Things you shouldn’t touch in a hotel'],
-    ['Things in a hibachi restaurant', 'Reasons to fake an injury', 'Bad names for a baby', 'Things you can put cheese on', 'Something you’d hear at a ski rental counter', 'Things that take too long', 'Items in a lost and found', 'Reasons to stay up late', 'Things that are striped', 'Excuses for not texting back'],
-    ['Things you’d find in a tent', 'Reasons to be kicked out of a bar', 'Bad names for a band', 'Things that melt', 'Something you shouldn’t say to your boss', 'Things in a kid’s backpack', 'Movies with a dog in them', 'Reasons to miss a flight', 'Things you can’t bring on a plane', 'Things that are blue'],
-    ['Things in a mountain town', 'Reasons to leave the hot springs', 'Bad names for a yacht', 'Things that need batteries', 'Something you’d win at a carnival', 'Things people fake', 'Items on a bar tab', 'Reasons to cancel plans', 'Things that are fuzzy', 'Words that end in -ing'],
-    ['Things you’d do on a snow day', 'Reasons the fire won’t start', 'Bad names for a race car', 'Things that come in a six-pack', 'Something you’d hear from the back seat', 'Things in a medicine cabinet', 'Famous duos', 'Reasons to sleep in the car', 'Things that are slippery', 'Things you’d name a cabin'],
-    ['Things that are always in the way', 'Reasons for a black eye', 'Bad things to put on a résumé', 'Things that float', 'Something you’d find at the bottom of a purse', 'Things you say to a dog', 'Items in a glove compartment of a rental', 'Reasons to go back inside', 'Things that are inflatable', 'Foods you eat with your hands'],
-    ['Things at a tailgate', 'Reasons to wear sunglasses inside', 'Bad names for a pub', 'Things that are heavier than they look', 'Something you’d hear at a bachelor party', 'Things in a sauna', 'Reasons to whisper', 'Things that are purple', 'Famous bridges, buildings or landmarks', 'Things you’d find in a dad’s truck'],
-    ['Things you do when nobody’s watching', 'Reasons to take the stairs', 'Bad names for a goldfish', 'Things that are chewy', 'Something you’d find in a ski jacket pocket', 'Things that are impossible to fold', 'Items in a first aid kit', 'Reasons to hide in the bathroom', 'Things that glow', 'Words that mean drunk'],
-    ['Things in a pancake house', 'Reasons to be late to breakfast', 'Bad names for a ski run', 'Things you buy at a liquor store', 'Something you shouldn’t say at a wedding', 'Things you can’t return', 'Items in a gym bag', 'Reasons to skip the hot tub', 'Things that are crunchy', 'Animals you wouldn’t want in the cabin'],
-    ['Things you forget to pack', 'Reasons to pull over', 'Bad names for a wrestler', 'Things that are hard to pronounce', 'Something you’d find on a gondola floor', 'Things that come in pairs', 'Items at a yard sale', 'Reasons to move to Colorado', 'Things that are spicy', 'Famous Mikes'],
-    ['Things in a bunk room', 'Reasons to apologise to a neighbour', 'Bad names for a bakery', 'Things you can set on fire', 'Something you’d hear at a hot tub party', 'Things that are impossible to find when you need them', 'Candy you never finish', 'Reasons to sit by the window', 'Things that are salty', 'Things you’d name a snowman'],
-    ['Things you find in the snow in spring', 'Reasons to change your name', 'Bad names for a coffee shop', 'Things you can juggle', 'Something you’d yell at the TV', 'Things people collect', 'Items in a camper van', 'Reasons to call your mom', 'Things that are round', 'Famous Jacks'],
-    ['Things you’d do with a snow day off', 'Reasons to not answer the door', 'Bad names for a cruise ship', 'Things that are bumpy', 'Something you’d find in a ski patrol hut', 'Things that are instantly regretted', 'Breakfast foods', 'Reasons for a group photo retake', 'Things that are see-through', 'Things you can order at a drive-through'],
-    ['Things in a Denver airport', 'Reasons to take a nap', 'Bad names for a hair salon', 'Things you can’t do in ski boots', 'Something you’d hear at a mountain bar', 'Things that come in a can', 'Items in a camping store', 'Reasons to get a tattoo', 'Things that are checkered', 'Famous Chrises'],
-    ['Things in a hot chocolate', 'Reasons to be mad at a roommate', 'Bad names for a sports team', 'Things that are bendy', 'Something you’d find in a mountain lodge lobby', 'Things that stain', 'Items you can rent', 'Reasons to leave early on Sunday', 'Things that are soggy', 'Words with a silent letter'],
-    ['Things you need a permit for', 'Reasons to ditch a blind date', 'Bad names for a ski resort', 'Things that are good with ranch', 'Something you’d hear in a sled line', 'Things you have too many of', 'Items in a hotel minibar', 'Reasons to switch seats', 'Things that are wrinkled', 'Things you’d name a hot tub'],
-    ['Things at a bonfire', 'Reasons your card got declined', 'Bad names for a theme park', 'Things that are shiny', 'Something you’d say to a bear', 'Things you inherit', 'Items in a lifeguard chair', 'Reasons to drink water', 'Things that are magnetic', 'Famous dogs'],
-    ['Things in a kitchen at 7 a.m.', 'Reasons to miss the last lift', 'Bad names for a plumber', 'Things you can do in a hot tub', 'Something you shouldn’t say on a first date', 'Things you’d find in a ski town bar', 'Items in a diaper bag', 'Reasons to make a toast', 'Things that are tiny', 'Words that rhyme with snow'],
-    ['Things on a cabin porch', 'Reasons to leave the slopes early', 'Bad names for a cat', 'Things that are good fried', 'Something you’d hear in a tube line', 'Things that get stuck in your teeth', 'Items in a tool box', 'Reasons to turn the music down', 'Things that are pointy', 'Famous Daves'],
-    ['Things in a trunk', 'Reasons to carry cash', 'Bad names for a dentist', 'Things you can’t buy on Sunday', 'Something you’d find in a hunting lodge', 'Things people hoard', 'Items on a camping checklist', 'Reasons to cry at a movie', 'Things that are neon', 'Things you’d name a moose'],
-    ['Things you do while waiting for pizza', 'Reasons to leave the cabin door unlocked', 'Bad names for a kid’s toy', 'Things that are good on a stick', 'Something you’d hear from a ski instructor', 'Things that come in a box', 'Items in a glove', 'Reasons to pretend you’re asleep', 'Things that are squishy', 'Famous Lisas'],
-    ['Things in a mountain cabin bathroom', 'Reasons to go to bed early', 'Bad names for a brewery', 'Things that are best on a Friday', 'Something you’d hear in a casino', 'Things that come in rolls', 'Items in an emergency kit', 'Reasons for a group hug', 'Things that are hairy', 'Words that start with snow'],
-    ['Things you leave in the car overnight', 'Reasons to go outside in your socks', 'Bad names for a restaurant', 'Things that are dangerous when wet', 'Something you’d hear at a ski swap', 'Things you forget on purpose', 'Items in a bachelorette bag', 'Reasons to turn your phone off', 'Things that are lumpy', 'Famous Toms'],
-    ['Things in a mountain lake', 'Reasons to never go back to a bar', 'Bad names for an airline', 'Things that are good with ketchup', 'Something you’d say at a bachelor party', 'Things you’d find in a lift line', 'Items you lose on vacation', 'Reasons to send a group text at 3 a.m.', 'Things that are dusty', 'Things you’d name a fire pit'],
-    ['Things at a snowball fight', 'Reasons to leave a tip', 'Bad names for a hotel', 'Things that are good on toast', 'Something you’d hear from a parent on the phone', 'Things that come in flavours', 'Items in a ski bag', 'Reasons to move the couch', 'Things that are striped or spotted', 'Famous Sams'],
-    ['Things you’d find in a cabin freezer', 'Reasons to take the long way', 'Bad names for a gym', 'Things that are good in a sandwich', 'Something a lift operator says', 'Things that are impossible to carry', 'Items in a hunting cabin', 'Reasons to trade bunks', 'Things that are gooey', 'Things you shout when you win'],
-    ['Things that happen at check-out', 'Reasons to lose your phone', 'Bad names for a nail salon', 'Things that are good with butter', 'Something you’d hear on a snowmobile', 'Things that come in a jar', 'Items in a mechanic’s shop', 'Reasons to walk home', 'Things that are curly', 'Famous Kellys'],
-    ['Things in the back of a pickup', 'Reasons to sleep on the couch', 'Bad names for a pizza place', 'Things you can’t eat with a fork', 'Something you’d say to a snowplow driver', 'Things that get lost in the wash', 'Items in a hunter’s pocket', 'Reasons to cancel the hibachi', 'Things that are speckled', 'Words that sound made up'],
-    ['Things you buy at midnight', 'Reasons to hide the remote', 'Bad names for a boat rental', 'Things that are good cold the next day', 'Something you’d find in a ski boot', 'Things that scream', 'Items in a gondola', 'Reasons to leave the fire burning', 'Things that are rubbery', 'Famous Joes'],
-    ['Things in a mountain weather forecast', 'Reasons to keep your boots on', 'Bad names for a tattoo parlour', 'Things that are good with hot sauce', 'Something you’d hear at a hot tub at midnight', 'Things that come with a warning', 'Items in a sled', 'Reasons for a redo', 'Things that are foggy', 'Things you’d name a ski run'],
-    ['Things that end a party', 'Reasons to eat in the car', 'Bad names for a wine', 'Things that are good with a fried egg on top', 'Something you’d hear at a mountain wedding', 'Things you can’t un-see', 'Items in a snow globe', 'Reasons to leave the group chat on mute', 'Things that are icy', 'Famous Drews'],
-    ['Things on a cabin fridge door', 'Reasons to start a fight', 'Bad names for a cologne', 'Things that are good with peanut butter', 'Something a hot tub repair guy says', 'Things you’d do with a free afternoon', 'Items on a ski map', 'Reasons to check the oven', 'Things that are bouncy', 'Words that mean cold'],
-    ['Things in a Colorado dispensary', 'Reasons to miss the group photo', 'Bad names for a kids’ show', 'Things that are good drenched in syrup', 'Something you’d hear at a tubing hill', 'Things that break at the worst time', 'Items in a lunch box', 'Reasons to start a group chat', 'Things that are lopsided', 'Famous Lukes']
+    ['Things you’d find in a glovebox', 'Reasons to leave a party early', 'Bad names for a dog', 'Things that are better cold', 'Something you’d yell from a ski lift', 'Excuses for a hangover', 'Things in a hot tub', 'Celebrities you’d trust to babysit'],
+    ['Pizza toppings nobody orders', 'Things you lie to your dentist about', 'Things that smell worse wet', 'Reasons to call in sick', 'Bad names for a boat', 'Something you’d steal from a hotel', 'Things that are overrated', 'Words that sound dirty but aren’t'],
+    ['Things in a junk drawer', 'Reasons to break up with someone', 'Things you shouldn’t microwave', 'Bands that should reunite', 'Things you’d pack for a cabin weekend', 'Excuses for losing at beer pong', 'Things that are sticky', 'Reasons the Wi-Fi is down'],
+    ['Something you’d name a racehorse', 'I can’t believe it’s not ______', 'Things people brag about', 'Things in a bachelor’s fridge', 'Movies that made you cry', 'Reasons to get out of the hot tub', 'Things you can’t say at a funeral', 'Ski injuries'],
+    ['Things you’d do for twenty dollars', 'Bad gifts for a wedding', 'Things that go in a cooler', 'Reasons to hate winter', 'Something a bartender hears too much', 'Things in a dive bar bathroom', 'Famous rivalries', 'Things that are cheaper in bulk'],
+    ['Words you can’t spell without thinking', 'Things you’d find in a cabin closet', 'Reasons you missed the turn', 'Bad superhero names', 'Things that are free', 'Something you’d hear on a group text', 'Foods that look like other foods', 'Things in a ski lodge'],
+    ['Reasons to lock the door', 'Jobs that sound fake', 'Things you shouldn’t google at work', 'Never trust a man with ______', 'Things that happen at 2 a.m.', 'Bad names for a strip club', 'Things in a bowl of chili', 'Reasons to skip the gym'],
+    ['Something you’d find under a couch cushion', 'Famous people you’d share a bunk with', 'Things that squeak', 'Reasons for a speeding ticket', 'Things you order at a gas station', 'Ways to annoy the driver', 'Things you need two of', 'Reasons the dog is barking'],
+    ['Bad tattoo ideas', 'Things found on a mountain', 'Something you’d say to a cop', 'Snacks you hide from roommates', 'Things in a tackle box', 'Reasons to leave a group chat', 'Things that are louder than they should be', 'Bad places for a first date'],
+    ['Things you’d bring to a desert island', 'Reasons you’re not drinking tonight', 'Bad names for a cocktail', 'Things in a Winter Park gift shop', 'Something you regret buying', 'The cabin rule is no ______', 'Things you can do with one hand', 'Reasons to turn the car around'],
+    ['Things that are orange', 'Songs for a road trip', 'Things you shouldn’t touch in a hotel', 'Things in a hibachi restaurant', 'Reasons to fake an injury', 'Bad names for a baby', 'Things you can put cheese on', 'Something you’d hear at a ski rental counter'],
+    ['Things that take too long', 'Items in a lost and found', 'Reasons to stay up late', 'Things that are striped', 'Excuses for not texting back', 'Things you’d find in a tent', 'Reasons to be kicked out of a bar', 'Bad names for a band'],
+    ['Things that melt', 'Something you shouldn’t say to your boss', 'Things in a kid’s backpack', 'Movies with a dog in them', 'Reasons to miss a flight', 'Things you can’t bring on a plane', 'Things that are blue', 'You can’t spell party without ______'],
+    ['Things in a mountain town', 'Reasons to leave the hot springs', 'Bad names for a yacht', 'Things that need batteries', 'Something you’d win at a carnival', 'Things people fake', 'Items on a bar tab', 'Reasons to cancel plans'],
+    ['Things that are fuzzy', 'Words that end in -ing', 'Things you’d do on a snow day', 'Reasons the fire won’t start', 'Bad names for a race car', 'Things that come in a six-pack', 'Something you’d hear from the back seat', 'Things in a medicine cabinet'],
+    ['Famous duos', 'Reasons to sleep in the car', 'Things that are slippery', 'Things you’d name a cabin', 'Things that are always in the way', 'Reasons for a black eye', 'Bad things to put on a résumé', 'Things that float'],
+    ['Something you’d find at the bottom of a purse', 'Winter Park is famous for ______', 'Things you say to a dog', 'Items in a glove compartment of a rental', 'Reasons to go back inside', 'Things that are inflatable', 'Foods you eat with your hands', 'Things at a tailgate'],
+    ['Reasons to wear sunglasses inside', 'Bad names for a pub', 'Things that are heavier than they look', 'Something you’d hear at a bachelor party', 'Things in a sauna', 'Reasons to whisper', 'Things that are purple', 'Famous bridges, buildings or landmarks'],
+    ['Things you’d find in a dad’s truck', 'Things you do when nobody’s watching', 'Reasons to take the stairs', 'Bad names for a goldfish', 'Things that are chewy', 'Something you’d find in a ski jacket pocket', 'Things that are impossible to fold', 'Items in a first aid kit'],
+    ['Reasons to hide in the bathroom', 'Things that glow', 'Words that mean drunk', 'Sorry I’m late, I was ______', 'Things in a pancake house', 'Reasons to be late to breakfast', 'Bad names for a ski run', 'Things you buy at a liquor store'],
+    ['Something you shouldn’t say at a wedding', 'Things you can’t return', 'Items in a gym bag', 'Reasons to skip the hot tub', 'Things that are crunchy', 'Animals you wouldn’t want in the cabin', 'Things you forget to pack', 'Reasons to pull over'],
+    ['Bad names for a wrestler', 'Things that are hard to pronounce', 'Something you’d find on a gondola floor', 'Things that come in pairs', 'Items at a yard sale', 'Reasons to move to Colorado', 'Things that are spicy', 'Famous Mikes'],
+    ['Things in a bunk room', 'Reasons to apologise to a neighbour', 'Bad names for a bakery', 'Things you can set on fire', 'Something you’d hear at a hot tub party', 'The hot tub is no place for ______', 'Things that are impossible to find when you need them', 'Candy you never finish'],
+    ['Reasons to sit by the window', 'Things that are salty', 'Things you’d name a snowman', 'Things you find in the snow in spring', 'Reasons to change your name', 'Bad names for a coffee shop', 'Things you can juggle', 'Something you’d yell at the TV'],
+    ['Things people collect', 'Items in a camper van', 'Reasons to call your mom', 'Things that are round', 'Famous Jacks', 'Things you’d do with a snow day off', 'Reasons to not answer the door', 'Bad names for a cruise ship'],
+    ['Things that are bumpy', 'Something you’d find in a ski patrol hut', 'Things that are instantly regretted', 'Breakfast foods', 'Reasons for a group photo retake', 'Things that are see-through', 'Things you can order at a drive-through', 'Real men eat ______'],
+    ['Things in a Denver airport', 'Reasons to take a nap', 'Bad names for a hair salon', 'Things you can’t do in ski boots', 'Something you’d hear at a mountain bar', 'Things that come in a can', 'Items in a camping store', 'Reasons to get a tattoo'],
+    ['Things that are checkered', 'Famous Chrises', 'Things in a hot chocolate', 'Reasons to be mad at a roommate', 'Bad names for a sports team', 'Things that are bendy', 'Something you’d find in a mountain lodge lobby', 'Things that stain'],
+    ['Items you can rent', 'Reasons to leave early on Sunday', 'Things that are soggy', 'Words with a silent letter', 'Things you need a permit for', 'Reasons to ditch a blind date', 'Bad names for a ski resort', 'Things that are good with ranch'],
+    ['Something you’d hear in a sled line', '______ ruins a road trip', 'Things you have too many of', 'Items in a hotel minibar', 'Reasons to switch seats', 'Things that are wrinkled', 'Things you’d name a hot tub', 'Things at a bonfire'],
+    ['Reasons your card got declined', 'Bad names for a theme park', 'Things that are shiny', 'Something you’d say to a bear', 'Things you inherit', 'Items in a lifeguard chair', 'Reasons to drink water', 'Things that are magnetic'],
+    ['Famous dogs', 'Things in a kitchen at 7 a.m.', 'Reasons to miss the last lift', 'Bad names for a plumber', 'Things you can do in a hot tub', 'Something you shouldn’t say on a first date', 'Things you’d find in a ski town bar', 'Items in a diaper bag'],
+    ['Reasons to make a toast', 'Things that are tiny', 'Words that rhyme with snow', 'Put ______ on the grocery list', 'Things on a cabin porch', 'Reasons to leave the slopes early', 'Bad names for a cat', 'Things that are good fried'],
+    ['Something you’d hear in a tube line', 'Things that get stuck in your teeth', 'Items in a tool box', 'Reasons to turn the music down', 'Things that are pointy', 'Famous Daves', 'Things in a trunk', 'Reasons to carry cash'],
+    ['Bad names for a dentist', 'Things you can’t buy on Sunday', 'Something you’d find in a hunting lodge', 'Things people hoard', 'Items on a camping checklist', 'Reasons to cry at a movie', 'Things that are neon', 'Things you’d name a moose'],
+    ['Things you do while waiting for pizza', 'Reasons to leave the cabin door unlocked', 'Bad names for a kid’s toy', 'Things that are good on a stick', 'Something you’d hear from a ski instructor', 'Never ski with ______', 'Things that come in a box', 'Items in a glove'],
+    ['Reasons to pretend you’re asleep', 'Things that are squishy', 'Famous Lisas', 'Things in a mountain cabin bathroom', 'Reasons to go to bed early', 'Bad names for a brewery', 'Things that are best on a Friday', 'Something you’d hear in a casino'],
+    ['Things that come in rolls', 'Items in an emergency kit', 'Reasons for a group hug', 'Things that are hairy', 'Words that start with snow', 'Things you leave in the car overnight', 'Reasons to go outside in your socks', 'Bad names for a restaurant'],
+    ['Things that are dangerous when wet', 'Something you’d hear at a ski swap', 'Things you forget on purpose', 'Items in a bachelorette bag', 'Reasons to turn your phone off', 'Things that are lumpy', 'Famous Toms', 'The worst roommate has ______'],
+    ['Things in a mountain lake', 'Reasons to never go back to a bar', 'Bad names for an airline', 'Things that are good with ketchup', 'Something you’d say at a bachelor party', 'Things you’d find in a lift line', 'Items you lose on vacation', 'Reasons to send a group text at 3 a.m.'],
+    ['Things that are dusty', 'Things you’d name a fire pit', 'Things at a snowball fight', 'Reasons to leave a tip', 'Bad names for a hotel', 'Things that are good on toast', 'Something you’d hear from a parent on the phone', 'Things that come in flavours'],
+    ['Items in a ski bag', 'Reasons to move the couch', 'Things that are striped or spotted', 'Famous Sams', 'Things you’d find in a cabin freezer', 'Reasons to take the long way', 'Bad names for a gym', 'Things that are good in a sandwich'],
+    ['Something a lift operator says', 'I only drink ______ on weekends', 'Things that are impossible to carry', 'Items in a hunting cabin', 'Reasons to trade bunks', 'Things that are gooey', 'Things you shout when you win', 'Things that happen at check-out'],
+    ['Reasons to lose your phone', 'Bad names for a nail salon', 'Things that are good with butter', 'Something you’d hear on a snowmobile', 'Things that come in a jar', 'Items in a mechanic’s shop', 'Reasons to walk home', 'Things that are curly'],
+    ['Famous Kellys', 'Things in the back of a pickup', 'Reasons to sleep on the couch', 'Bad names for a pizza place', 'Things you can’t eat with a fork', 'Something you’d say to a snowplow driver', 'Things that get lost in the wash', 'Items in a hunter’s pocket'],
+    ['Reasons to cancel the hibachi', 'Things that are speckled', 'Words that sound made up', 'The couch smells like ______', 'Things you buy at midnight', 'Reasons to hide the remote', 'Bad names for a boat rental', 'Things that are good cold the next day'],
+    ['Something you’d find in a ski boot', 'Things that scream', 'Items in a gondola', 'Reasons to leave the fire burning', 'Things that are rubbery', 'Famous Joes', 'Things in a mountain weather forecast', 'Reasons to keep your boots on'],
+    ['Bad names for a tattoo parlour', 'Things that are good with hot sauce', 'Something you’d hear at a hot tub at midnight', 'Things that come with a warning', 'Items in a sled', 'Reasons for a redo', 'Things that are foggy', 'Things you’d name a ski run'],
+    ['Things that end a party', 'Reasons to eat in the car', 'Bad names for a wine', 'Things that are good with a fried egg on top', 'Something you’d hear at a mountain wedding', 'Nobody warned me about ______', 'Things you can’t un-see', 'Items in a snow globe'],
+    ['Reasons to leave the group chat on mute', 'Things that are icy', 'Famous Drews', 'Things on a cabin fridge door', 'Reasons to start a fight', 'Bad names for a cologne', 'Things that are good with peanut butter', 'Something a hot tub repair guy says'],
+    ['Things you’d do with a free afternoon', 'Items on a ski map', 'Reasons to check the oven', 'Things that are bouncy', 'Words that mean cold', 'Things in a Colorado dispensary', 'Reasons to miss the group photo', 'Bad names for a kids’ show'],
+    ['Things that are good drenched in syrup', 'Something you’d hear at a tubing hill', 'Things that break at the worst time', 'Items in a lunch box', 'Reasons to start a group chat', 'Things that are lopsided', 'Famous Lukes', 'First rule of Mafia: ______']
   ];
   var OT_LETTERS = 'ABCDEFGHIJKLMNOPRSTW', OT_SECS = 120;
-  var ot = null, otLoaded = false, otSub = false, otBuzzed = null;
+  var ot = null, otLoaded = false, otSub = false, otBuzzed = null, otOpts = null;
   function subscribeOffTopic() {
     if (otSub || !store || !store.game) return;
     otSub = true;
     store.game('offtopic', function (doc) { var same = otLoaded && sameDoc(doc, ot); ot = doc; otLoaded = true; if (!same) renderOffTopic(); });
   }
-  function otLeft(g) { return Math.max(0, new Date(g.started_at).getTime() + OT_SECS * 1000 - Date.now()); }
+  function otOptions() { if (!otOpts) otOpts = Object.assign({ letter: true, clock: true }, (ot && ot.opts) || {}); return otOpts; }
+  function otLeft(g) { return g.started_at ? Math.max(0, new Date(g.started_at).getTime() + OT_SECS * 1000 - Date.now()) : 0; }
   function otLetter(not) { var pool = OT_LETTERS.split('').filter(function (l) { return l !== not; }); return pool[Math.floor(Math.random() * pool.length)]; }
   function otUsed() { return (ot && ot.used) || []; }
+  function otChip(g) {
+    var bits = ['Card ' + (101 + g.card)];
+    if (g.letter) bits.push(g.letter);
+    if (g.started_at) { var left = otLeft(g); bits.push(left > 0 ? mmss(left) : 'pencils down'); }
+    return bits.join(' · ');
+  }
   function renderOffTopic() {
     var body = $('offtopic-body'), status = $('offtopic-status'); if (!body) return;
     if (!otLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
     var g = ot && ot.status === 'card' ? ot : null, used = otUsed(), html = '';
     if (!g) {
+      var o = otOptions();
       status.textContent = 'No card out';
-      html += '<p class="info-sub">Forty new cards to go with the box. Deal one and every phone shows the same card, a letter off the die, and the two-minute clock. Pads and pencils as usual: one answer per category, starting with the letter. Matches cross out, unique answers score.</p>';
+      html += '<p class="info-sub">' + OT_CARDS.length + ' new cards to go with the box. Deal one and every phone shows the same card. Pads and pencils as usual: one answer per line, starting with the letter. Matches cross out, unique answers score.</p>';
+      html += '<div class="mafia-opts">' +
+        '<div class="opt-row"><span>Roll a letter <span class="info-sub">(off if you’re using the die)</span></span><button type="button" class="toggle" data-ot-opt="letter" aria-pressed="' + !!o.letter + '" aria-label="Roll a letter"></button></div>' +
+        '<div class="opt-row"><span>Run the two-minute clock <span class="info-sub">(off if you’re using the timer)</span></span><button type="button" class="toggle" data-ot-opt="clock" aria-pressed="' + !!o.clock + '" aria-label="Run the clock"></button></div></div>';
       html += '<div class="mafia-actions"><button type="button" class="big-btn" id="ot-deal">📝 Deal a card</button></div>';
       html += '<div class="deal-sum">' + used.length + ' of ' + OT_CARDS.length + ' cards used' + (used.length ? ' · <button type="button" class="linkbtn" id="ot-shuffle">Shuffle them back in</button>' : '') + '</div>';
       body.innerHTML = html; return;
     }
     var left = otLeft(g), card = OT_CARDS[g.card] || OT_CARDS[0], num = 101 + g.card;
-    status.textContent = 'Card ' + num + ' · ' + g.letter + ' · ' + (left > 0 ? mmss(left) : 'pencils down');
-    html += '<div class="ot-top"><div class="ot-letter" id="ot-letter-badge">' + g.letter + '</div><div class="ot-clock' + (left > 0 && left <= 10000 ? ' low' : '') + '" id="ot-clock">' + (left > 0 ? '<span data-ot-clock>' + mmss(left) + '</span>' : '<span class="pd">Pencils down</span>') + '</div></div>';
-    html += '<div class="ot-card"><div class="ot-head"><span>Off Topic</span><small>No. ' + num + '</small></div><ol>' + card.map(function (c, i) { return '<li><b>' + (i + 1) + '</b><span>' + esc(c) + '</span></li>'; }).join('') + '</ol></div>';
-    html += '<div class="mafia-actions"><button type="button" class="big-btn" id="ot-next">📝 Next card</button><button type="button" class="btn" id="ot-reroll">Roll the letter again</button><button type="button" class="btn" id="ot-restart">Restart the clock</button><button type="button" class="linkbtn" id="ot-away">Put it away</button></div>';
+    status.textContent = otChip(g);
+    if (g.letter || g.started_at) {
+      html += '<div class="ot-top">' + (g.letter ? '<div class="ot-letter" id="ot-letter-badge">' + g.letter + '</div>' : '<div class="ot-note">Roll the die</div>') +
+        (g.started_at ? '<div class="ot-clock' + (left > 0 && left <= 10000 ? ' low' : '') + '" id="ot-clock">' + (left > 0 ? '<span data-ot-clock>' + mmss(left) + '</span>' : '<span class="pd">Pencils down</span>') + '</div>' : '<div class="ot-note right">Flip the timer</div>') + '</div>';
+    }
+    html += '<div class="ot-card"><div class="ot-num">' + num + '</div><ol>' + card.map(function (c, i) { return '<li><span class="n">' + (i + 1) + '.</span><span>' + esc(c) + '</span></li>'; }).join('') + '</ol>' +
+      '<div class="ot-logo"><span class="big">Off Topic</span><small>A game for those slightly off</small></div></div>';
+    html += '<div class="mafia-actions"><button type="button" class="big-btn" id="ot-next">📝 Next card</button>' +
+      (g.letter ? '<button type="button" class="btn" id="ot-reroll">Roll the letter again</button>' : '') +
+      (g.started_at ? '<button type="button" class="btn" id="ot-restart">Restart the clock</button>' : '') +
+      '<button type="button" class="linkbtn" id="ot-away">Put it away</button></div>';
     html += '<div class="info-sub" style="margin-top:10px">Dealt by ' + esc(g.by === me ? 'you' : g.by) + ' ' + esc(agoText(g.dealt_at)) + ' · ' + used.length + ' of ' + OT_CARDS.length + ' cards used</div>';
     body.innerHTML = html;
   }
   function otWrite(doc, what) { ot = doc; renderOffTopic(); return store.setGame('offtopic', doc).catch(function (e) { toast((what || 'Couldn’t save that') + ': ' + ((e && e.message) || e)); }); }
   function otDeal() {
+    var o = ot && ot.status === 'card' ? Object.assign({ letter: true, clock: true }, ot.opts || {}) : otOptions();   // next card keeps the dealt card's settings
     var used = otUsed().slice(), fresh = [];
     for (var i = 0; i < OT_CARDS.length; i++) if (used.indexOf(i) < 0) fresh.push(i);
     if (!fresh.length) { used = []; for (var k = 0; k < OT_CARDS.length; k++) fresh.push(k); toast('That was the whole deck. Shuffled back in.'); }
     var idx = fresh[Math.floor(Math.random() * fresh.length)];
     used.push(idx);
-    var doc = { status: 'card', card: idx, letter: otLetter(ot && ot.letter), started_at: new Date().toISOString(), used: used, by: me, dealt_at: new Date().toISOString() };
+    var now = new Date().toISOString();
+    var doc = { status: 'card', card: idx, letter: o.letter ? otLetter(ot && ot.letter) : null, started_at: o.clock ? now : null, opts: { letter: !!o.letter, clock: !!o.clock }, used: used, by: me, dealt_at: now };
     otBuzzed = null; buzz([15, 40, 15]); otWrite(doc, 'Couldn’t deal');
   }
   function otTick() {
-    var g = ot && ot.status === 'card' ? ot : null; if (!g) return;
+    var g = ot && ot.status === 'card' && ot.started_at ? ot : null; if (!g) return;
     var left = otLeft(g), el = document.querySelector('[data-ot-clock]'), st = $('offtopic-status'), clock = $('ot-clock');
-    if (left > 0) { if (el) el.textContent = mmss(left); if (clock) clock.classList.toggle('low', left <= 10000); if (st) st.textContent = 'Card ' + (101 + g.card) + ' · ' + g.letter + ' · ' + mmss(left); return; }
+    if (left > 0) { if (el) el.textContent = mmss(left); if (clock) clock.classList.toggle('low', left <= 10000); if (st) st.textContent = otChip(g); return; }
     if (otBuzzed === g.started_at) return;
     otBuzzed = g.started_at; renderOffTopic();
     if (!$('offtopic-body').hidden) { buzz([80, 40, 80, 40, 160]); toast('Off Topic: pencils down!'); }
   }
   $('offtopic-body').addEventListener('click', function (e) {
+    var op = e.target.closest('[data-ot-opt]'); if (op) { var o = otOptions(), key = op.getAttribute('data-ot-opt'); o[key] = !o[key]; buzz(6); renderOffTopic(); return; }
     if (e.target.closest('#ot-deal') || e.target.closest('#ot-next')) { otDeal(); return; }
     if (!ot) return;
     if (e.target.closest('#ot-shuffle')) { otWrite(Object.assign({}, ot, { used: [] })); return; }
-    if (e.target.closest('#ot-reroll')) { otBuzzed = null; buzz(8); otWrite(Object.assign({}, ot, { letter: otLetter(ot.letter), started_at: new Date().toISOString() })); return; }
+    if (e.target.closest('#ot-reroll')) { otBuzzed = null; buzz(8); otWrite(Object.assign({}, ot, { letter: otLetter(ot.letter) }, ot.started_at ? { started_at: new Date().toISOString() } : {})); return; }
     if (e.target.closest('#ot-restart')) { otBuzzed = null; buzz(8); otWrite(Object.assign({}, ot, { started_at: new Date().toISOString() })); return; }
-    if (e.target.closest('#ot-away')) { otWrite(Object.assign({}, ot, { status: 'ended', ended_at: new Date().toISOString() }), 'Couldn’t put it away'); }
+    if (e.target.closest('#ot-away')) { otOpts = Object.assign({ letter: true, clock: true }, ot.opts || {}); otWrite(Object.assign({}, ot, { status: 'ended', ended_at: new Date().toISOString() }), 'Couldn’t put it away'); }
   });
 
   // ---- Cabin tab ----
