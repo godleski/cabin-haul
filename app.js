@@ -3715,10 +3715,10 @@
     var msgs = wallMsgs();
     var meta = $('wall-meta');
     if (meta) { var voices = {}; msgs.forEach(function (c) { voices[c.author] = true; }); meta.textContent = msgs.length ? msgs.length + (msgs.length === 1 ? ' note' : ' notes') + ' · ' + Object.keys(voices).length + (Object.keys(voices).length === 1 ? ' voice' : ' voices') : 'Plans, trash, who’s got the aux.'; }
-    if (!msgs.length) { el.innerHTML = claudeBusy[WALL] ? claudeTypingHtml() : '<div class="empty"><span class="pin">📌</span><b>Nothing on the wall yet</b>Say something. Or type @Claude and see what happens.</div>'; return; }
+    if (!msgs.length) { el.innerHTML = claudeBusy[WALL] ? claudeTypingHtml(WALL) : '<div class="empty"><span class="pin">📌</span><b>Nothing on the wall yet</b>Say something. Or type @Claude and see what happens.</div>'; return; }
     var html = '', lastDay = '', prev = null;
     msgs.forEach(function (c) { var d = dayLabel(c.created_at); if (d && d !== lastDay) { html += '<div class="day"><span>' + esc(d) + '</span></div>'; lastDay = d; prev = null; } html += msgHtml(c, sameRun(prev, c)); prev = c; });
-    if (claudeBusy[WALL]) html += claudeTypingHtml();
+    if (claudeBusy[WALL]) html += claudeTypingHtml(WALL);
     var grew = msgs.length > wallRendered; wallRendered = msgs.length;
     el.innerHTML = html;
     if ((scroll || grew) && chatOpen) { var wb = $('wall-body'); wb.scrollTo({ top: wb.scrollHeight, behavior: scroll ? 'auto' : 'smooth' }); }
@@ -3789,7 +3789,7 @@
     var thread = comments.filter(function (c) { return c.question_id === q.id; });
     html += '<div class="chat"><div class="chat-head">Trash talk' + (thread.length ? ' <span class="k">' + thread.length + '</span>' : '') + '</div>';
     if (!thread.length) html += '<div class="chat-empty">Nobody’s said anything yet. Stir the pot.</div>';
-    html += '<div class="chat-list" id="chat-list">' + thread.map(function (c, i) { return msgHtml(c, sameRun(thread[i - 1], c)); }).join('') + (claudeBusy[q.id] ? claudeTypingHtml() : '') + '</div></div>';
+    html += '<div class="chat-list" id="chat-list">' + thread.map(function (c, i) { return msgHtml(c, sameRun(thread[i - 1], c)); }).join('') + (claudeBusy[q.id] ? claudeTypingHtml(q.id) : '') + '</div></div>';
     var body = $('sheet-body'), atBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 40 || wrap.hidden;
     body.innerHTML = html;
     var inp = $('chat-input'); if (inp && inp.value !== draft) inp.value = draft;
@@ -3852,16 +3852,24 @@
   // remembers (caughtUp), so it happens on one phone and never again.
   var claudeCaughtUp = false;
   function claudeCatchup() {
-    if (claudeCaughtUp || me !== 'Mitch' || !commentsLoaded || !claudeKey() || !claudeDoc || !claudeDoc.arrived || claudeDoc.caughtUp || !store || !store.setGame) return;
+    if (claudeCaughtUp || me !== 'Mitch' || !commentsLoaded || !claudeKey() || !claudeDoc || !claudeDoc.arrived || !store || !store.setGame) return;
+    if (claudeDoc.caughtUp && !(Date.now() - Date.parse(claudeDoc.caughtUp) > 10 * 60000)) return;   // a phone of Mitch's is on it, or just was; a try that never landed is retried after ten minutes
     var threads = [];
     comments.forEach(function (c) { if (c.author === CLAUDE_NAME && c.text === '…' && threads.indexOf(c.question_id) < 0) threads.push(c.question_id); });
     threads = threads.filter(function (t) { var last = comments.filter(function (c) { return c.question_id === t && c.author === CLAUDE_NAME; }).pop(); return last && last.text === '…'; });   // only where the blank is still the last word
     if (!threads.length) return;
     claudeCaughtUp = true;
+    var seen = claudeDoc.caughtUp || null;   // the stale stamp, if any; a fresh one appearing meanwhile means another phone got there first
     setTimeout(function () {   // a moment for the boards to load, so the answers have the numbers
-      if (claudeDoc && claudeDoc.caughtUp) return;
+      if (claudeDoc && claudeDoc.caughtUp && claudeDoc.caughtUp !== seen) return;
       var doc = Object.assign({}, claudeDoc || {}, { caughtUp: new Date().toISOString() }); claudeDoc = doc;
-      store.setGame('claude', doc).then(function () { threads.forEach(function (t) { askClaude(t, 'catchup'); }); }).catch(function () { claudeCaughtUp = false; });
+      store.setGame('claude', doc).then(function () {
+        return Promise.all(threads.map(function (t) { return askClaude(t, 'catchup'); }));
+      }, function () { claudeCaughtUp = false; return [true]; }).then(function (oks) {
+        if (oks.every(Boolean)) return;
+        var undo = Object.assign({}, claudeDoc || {}); delete undo.caughtUp; claudeDoc = undo;   // it didn't land: forget the stamp so the next open tries again (not this one, so a dead network can't loop)
+        return store.setGame('claude', undo);
+      }).catch(function () { /* the stamp stays; the ten-minute window covers it */ });
     }, 2500);
   }
   // Claude's entrance: the first time the key is in place, Mitch's phone has Claude open with a roast of Kyle's golf
@@ -3886,7 +3894,42 @@
     var last = comments.filter(function (c) { return c.question_id === threadId && c.author === CLAUDE_NAME; }).pop();
     return !last || Date.now() - Date.parse(last.created_at || '') > CLAUDE_CHIME_GAP;
   }
-  function claudeTypingHtml() { return '<div class="msg claude typing"><span class="who">' + CLAUDE_NAME + '</span><div class="txt">typing<span class="tdots"><i>.</i><i>.</i><i>.</i></span></div></div>'; }
+  var claudeDraft = {}, draftTick = 0;   // the answer so far, per thread: it shows in the typing bubble as it streams in
+  function claudeTypingHtml(threadId) {
+    var d = claudeDraft[threadId == null ? WALL : threadId];
+    return d ? '<div class="msg claude typing draft"><span class="who">' + CLAUDE_NAME + '</span><div class="txt">' + esc(d) + '</div></div>'
+      : '<div class="msg claude typing"><span class="who">' + CLAUDE_NAME + '</span><div class="txt">typing<span class="tdots"><i>.</i><i>.</i><i>.</i></span></div></div>';
+  }
+  function drawDraft(threadId) {   // a few times a second at most, and only follow the text down if the reader is already at the bottom
+    var now = Date.now(); if (now - draftTick < 350) return; draftTick = now;
+    var box = threadId === WALL ? $('wall-body') : $('sheet-body'), near = box && box.scrollHeight - box.scrollTop - box.clientHeight < 200;
+    if (threadId === WALL) renderWall(); else renderSheet();
+    if (box && near) box.scrollTop = box.scrollHeight;
+  }
+  // The answer comes back as a stream of server-sent events. A long answer takes longer to think up and write than
+  // Safari will wait on a quiet connection (it gives up after about a minute with "Load failed"), and a stream is
+  // never quiet. onText gets the text so far after every piece.
+  function claudeStream(res, onText) {
+    var dec = new TextDecoder(), buf = '', out = { text: '', stop: null };
+    function take(chunk) {   // one event: "event: x\ndata: {...}"
+      var data = '';
+      chunk.split('\n').forEach(function (l) { l = l.replace(/\r$/, ''); if (l.indexOf('data:') === 0) data += l.slice(5).trim(); });
+      if (!data) return;
+      var ev; try { ev = JSON.parse(data); } catch (e) { return; }
+      if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') { out.text += ev.delta.text; onText(out.text); }
+      else if (ev.type === 'message_delta' && ev.delta && ev.delta.stop_reason) out.stop = ev.delta.stop_reason;
+      else if (ev.type === 'error') throw new Error((ev.error && ev.error.message) || 'the stream broke');
+    }
+    function drain(last) { var i; while ((i = buf.indexOf('\n\n')) >= 0) { take(buf.slice(0, i)); buf = buf.slice(i + 2); } if (last && buf.trim()) { take(buf); buf = ''; } }
+    if (!res.body || !res.body.getReader) return res.text().then(function (t) { buf = t; drain(true); return out; });   // no streaming reads here: take it whole
+    var reader = res.body.getReader();
+    return (function pump() {
+      return reader.read().then(function (r) {
+        if (r.done) { buf += dec.decode(); drain(true); return out; }
+        buf += dec.decode(r.value, { stream: true }); drain(false); return pump();
+      });
+    })();
+  }
   // what Claude knows: the trip, the people, the app, and whatever the boards say right now
   function claudeSystem(threadId, mode) {
     var lines = [];
@@ -3946,9 +3989,9 @@
   }
   function askClaude(threadId, mode) {
     var key = claudeKey();
-    if (!key) { toast('Claude isn’t connected yet. Mitch has to add the key.'); return; }
-    if (claudeBusy[threadId]) return;
-    claudeBusy[threadId] = true; renderWall(); renderSheet();
+    if (!key) { toast('Claude isn’t connected yet. Mitch has to add the key.'); return Promise.resolve(false); }
+    if (claudeBusy[threadId]) return Promise.resolve(false);
+    claudeBusy[threadId] = true; claudeDraft[threadId] = ''; renderWall(); renderSheet();
     var post = function (text) {
       comments.push({ question_id: threadId, author: CLAUDE_NAME, text: text, created_at: new Date().toISOString() });
       store.comment(threadId, CLAUDE_NAME, text).catch(function (err) { toast('Claude answered, but it didn’t post: ' + ((err && err.message) || err)); });
@@ -3958,28 +4001,35 @@
     // with no words (stop_reason max_tokens), one retry with even more room, and if that is blank too Claude says so.
     var system = claudeSystem(threadId, mode || 'asked'), thread = claudeThread(threadId, mode);
     var call = function (maxTokens) {
+      claudeDraft[threadId] = '';
       return fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
-        body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: maxTokens, system: system, messages: thread, output_config: { effort: 'medium' }, fallbacks: 'default' })
-      }).then(function (res) { return res.json().then(function (data) { return { ok: res.ok, status: res.status, data: data }; }); }).then(function (r) {
-        if (!r.ok) throw new Error((r.data && r.data.error && r.data.error.message) || ('HTTP ' + r.status));
-        var text = r.data.stop_reason === 'refusal' ? 'I’m going to sit that one out.' : (r.data.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('').trim();
-        return { text: text.replace(/^claude:\s*/i, ''), capped: r.data.stop_reason === 'max_tokens' };
+        body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: maxTokens, stream: true, system: system, messages: thread, output_config: { effort: 'medium' }, fallbacks: 'default' })
+      }).then(function (res) {
+        if (!res.ok) return res.json().then(function (d) { throw new Error((d && d.error && d.error.message) || ('HTTP ' + res.status)); }, function () { throw new Error('HTTP ' + res.status); });
+        return claudeStream(res, function (t) { claudeDraft[threadId] = t; drawDraft(threadId); });
+      }).then(function (out) {
+        var text = out.stop === 'refusal' ? 'I’m going to sit that one out.' : out.text.trim();
+        return { text: text.replace(/^claude:\s*/i, ''), capped: out.stop === 'max_tokens' };
       });
     };
-    call(16000).then(function (a) {
+    return call(16000).then(function (a) {
       return a.text || !a.capped ? a : call(24000);
     }).then(function (a) {
       var text = a.text;
       if (text.length > 4000) { var cut = text.slice(0, 4000), end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '), cut.lastIndexOf('.\n'), cut.lastIndexOf('!\n'), cut.lastIndexOf('?\n')); text = end > 1000 ? cut.slice(0, end + 1) : cut; }
       post(text || CLAUDE_BLANK);
+      return true;
     }).catch(function (err) {
-      toast('Claude couldn’t answer: ' + ((err && err.message) || err));
-    }).then(function () {
-      claudeBusy[threadId] = false; renderWall(); renderPredictions(); renderSheet();
+      var m = (err && err.message) || String(err);
+      toast('Claude couldn’t answer: ' + (/load failed|failed to fetch|network|aborted|stream broke/i.test(m) ? 'the connection dropped. Ask again.' : m));
+      return false;
+    }).then(function (ok) {
+      claudeDraft[threadId] = ''; claudeBusy[threadId] = false; renderWall(); renderPredictions(); renderSheet();
       var wb = $('wall-body'); if (wb && chatOpen && threadId === WALL) wb.scrollTo({ top: wb.scrollHeight, behavior: 'smooth' });
       var sb = $('sheet-body'); if (sb && expanded !== null) sb.scrollTop = sb.scrollHeight;
+      return ok;
     });
   }
 
