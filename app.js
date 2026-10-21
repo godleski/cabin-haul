@@ -570,26 +570,27 @@
       { name: 'Bullwheel', poly: [[0.5, 0.03], [0.95, 0.5], [0.5, 0.97], [0.05, 0.5]], walls: [], tee: [0.5, 0.8], cup: [0.5, 0.2],
         slots: [{ x: 0.5, y: 0.5, kinds: ['windmill'], s: 0.75 }, { x: 0.28, y: 0.5, kinds: ['ice', null], s: 0.55 }, { x: 0.72, y: 0.5, kinds: ['bank', null], s: 0.45 }] }
     ];
-    // Volcano: a crater cup, lava rivers, geysers, magma bumpers, a lava tube and a jump
+    // Volcano: the hard course. No hole has an open straight line; every one asks for timing (gates, geysers, sliders,
+    // spinners) or a deflection (bumpers, the cone), and lava sends you back. Par is still 27; going low means learning it.
     var LAVA = [
       { name: 'Caldera', poly: ring(0.5, 0.5, 0.45, 0.47, 10), walls: [], tee: [0.5, 0.9], cup: [0.5, 0.4],
-        slots: [{ x: 0.5, y: 0.4, kinds: ['mound'] }, { x: 0.3, y: 0.7, kinds: ['sand', 'bumper', null], s: 0.6 }] },
+        slots: [{ x: 0.5, y: 0.4, kinds: ['mound'] }, { x: 0.42, y: 0.64, kinds: ['bumper'] }, { x: 0.58, y: 0.64, kinds: ['bumper'] }, { x: 0.5, y: 0.78, kinds: ['geyser'], s: 0.9 }, { x: 0.3, y: 0.5, kinds: ['sand', null], s: 0.5 }] },
       { name: 'Lava River', poly: OCT, walls: [], tee: [0.5, 0.88], cup: [0.36, 0.14],
-        slots: [{ x: 0.5, y: 0.4, kinds: ['river'], s: 0.9 }, { x: 0.5, y: 0.5, kinds: ['jump'], dir: [0, -1] }, { x: 0.24, y: 0.25, kinds: ['bumper', 'sand', null], s: 0.6 }] },
+        slots: [{ x: 0.5, y: 0.4, kinds: ['river'], s: 0.9 }, { x: 0.5, y: 0.5, kinds: ['jump'], dir: [0, -1] }, { x: 0.5, y: 0.7, kinds: ['slider'], s: 0.9 }, { x: 0.26, y: 0.3, kinds: ['bumper'] }, { x: 0.74, y: 0.3, kinds: ['bumper'] }] },
       { name: 'Geyser Field', poly: [[0.16, 0.04], [0.84, 0.04], [0.9, 0.1], [0.9, 0.92], [0.84, 0.98], [0.16, 0.98], [0.1, 0.92], [0.1, 0.1]], walls: [], tee: [0.5, 0.9], cup: [0.62, 0.13],
-        slots: [{ x: 0.36, y: 0.66, kinds: ['geyser'] }, { x: 0.66, y: 0.5, kinds: ['geyser'] }, { x: 0.4, y: 0.32, kinds: ['geyser'] }] },
+        slots: [{ x: 0.5, y: 0.78, kinds: ['geyser'], s: 0.9, period: 2000 }, { x: 0.36, y: 0.64, kinds: ['geyser'], period: 2000 }, { x: 0.5, y: 0.47, kinds: ['block'], s: 0.9 }, { x: 0.66, y: 0.58, kinds: ['geyser'], period: 2000 }, { x: 0.36, y: 0.34, kinds: ['geyser'], period: 2000 }, { x: 0.62, y: 0.25, kinds: ['geyser'], s: 0.85, period: 2000 }] },
       { name: 'Lava Tube', poly: OCT, walls: [[[0.07, 0.5], [0.93, 0.5]]], tee: [0.3, 0.88], cup: [0.38, 0.14],
-        slots: [{ x: 0.3, y: 0.66, kinds: ['tunnel'], to: [0.72, 0.34], out: [0, -1], back: [0, 1] }, { x: 0.66, y: 0.72, kinds: ['water', null], s: 0.7 }, { x: 0.56, y: 0.24, kinds: ['bumper', null] }] },
+        slots: [{ x: 0.3, y: 0.66, kinds: ['tunnel'], to: [0.72, 0.34], out: [0, -1], back: [0, 1] }, { x: 0.5, y: 0.78, kinds: ['slider'], s: 0.9 }, { x: 0.66, y: 0.72, kinds: ['water', null], s: 0.7 }, { x: 0.55, y: 0.24, kinds: ['windmill'], s: 0.6 }] },
       { name: 'Magma Pinball', poly: [[0.08, 0.04], [0.92, 0.04], [0.96, 0.1], [0.96, 0.92], [0.92, 0.98], [0.08, 0.98], [0.04, 0.92], [0.04, 0.1]], walls: [], tee: [0.2, 0.9], cup: [0.8, 0.13],
-        slots: [{ x: 0.5, y: 0.56, kinds: ['bumper'] }, { x: 0.3, y: 0.36, kinds: ['bumper'] }, { x: 0.7, y: 0.34, kinds: ['bumper'] }, { x: 0.28, y: 0.72, kinds: ['bumper'] }, { x: 0.66, y: 0.78, kinds: ['bumper'] }, { x: 0.5, y: 0.2, kinds: ['sand', null], s: 0.6 }] },
+        slots: [{ x: 0.5, y: 0.56, kinds: ['bumper'] }, { x: 0.3, y: 0.36, kinds: ['bumper'] }, { x: 0.7, y: 0.34, kinds: ['bumper'] }, { x: 0.28, y: 0.72, kinds: ['bumper'] }, { x: 0.66, y: 0.78, kinds: ['bumper'] }, { x: 0.5, y: 0.2, kinds: ['bumper'] }, { x: 0.8, y: 0.32, kinds: ['bumper'] }, { x: 0.5, y: 0.38, kinds: ['sand', null], s: 0.5 }] },
       { name: 'Ash Flats', poly: [[0.06, 0.04], [0.42, 0.04], [0.42, 0.58], [0.58, 0.58], [0.58, 0.04], [0.94, 0.04], [0.94, 0.96], [0.06, 0.96]], walls: [], tee: [0.76, 0.28], cup: [0.24, 0.22],
-        slots: [{ x: 0.76, y: 0.5, kinds: ['sand', 'mound', null], s: 0.55 }, { x: 0.5, y: 0.8, kinds: ['boost', null], dir: [-1, 0], s: 0.8 }, { x: 0.33, y: 0.58, kinds: ['bumper', null] }] },
+        slots: [{ x: 0.76, y: 0.5, kinds: ['mound'], s: 0.55 }, { x: 0.5, y: 0.8, kinds: ['boost'], dir: [-1, 0], s: 0.8 }, { x: 0.33, y: 0.58, kinds: ['bumper'] }, { x: 0.24, y: 0.4, kinds: ['sand', 'ice', null], s: 0.45 }] },
       { name: 'Obsidian Gate', poly: OCT, walls: [], tee: [0.5, 0.9], cup: [0.5, 0.14],
-        slots: [{ x: 0.5, y: 0.56, kinds: ['gate'] }, { x: 0.5, y: 0.3, kinds: ['sand', 'bumper', null], s: 0.6 }, { x: 0.76, y: 0.78, kinds: ['water', null], s: 0.45 }] },
+        slots: [{ x: 0.5, y: 0.62, kinds: ['gate'] }, { x: 0.5, y: 0.4, kinds: ['gate'] }, { x: 0.5, y: 0.26, kinds: ['sand', 'bumper', null], s: 0.5 }, { x: 0.76, y: 0.78, kinds: ['water', null], s: 0.45 }] },
       { name: 'Ring of Fire', poly: OCT, walls: [[[0.36, 0.4], [0.64, 0.4], [0.64, 0.6], [0.36, 0.6], [0.36, 0.4]]], islands: [[[0.36, 0.4], [0.64, 0.4], [0.64, 0.6], [0.36, 0.6]]], tee: [0.5, 0.88], cup: [0.5, 0.14],
-        slots: [{ x: 0.2, y: 0.5, kinds: ['sand', 'geyser', null], s: 0.55 }, { x: 0.8, y: 0.5, kinds: ['geyser', 'sand', null], s: 0.55 }, { x: 0.5, y: 0.26, kinds: ['bumper', null] }] },
+        slots: [{ x: 0.215, y: 0.32, kinds: ['bumper'] }, { x: 0.785, y: 0.32, kinds: ['bumper'] }, { x: 0.5, y: 0.26, kinds: ['bumper'] }, { x: 0.2, y: 0.5, kinds: ['sand', 'geyser'], s: 0.55 }, { x: 0.8, y: 0.5, kinds: ['geyser', 'sand'], s: 0.55 }] },
       { name: 'Eruption', poly: [[0.44, 0.04], [0.94, 0.04], [0.94, 0.58], [0.56, 0.96], [0.06, 0.96], [0.06, 0.42]], walls: [], tee: [0.22, 0.84], cup: [0.78, 0.16],
-        slots: [{ x: 0.5, y: 0.5, kinds: ['mound'], s: 0.8 }, { x: 0.7, y: 0.34, kinds: ['water', 'sand', null], s: 0.55 }, { x: 0.3, y: 0.62, kinds: ['sand', null], s: 0.5 }] }
+        slots: [{ x: 0.5, y: 0.5, kinds: ['mound'], s: 0.8 }, { x: 0.64, y: 0.33, kinds: ['bumper'] }, { x: 0.7, y: 0.085, kinds: ['bumper'] }, { x: 0.76, y: 0.44, kinds: ['windmill'], s: 0.55 }, { x: 0.7, y: 0.62, kinds: ['water', 'sand', null], s: 0.55 }, { x: 0.3, y: 0.62, kinds: ['sand', 'bumper', null], s: 0.5 }] }
     ];
     // Palettes. Tiles and sand/water are [base, dark, light]; rails, blocks and windmill arms are [base, body, lit]; cup is
     // [ring, hole, deep]. tree/bloom pick the furniture in the rough; splash is the hazard note.
@@ -650,7 +651,7 @@
       var s = sl.s || 1, x = sl.x * W, y = sl.y * H, o = { kind: kind, x: x, y: y }, LANE = 30;
       var room = kind === 'block' || kind === 'bank' || kind === 'slider' ? laneRoom(g, x, y) : 0, edges = laneEdges(g, x, y);
       if (kind === 'block' || kind === 'bank') { o.w = Math.min(0.4 * s * W, 2 * (room - LANE)); if (o.w < 24) return null; o.h = 0.045 * H; o.rect = rectAt(x, y, o.w, o.h); o.rest = kind === 'bank' ? 0.1 : 0.7; }
-      else if (kind === 'slider') { o.w = Math.min(0.22 * s * W, 2 * (room - LANE)); if (o.w < 24) return null; o.h = 0.045 * H; o.travel = Math.max(0, Math.min(0.12 * s * W, room - LANE - o.w / 2)); o.period = 2400 + Math.random() * 800; o.rect = rectAt(x, y, o.w, o.h); o.vx = 0; }
+      else if (kind === 'slider') { o.w = Math.min(0.22 * s * W, 2 * (room - LANE)); if (o.w < 24) return null; o.h = 0.045 * H; o.travel = Math.max(0, Math.min(0.12 * s * W, room - LANE - o.w / 2, Math.min(x - edges[0], edges[1] - x) - o.w / 2 - 20)); o.period = 2400 + Math.random() * 800; o.rect = rectAt(x, y, o.w, o.h); o.vx = 0; }
       else if (kind === 'gate') {   // two floes sliding together across the whole row, a ball-and-a-bit gap between them
         o.gap = 50; o.h = 0.045 * H; o.left = edges[0]; o.right = edges[1]; o.gx = x;
         o.travel = Math.max(0, Math.min(0.2 * s * W, Math.min(x - o.left, o.right - x) - o.gap / 2 - 6)); o.period = 3800 + Math.random() * 1000; o.vx = 0;
@@ -669,7 +670,7 @@
       else if (kind === 'windmill') { o.arm = 0.13 * s * W; o.hub = 9; o.period = 2800 + Math.random() * 1200; o.spin = Math.random() < 0.5 ? 1 : -1; o.ang = 0; }
       else if (kind === 'bumper') { o.r = 14; o.hit = 0; }
       else if (kind === 'mound') { o.R = 0.2 * s * W; o.top = Math.max(26, 0.07 * s * W); }
-      else if (kind === 'geyser') { o.r = 0.07 * s * W; o.period = 3200 + Math.random() * 1200; o.phase = Math.random() * 3000; o.burst = 650; o.on = false; o.k = 0; o.cycle = -1; o.popped = -1; }
+      else if (kind === 'geyser') { o.r = 0.07 * s * W; o.period = (sl.period || 3200) + Math.random() * 1200; o.phase = Math.random() * 3000; o.burst = 650; o.on = false; o.k = 0; o.cycle = -1; o.popped = -1; }
       else if (kind === 'tunnel') { o.r = 16; o.to = { x: sl.to[0] * W, y: sl.to[1] * H }; o.out = sl.out || [0, -1]; o.back = sl.back || [0, 1]; o.cool = 0; }
       else return null;
       return o;
@@ -793,8 +794,8 @@
       var g = golf, b = g.ball;
       // obstacle motion
       g.obs.forEach(function (o) {
-        if (o.kind === 'slider') { var ph = (now - g.t0) / o.period * Math.PI * 2, nx = o.x + Math.sin(ph) * o.travel - o.w / 2; o.vx = (nx - o.rect.x) / Math.max(0.5, dt); o.rect.x = nx; }
-        else if (o.kind === 'gate') { var gp = (now - g.t0) / o.period * Math.PI * 2, gx = o.x + Math.sin(gp) * o.travel; o.vx = (gx - o.gx) / Math.max(0.5, dt); o.gx = gx; o.rects[0].w = Math.max(0, gx - o.gap / 2 - o.left); o.rects[1].x = gx + o.gap / 2; o.rects[1].w = Math.max(0, o.right - o.rects[1].x); }
+        if (o.kind === 'slider') { var ph = (now - g.t0) / o.period * Math.PI * 2; o.rect.x = o.x + Math.sin(ph) * o.travel - o.w / 2; o.vx = Math.cos(ph) * o.travel * Math.PI * 2 / o.period * 16.67; }
+        else if (o.kind === 'gate') { var gp = (now - g.t0) / o.period * Math.PI * 2, gx = o.x + Math.sin(gp) * o.travel; o.vx = Math.cos(gp) * o.travel * Math.PI * 2 / o.period * 16.67; o.gx = gx; o.rects[0].w = Math.max(0, gx - o.gap / 2 - o.left); o.rects[1].x = gx + o.gap / 2; o.rects[1].w = Math.max(0, o.right - o.rects[1].x); }
         else if (o.kind === 'windmill') { o.ang = (now - g.t0) / o.period * Math.PI * 2 * o.spin; }
         else if (o.kind === 'geyser') { var el = now - g.t0 + o.phase, cyc = el % o.period; o.cycle = Math.floor(el / o.period); o.on = cyc < o.burst; o.k = o.on ? cyc / o.burst : 0; o.soon = !o.on && o.period - cyc < 500; }
       });
@@ -866,7 +867,7 @@
             if (inRect(o.rect, b.x, b.y)) {
               var d = o.dir, along = b.vx * d[0] + b.vy * d[1], up = (b.x - o.x) * d[0] + (b.y - o.y) * d[1];
               if (up > o.half - 6 && along > 0) {   // at the lip: fly, or (too slow to clear what's beyond) bump off it and roll back down
-                if (along > JUMP_MIN) { b.vz = along * 0.75; b.z = 0.01; buzz(5); }
+                if (along > JUMP_MIN) { b.vz = along * 0.75; b.z = 0.01; buzz(5); break; }
                 else { b.vx -= 1.3 * along * d[0]; b.vy -= 1.3 * along * d[1]; }
               }
               else { b.vx -= d[0] * JUMP_SLOPE * sdt; b.vy -= d[1] * JUMP_SLOPE * sdt; }
@@ -882,18 +883,18 @@
           else if (o.kind === 'geyser') {   // erupts on a timer: anything on the vent gets thrown up and out
             ddx = b.x - o.x; ddy = b.y - o.y; dd = Math.hypot(ddx, ddy) || 1;
             if (o.on && dd < o.r + b.r) {
-              if (o.popped !== o.cycle) { o.popped = o.cycle; b.vz = 5; b.z = 0.01; b.vx += ddx / dd * 5; b.vy += ddy / dd * 5; buzz([6, 20, 6]); }
+              if (o.popped !== o.cycle) { o.popped = o.cycle; b.vz = 5; b.z = 0.01; b.vx += ddx / dd * 5; b.vy += ddy / dd * 5; buzz([6, 20, 6]); break; }
               else { b.vx += ddx / dd * 0.5 * sdt; b.vy += ddy / dd * 0.5 * sdt; }
             }
           }
           else if (o.kind === 'tunnel') {   // in one mouth, out of the other, same pace
-            if (now - o.cool > 500) {
+            if (now - o.cool > 500 && Math.hypot(b.vx, b.vy) > 0.5) {
               var ends = [[o, o.to, o.out], [o.to, o, o.back]];
               for (var ti = 0; ti < 2; ti++) {
                 var from = ends[ti][0], to = ends[ti][1], dir = ends[ti][2];
                 if (Math.hypot(b.x - from.x, b.y - from.y) < o.r + 2) {
                   var sp = Math.max(3, Math.hypot(b.vx, b.vy)), m = o.r + b.r + 4;
-                  b.x = to.x + dir[0] * m; b.y = to.y + dir[1] * m; b.vx = dir[0] * sp; b.vy = dir[1] * sp;
+                  b.x = to.x + dir[0] * m; b.y = to.y + dir[1] * m; b.vx = dir[0] * sp; b.vy = dir[1] * sp; b.z = 0; b.vz = 0; b.dip = false;
                   o.cool = now; g.portal = { x: to.x, y: to.y, t0: now }; buzz(4); break;
                 }
               }
@@ -925,7 +926,8 @@
     }
     function inRect(rc, x, y) { return x > rc.x && x < rc.x + rc.w && y > rc.y && y < rc.y + rc.h; }
     function capsuleHit(b, a, c, rad, rest, svx, svy) {
-      var dx = c[0] - a[0], dy = c[1] - a[1], l2 = dx * dx + dy * dy, t = l2 ? Math.max(0, Math.min(1, ((b.x - a[0]) * dx + (b.y - a[1]) * dy) / l2)) : 0;
+      var dx = c[0] - a[0], dy = c[1] - a[1], l2 = dx * dx + dy * dy; if (!l2) return false;
+      var t = Math.max(0, Math.min(1, ((b.x - a[0]) * dx + (b.y - a[1]) * dy) / l2));
       var cx = a[0] + dx * t, cy = a[1] + dy * t, ex = b.x - cx, ey = b.y - cy, d = Math.hypot(ex, ey), min = rad + b.r;
       if (d >= min) return false;
       if (d < 0.001) { ex = -dy; ey = dx; d = Math.hypot(ex, ey) || 1; }
@@ -983,9 +985,15 @@
         });
       }
       if (Math.hypot(x - b.x, y - b.y) < 1) return;
+      if (!inPoly(g.poly, x, y) || Math.hypot(x - g.cup.x, y - g.cup.y) < g.cup.r * CUP_DISH + 6) return;
+      for (var oi = 0; oi < g.obs.length; oi++) {
+        var ob = g.obs[oi], rects = ob.kind === 'water' || ob.kind === 'river' ? [ob.rect] : ob.kind === 'moat' ? ob.rects : null;
+        if (rects && rects.some(function (rc) { return inRect(rc, x, y); })) return;
+        if (ob.kind === 'tunnel' && (Math.hypot(x - ob.x, y - ob.y) < ob.r + 12 || Math.hypot(x - ob.to.x, y - ob.to.y) < ob.r + 12)) return;
+      }
       g.relief = { x0: b.x, y0: b.y, x: x, y: y, t0: now }; g.reliefFlash = now;
     }
-    function golfCanPutt(g) { return g && !g.sunk && !g.relief && !g.splash && g.ball.z <= 0 && Math.hypot(g.ball.vx, g.ball.vy) < 1; }
+    function golfCanPutt(g) { return g && !g.sunk && !g.relief && !g.splash && g.ball.z <= 0 && !g.ball.dip && Math.hypot(g.ball.vx, g.ball.vy) < 1; }
     function golfAim(g, p) {   // pull back from where the finger landed; the ball goes the other way
       var dx = p.x - g.drag.x, dy = p.y - g.drag.y, d = Math.hypot(dx, dy);
       if (d < 6) { g.aim = null; return; }
