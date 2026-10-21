@@ -403,6 +403,10 @@
   #page-games .gm-score.none { color: #3a3f7a; }
   #page-games .gm-card.scrolls:not(.at-end)::before { background: linear-gradient(rgba(0, 0, 0, 0), #000 80%); border-radius: 0; }
   @media (max-width: 380px) { .gm { grid-template-columns: 1fr 50px 50px 50px; } #page-games .gm-title { font-size: 0.95rem; } }
+  /* a thin banner over the three golf boxes, in the same frame as the boards */
+  .golf-banner { padding: 7px 12px; }
+  .golf-banner .bc-title { justify-content: center; }
+  #page-games .golf-banner { margin-bottom: -2px; }
   /* three arcade boxes in a row, one per course */
   .golf-trio { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; min-width: 0; }
   .gcard { padding: 8px 4px 6px; min-width: 0; }
