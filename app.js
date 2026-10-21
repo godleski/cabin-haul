@@ -2313,8 +2313,9 @@
     if (tally) tally.innerHTML = tallyHtml;   // beside the title; on an older page, in the body
     body.innerHTML = (tally ? '' : '<div class="hb">' + tallyHtml + '</div>') + (rows.length ? '<div class="hb-rec"><div class="hb-rec-list">' + rec('Best', rows[0]) + (worst ? rec('Worst', worst) : '') + '</div></div>' : '');
   }
-  // The three courses side by side: a header per column (tap one to play that course) and, in the one scrolling body
-  // underneath, a column of rows per course, so the three lists always move together.
+  // The three courses side by side: one arcade box per course, each with its own list, and the three lists scroll and
+  // idle in lockstep. (An older page without the three boxes gets three columns in its one box instead.)
+  function golfBodies() { var t = $('golfboard'); var bs = t ? Array.prototype.slice.call(t.querySelectorAll('.gb-body')) : []; if (!bs.length && $('golfboard-body')) bs = [$('golfboard-body')]; return bs; }
   function golfBoardRows(setId) {
     var doc = golfScores[setId], by = (doc && doc.by) || {};
     // finished rounds only; time on the course (by[n].secs) is kept for Claude, never shown
@@ -2324,18 +2325,24 @@
   function golfBoardHeads() {
     return GOLF_SETS.map(function (s) { return '<button type="button" class="gb-head" data-golfset="' + s.id + '" aria-label="Play ' + esc(s.name) + '"><span class="gb-name"><span aria-hidden="true">' + s.icon + '</span> ' + esc(s.name) + '</span><span class="bc-play" aria-hidden="true">\u25B6 Play</span></button>'; }).join('');
   }
+  function golfListHtml(rows) {
+    var par = 27;
+    return rows.length ? rows.map(function (r, i) {
+      var dtxt = golfToPar(r.best, par);
+      return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat' + (dtxt.charAt(0) === '-' ? ' under' : dtxt === 'E' ? ' even' : '') + '">' + dtxt + '</span></div>';
+    }).join('') : '<div class="lb-empty">Nobody yet</div>';
+  }
   function renderGolfBoard() {
-    var body = $('golfboard-body'), st = $('golfboard-status'), sets = $('golfboard-sets'); if (!body) return;
-    var par = 27, cols = GOLF_SETS.map(function (s) { return { set: s, rows: golfBoardRows(s.id) }; }), any = cols.some(function (c) { return c.rows.length; });
-    if (sets && !sets.firstChild) sets.innerHTML = '<div class="gb-cols gb-heads">' + golfBoardHeads() + '</div>';
-    if (st) st.hidden = true;   // the columns are the whole card now; an older page still has the old status line
-    if (!any) { body.innerHTML = '<div class="lb-empty">Nobody has played yet</div>'; golfScrollCue(); golfCycle(); return; }
-    body.innerHTML = (sets ? '' : '<div class="gb-cols gb-heads">' + golfBoardHeads() + '</div>') + '<div class="gb-cols">' + cols.map(function (c) {
-      return '<div class="lb gb-col" data-golfcol="' + c.set.id + '">' + (c.rows.length ? c.rows.map(function (r, i) {
-        var dtxt = golfToPar(r.best, par);
-        return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat' + (dtxt.charAt(0) === '-' ? ' under' : dtxt === 'E' ? ' even' : '') + '">' + dtxt + '</span></div>';
-      }).join('') : '<div class="lb-empty">Nobody yet</div>') + '</div>';
-    }).join('') + '</div>';
+    var trio = $('golfboard'), st = $('golfboard-status'), sets = $('golfboard-sets');
+    if (st) st.hidden = true;   // an older page still has the old status line
+    var cards = trio ? trio.querySelectorAll('.gcard') : [];
+    if (cards.length) {
+      Array.prototype.forEach.call(cards, function (card) { card.querySelector('.gb-body').innerHTML = '<div class="lb">' + golfListHtml(golfBoardRows(card.getAttribute('data-golfcol'))) + '</div>'; });
+    } else {   // the older single box: three columns under a row of headers
+      var body = $('golfboard-body'); if (!body) return;
+      if (sets && !sets.firstChild) sets.innerHTML = '<div class="gb-cols gb-heads">' + golfBoardHeads() + '</div>';
+      body.innerHTML = (sets ? '' : '<div class="gb-cols gb-heads">' + golfBoardHeads() + '</div>') + '<div class="gb-cols">' + GOLF_SETS.map(function (s) { return '<div class="lb gb-col" data-golfcol="' + s.id + '">' + golfListHtml(golfBoardRows(s.id)) + '</div>'; }).join('') + '</div>';
+    }
     golfScrollCue(); golfCycle();
   }
   // Left alone, the board idles through its rows a row at a time, rests at the bottom and starts over, so the
@@ -2344,39 +2351,44 @@
   var cycleTimer = null, cyclePauseUntil = 0;
   function golfCycle() {
     clearTimeout(cycleTimer);
-    var body = $('golfboard-body'), card = $('golfboard'); if (!body || !card) return;
+    var bodies = golfBodies(), card = $('golfboard'); if (!bodies.length || !card) return;
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     function live() { return tab === 'games' && !document.hidden && !$('main').hidden && !document.body.classList.contains('playing') && card.classList.contains('scrolls'); }
     function step() {
       if (!live()) return;
       if (Date.now() < cyclePauseUntil) { cycleTimer = setTimeout(step, 800); return; }
-      var rows = body.querySelectorAll('.lb-row'), max = body.scrollHeight - body.clientHeight;
-      var rowH = rows.length > 1 ? rows[1].offsetTop - rows[0].offsetTop : body.clientHeight;
-      var atEnd = body.scrollTop >= max - 1;
-      body.scrollTo({ top: atEnd ? 0 : Math.min(max, body.scrollTop + rowH), behavior: reduce ? 'auto' : 'smooth' });
+      // every list steps by one row to the same place; the longest one decides when the walk is over
+      var max = 0, rowH = 0, top = 0;
+      bodies.forEach(function (body) { var rows = body.querySelectorAll('.lb-row'); max = Math.max(max, body.scrollHeight - body.clientHeight); top = Math.max(top, body.scrollTop); if (rows.length > 1) rowH = Math.max(rowH, rows[1].offsetTop - rows[0].offsetTop); });
+      if (!rowH) rowH = bodies[0].clientHeight;
+      var atEnd = top >= max - 1, next = atEnd ? 0 : Math.min(max, top + rowH);
+      bodies.forEach(function (body) { body.scrollTo({ top: next, behavior: reduce ? 'auto' : 'smooth' }); });
       cycleTimer = setTimeout(step, atEnd ? 2600 : 2200);
     }
     if (live()) cycleTimer = setTimeout(step, 2600);
   }
-  ['pointerdown', 'touchstart', 'wheel'].forEach(function (ev) { $('golfboard-body').addEventListener(ev, function () { cyclePauseUntil = Date.now() + 8000; }, { passive: true }); });
+  golfBodies().forEach(function (body) { ['pointerdown', 'touchstart', 'wheel'].forEach(function (ev) { body.addEventListener(ev, function () { cyclePauseUntil = Date.now() + 8000; }, { passive: true }); }); body.addEventListener('scroll', golfScrollCue, { passive: true }); });
   document.addEventListener('visibilitychange', function () { if (!document.hidden) golfCycle(); });
   // the golf card is pinned to the air hockey card's height, so the list scrolls inside it: say how many rows are below the fold
   function golfScrollCue() {
-    var body = $('golfboard-body'), card = $('golfboard'), cue = $('golfboard-more'); if (!body || !cue) return;
-    // rows below the fold: the longest column's count, since the three columns scroll as one
-    var hidden = 0, bottom = body.scrollTop + body.clientHeight, cols = body.querySelectorAll('.gb-col');
-    (cols.length ? Array.prototype.slice.call(cols) : [body]).forEach(function (col) {
-      var rows = col.querySelectorAll('.lb-row'), h = 0;
-      for (var i = 0; i < rows.length; i++) if (rows[i].offsetTop + rows[i].offsetHeight > bottom + 6) h++;
-      hidden = Math.max(hidden, h);
+    var card = $('golfboard'), bodies = golfBodies(); if (!card || !bodies.length) return;
+    var anyScrolls = false;
+    bodies.forEach(function (body) {
+      // rows below this list's fold (on the older single box, the longest column's count)
+      var hidden = 0, bottom = body.scrollTop + body.clientHeight, cols = body.querySelectorAll('.gb-col');
+      (cols.length ? Array.prototype.slice.call(cols) : [body]).forEach(function (col) {
+        var rows = col.querySelectorAll('.lb-row'), h = 0;
+        for (var i = 0; i < rows.length; i++) if (rows[i].offsetTop + rows[i].offsetHeight > bottom + 6) h++;
+        hidden = Math.max(hidden, h);
+      });
+      var scrolls = body.clientHeight > 0 && body.scrollHeight > body.clientHeight + 2, box = body.closest('.gcard') || card, cue = box.querySelector('.lb-scroll');
+      anyScrolls = anyScrolls || scrolls;
+      box.classList.toggle('scrolls', scrolls);
+      box.classList.toggle('at-end', scrolls && !hidden);
+      if (cue) { cue.hidden = !scrolls || !hidden; cue.textContent = '\u25BC ' + hidden; }
     });
-    var scrolls = body.clientHeight > 0 && body.scrollHeight > body.clientHeight + 2;
-    card.classList.toggle('scrolls', scrolls);
-    card.classList.toggle('at-end', scrolls && !hidden);
-    cue.hidden = !scrolls || !hidden;
-    cue.textContent = '\u25BC ' + hidden + ' more';
+    card.classList.toggle('scrolls', anyScrolls);
   }
-  $('golfboard-body').addEventListener('scroll', golfScrollCue, { passive: true });
   // once a game has been found on the name screen, its board doubles as a replay button
   function renderArcadeCues() {
     var h = foundGame('hockey'), g = foundGame('golf'), hb = $('hockeyboard'), gb = $('golfboard'), lede = $('arcade-lede');
