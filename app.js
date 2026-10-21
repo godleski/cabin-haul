@@ -2313,22 +2313,29 @@
     if (tally) tally.innerHTML = tallyHtml;   // beside the title; on an older page, in the body
     body.innerHTML = (tally ? '' : '<div class="hb">' + tallyHtml + '</div>') + (rows.length ? '<div class="hb-rec"><div class="hb-rec-list">' + rec('Best', rows[0]) + (worst ? rec('Worst', worst) : '') + '</div></div>' : '');
   }
+  // The three courses side by side: a header per column (tap one to play that course) and, in the one scrolling body
+  // underneath, a column of rows per course, so the three lists always move together.
+  function golfBoardRows(setId) {
+    var doc = golfScores[setId], by = (doc && doc.by) || {};
+    // finished rounds only; time on the course (by[n].secs) is kept for Claude, never shown
+    return Object.keys(by).filter(function (n) { return by[n].best != null; }).map(function (n) { return { name: n, best: by[n].best, rounds: by[n].rounds || 0 }; })
+      .sort(function (a, b) { return a.best - b.best || b.rounds - a.rounds || a.name.localeCompare(b.name); });
+  }
+  function golfBoardHeads() {
+    return GOLF_SETS.map(function (s) { return '<button type="button" class="gb-head" data-golfset="' + s.id + '" aria-label="Play ' + esc(s.name) + '"><span aria-hidden="true">' + s.icon + '</span> ' + esc(s.name) + '</button>'; }).join('');
+  }
   function renderGolfBoard() {
     var body = $('golfboard-body'), st = $('golfboard-status'), sets = $('golfboard-sets'); if (!body) return;
-    var set = golfSet(golfSetPick), doc = golfScores[set.id], by = (doc && doc.by) || {}, par = 27;   // nine holes, all par 3
-    if (sets) {   // the course pills; tapping one swaps the board (and what \u25b6 Play starts). Built once, then only the pressed state moves
-      if (!sets.firstChild) sets.innerHTML = golfSetButtons('gb-sets');
-      else sets.querySelectorAll('[data-golfset]').forEach(function (x) { x.setAttribute('aria-pressed', String(x.getAttribute('data-golfset') === golfSetPick)); });
-    }
-    // finished rounds only; time on the course (by[n].secs) is kept for Claude, never shown
-    var rows = Object.keys(by).filter(function (n) { return by[n].best != null; }).map(function (n) { return { name: n, best: by[n].best, rounds: by[n].rounds || 0 }; })
-      .sort(function (a, b) { return a.best - b.best || b.rounds - a.rounds || a.name.localeCompare(b.name); });
-    // one short phrase: the leader once there is one, the course until then
-    st.innerHTML = rows.length ? '<b>' + esc(rows[0].name === me ? 'you lead' : rows[0].name + ' leads') + '</b> \u00b7 ' + esc(set.name) : esc(set.name) + ' \u00b7 9 holes \u00b7 par ' + par;
-    if (!rows.length) { body.innerHTML = '<div class="lb-empty">Nobody has played ' + esc(set.name) + ' yet</div>'; golfScrollCue(); golfCycle(); return; }
-    body.innerHTML = '<div class="lb">' + rows.map(function (r, i) {
-      var dtxt = golfToPar(r.best, par);
-      return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat' + (dtxt.charAt(0) === '-' ? ' under' : dtxt === 'E' ? ' even' : '') + '">' + dtxt + '</span></div>';
+    var par = 27, cols = GOLF_SETS.map(function (s) { return { set: s, rows: golfBoardRows(s.id) }; }), any = cols.some(function (c) { return c.rows.length; });
+    if (sets && !sets.firstChild) sets.innerHTML = '<div class="gb-cols gb-heads">' + golfBoardHeads() + '</div>';
+    // one short phrase: the leader of each column, in column order
+    st.innerHTML = any ? cols.map(function (c) { return c.rows.length ? '<b>' + esc(c.rows[0].name === me ? 'you' : c.rows[0].name) + '</b>' : '\u2013'; }).join(' \u00b7 ') + ' lead' : '3 courses \u00b7 9 holes each \u00b7 par 27';
+    if (!any) { body.innerHTML = '<div class="lb-empty">Nobody has played yet</div>'; golfScrollCue(); golfCycle(); return; }
+    body.innerHTML = (sets ? '' : '<div class="gb-cols gb-heads">' + golfBoardHeads() + '</div>') + '<div class="gb-cols">' + cols.map(function (c) {
+      return '<div class="lb gb-col" data-golfcol="' + c.set.id + '">' + (c.rows.length ? c.rows.map(function (r, i) {
+        var dtxt = golfToPar(r.best, par);
+        return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat' + (dtxt.charAt(0) === '-' ? ' under' : dtxt === 'E' ? ' even' : '') + '">' + dtxt + '</span></div>';
+      }).join('') : '<div class="lb-empty">Nobody yet</div>') + '</div>';
     }).join('') + '</div>';
     golfScrollCue(); golfCycle();
   }
@@ -2357,8 +2364,13 @@
   // the golf card is pinned to the air hockey card's height, so the list scrolls inside it: say how many rows are below the fold
   function golfScrollCue() {
     var body = $('golfboard-body'), card = $('golfboard'), cue = $('golfboard-more'); if (!body || !cue) return;
-    var rows = body.querySelectorAll('.lb-row'), hidden = 0, bottom = body.scrollTop + body.clientHeight;
-    for (var i = 0; i < rows.length; i++) if (rows[i].offsetTop + rows[i].offsetHeight > bottom + 6) hidden++;
+    // rows below the fold: the longest column's count, since the three columns scroll as one
+    var hidden = 0, bottom = body.scrollTop + body.clientHeight, cols = body.querySelectorAll('.gb-col');
+    (cols.length ? Array.prototype.slice.call(cols) : [body]).forEach(function (col) {
+      var rows = col.querySelectorAll('.lb-row'), h = 0;
+      for (var i = 0; i < rows.length; i++) if (rows[i].offsetTop + rows[i].offsetHeight > bottom + 6) h++;
+      hidden = Math.max(hidden, h);
+    });
     var scrolls = body.clientHeight > 0 && body.scrollHeight > body.clientHeight + 2;
     card.classList.toggle('scrolls', scrolls);
     card.classList.toggle('at-end', scrolls && !hidden);
@@ -2378,15 +2390,15 @@
     if (lede) lede.innerHTML = g ? 'Tap a board to <b>play</b>. You found the hidden one too.'
       : 'Tap the air hockey board to <b>play</b>. Mini golf is hidden on the name screen. Tap <b>Not you?</b> and poke around.';
   }
+  // a tap on a course's header or column starts that course; anywhere else on the card, the last course played
+  function golfCardPick(e) {
+    var s = e.target.closest('[data-golfset]') || e.target.closest('[data-golfcol]');
+    if (s) pickGolfSet(s.getAttribute('data-golfset') || s.getAttribute('data-golfcol'));
+  }
   [['hockeyboard', 'hockey'], ['golfboard', 'golf']].forEach(function (x) {
     var el = $(x[0]);
-    el.addEventListener('click', function (e) { if (e.target.closest('[data-golfset]')) return; playAgain(x[1]); });
-    el.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('[data-golfset]')) { e.preventDefault(); playAgain(x[1]); } });
-  });
-  // the course pills on the golf board: swap the board, and what a tap on the card starts
-  if ($('golfboard-sets')) $('golfboard-sets').addEventListener('click', function (e) {
-    var s = e.target.closest('[data-golfset]'); if (!s) return;
-    e.stopPropagation(); pickGolfSet(s.getAttribute('data-golfset')); renderGolfBoard(); buzz(4);
+    el.addEventListener('click', function (e) { if (x[1] === 'golf') golfCardPick(e); playAgain(x[1]); });
+    el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (x[1] === 'golf') golfCardPick(e); playAgain(x[1]); } });
   });
   window.addEventListener('resize', golfScrollCue);
 
