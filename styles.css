@@ -1045,11 +1045,9 @@
   #page-games .btn { border-radius: 0; }
 
   /* ---- Games: the arcade art. Each course column is a cabinet in its own neon colour with its screen up top (the CSS
-          course miniature behind curved glass), the air hockey card is framed red, and a 1UP strip sits under the hero.
+          course miniature behind curved glass) and the air hockey card is framed red.
           Scanlines are static gradients; every animation is transform/opacity. ---- */
   #page-games { --yel: #ffcc00; --neon-red: #ff4757; --navy: #1a1c3a; --crt: #0d0e24; --frame: #3a3f7a; --dim: #9aa3d6; --soft: #c9cff2; }
-  .rt-hud { position: relative; display: flex; justify-content: space-between; gap: 8px; margin: 18px 6px 0; padding: 7px 10px; background: var(--crt); border: 2px solid var(--frame); font: 700 0.6rem var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--neon-red); white-space: nowrap; overflow: hidden; }
-  .rt-hud b { color: #fff; margin-left: 3px; }
   /* the cabinets: the golf cabinet keeps its yellow frame and gains a glow; the hockey card goes red */
   #page-games .board-card { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--navy), 0 0 0 9px var(--yel), 0 0 22px 9px rgba(255, 204, 0, 0.22); }
   #page-games #hockeyboard { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--navy), 0 0 0 9px var(--neon-red), 0 0 22px 9px rgba(255, 71, 87, 0.4); }
