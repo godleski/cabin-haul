@@ -189,6 +189,7 @@
           var p = sc.by[name] || { best: null, rounds: 0 };
           if (strokes != null) {
             p.rounds++; p.last = strokes; p.last_at = new Date().toISOString();
+            p.rounds_timed = (p.rounds_timed || 0) + 1;   // a round finished with the clock running (every round, since the clock went in)
             if (p.best == null || strokes < p.best) p.best = strokes;
           }
           if (secs > 0) p.secs = (p.secs || 0) + Math.round(secs);

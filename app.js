@@ -3946,14 +3946,21 @@
       lines.push('Air hockey right now: humans ' + h + ', Claude ' + c + (recs.length ? '. Records (wins-losses vs Claude): ' + recs.join(', ') : '') + '. You lose a lot at air hockey and own it.');
       var mc = smashCounts(SMASH_MAIN), allWins = {}; smashLog().forEach(function (e) { allWins[e.w] = (allWins[e.w] || 0) + 1; });
       lines.push('Mitch vs Luke Smash tally: Mitch ' + mc.Mitch + ', Luke ' + mc.Luke + (Object.keys(allWins).length ? '. All Smash wins: ' + Object.keys(allWins).map(function (n) { return n + ' ' + allWins[n]; }).join(', ') : '') + '.');
-      var golfTime = {};
+      // Time on the courses: what the clock recorded, plus an estimate for the rounds played before the clock went in.
+      // Rounds finished since then are counted (rounds_timed); a person's recorded time also stands for about
+      // secs/average rounds, whichever is more; the rest of their rounds get the average round, taken from everyone's
+      // timed rounds once there are a few (four minutes until then).
+      var tp = {}, timedSecs = 0, timedRounds = 0;
       GOLF_SETS.forEach(function (s) {
         var gb = (golfScores[s.id] && golfScores[s.id].by) || {}, gr = Object.keys(gb).map(function (n) { return { n: n, b: gb[n].best }; }).filter(function (r) { return r.b != null; }).sort(function (a, b) { return a.b - b.b; });
-        Object.keys(gb).forEach(function (n) { if (gb[n].secs > 0) golfTime[n] = (golfTime[n] || 0) + gb[n].secs; });
+        Object.keys(gb).forEach(function (n) { var e = gb[n], t = tp[n] || (tp[n] = { rounds: 0, timed: 0, secs: 0 }); t.rounds += e.rounds || 0; t.timed += e.rounds_timed || 0; t.secs += e.secs || 0; });
         if (gr.length) lines.push('Mini golf, ' + s.name + ' course board (best round to par 27): ' + gr.map(function (r) { return r.n + ' ' + golfToPar(r.b, 27); }).join(', ') + '.');
       });
-      var gt = Object.keys(golfTime).sort(function (a, b) { return golfTime[b] - golfTime[a]; });
-      if (gt.length) lines.push('Time spent playing mini golf (all courses): ' + gt.map(function (n) { return n + ' ' + golfMins(golfTime[n]); }).join(', ') + '. Fair game for a roast.');
+      Object.keys(tp).forEach(function (n) { if (tp[n].timed) { timedSecs += tp[n].secs; timedRounds += tp[n].timed; } });
+      var avg = timedRounds >= 3 ? timedSecs / timedRounds : 240;
+      Object.keys(tp).forEach(function (n) { var t = tp[n], timed = Math.max(t.timed, Math.min(t.rounds, Math.round(t.secs / avg))); t.total = t.secs + Math.max(0, t.rounds - timed) * avg; });
+      var gt = Object.keys(tp).filter(function (n) { return tp[n].total > 0; }).sort(function (a, b) { return tp[b].total - tp[a].total; });
+      if (gt.length) lines.push('Time on the mini golf courses, all courses together (rounds played before the clock went in are counted at the average of about ' + golfMins(avg) + ' a round): ' + gt.map(function (n) { return n + ' ' + golfMins(tp[n].total) + ' over ' + tp[n].rounds + (tp[n].rounds === 1 ? ' round' : ' rounds'); }).join(', ') + '. Fair game for a roast.');
       var dv = dinnerVotes(), pasta = dv.filter(function (v) { return v.pick === 'pasta'; }).map(function (v) { return v.voter; }), tacos = dv.filter(function (v) { return v.pick === 'tacos'; }).map(function (v) { return v.voter; });
       lines.push('Saturday dinner vote: pasta ' + pasta.length + ' (' + (pasta.join(', ') || 'nobody') + '), tacos ' + tacos.length + ' (' + (tacos.join(', ') || 'nobody') + ').');
       var preds = QUESTIONS.map(function (q) { var t = tallyFor(q); return q.text + ' → ' + (t.rows.length ? t.rows.slice(0, 2).map(function (r) { return r.pick + ' (' + r.n + ')'; }).join(', ') : 'no bets yet'); });
