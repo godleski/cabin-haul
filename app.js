@@ -553,39 +553,39 @@
     var FROST = [
       { name: 'Frozen Pond', poly: ring(0.5, 0.51, 0.44, 0.46, 14), walls: [], tee: [0.5, 0.88], cup: [0.5, 0.17],
         slots: [{ x: 0.5, y: 0.52, kinds: ['ice'], s: 1.3 }, { x: 0.5, y: 0.31, kinds: ['bumper', 'bank', null], s: 0.6 }] },
-      { name: 'Igloo', poly: OCT, walls: [[[0.07, 0.5], [0.93, 0.5]]], tee: [0.5, 0.88], cup: [0.5, 0.15],
-        slots: [{ x: 0.5, y: 0.66, kinds: ['tunnel'], to: [0.5, 0.34], out: [0, -1], back: [0, 1] }, { x: 0.3, y: 0.8, kinds: ['ice', null], s: 0.6 }, { x: 0.7, y: 0.26, kinds: ['bank', 'sand', null], s: 0.5 }] },
+      { name: 'Igloo', poly: OCT, walls: [[[0.07, 0.5], [0.93, 0.5]]], tee: [0.5, 0.88], cup: [0.66, 0.15],
+        slots: [{ x: 0.5, y: 0.66, kinds: ['tunnel'], to: [0.3, 0.36], out: [0, -1], back: [0, 1] }, { x: 0.3, y: 0.8, kinds: ['ice', null], s: 0.6 }, { x: 0.66, y: 0.3, kinds: ['bank', 'sand', null], s: 0.5 }] },
       { name: 'Snowman Alley', poly: [[0.22, 0.04], [0.78, 0.04], [0.84, 0.1], [0.84, 0.92], [0.78, 0.98], [0.22, 0.98], [0.16, 0.92], [0.16, 0.1]], walls: [], tee: [0.5, 0.9], cup: [0.5, 0.13],
         slots: [{ x: 0.37, y: 0.66, kinds: ['bumper'] }, { x: 0.63, y: 0.5, kinds: ['bumper'] }, { x: 0.4, y: 0.33, kinds: ['bumper'] }] },
       { name: 'The Gate', poly: OCT, walls: [], tee: [0.5, 0.88], cup: [0.5, 0.14],
-        slots: [{ x: 0.5, y: 0.52, kinds: ['gate'] }, { x: 0.5, y: 0.3, kinds: ['ice', 'sand', null], s: 0.7 }, { x: 0.5, y: 0.74, kinds: ['bank', null], s: 0.5 }] },
+        slots: [{ x: 0.5, y: 0.52, kinds: ['gate'] }, { x: 0.5, y: 0.3, kinds: ['ice', 'sand', null], s: 0.7 }, { x: 0.26, y: 0.72, kinds: ['bank', null], s: 0.45 }] },
       { name: 'Hook Shot', poly: [[0.06, 0.04], [0.5, 0.04], [0.5, 0.58], [0.94, 0.58], [0.94, 0.96], [0.06, 0.96]], walls: [], tee: [0.8, 0.77], cup: [0.28, 0.14],
-        slots: [{ x: 0.28, y: 0.77, kinds: ['ice'] }, { x: 0.28, y: 0.42, kinds: ['bumper', 'bank', null], s: 0.6 }] },
+        slots: [{ x: 0.28, y: 0.77, kinds: ['ice'] }, { x: 0.28, y: 0.42, kinds: ['bumper', 'bank', null], s: 0.5 }] },
       { name: 'Thin Ice', poly: OCT, walls: [], tee: [0.5, 0.88], cup: [0.5, 0.14],
         slots: [{ x: 0.5, y: 0.5, kinds: ['moat'] }, { x: 0.5, y: 0.28, kinds: ['bank', 'sand', null], s: 0.6 }, { x: 0.5, y: 0.72, kinds: ['ice', null], s: 0.6 }] },
       { name: 'Avalanche', poly: [[0.06, 0.04], [0.56, 0.04], [0.94, 0.42], [0.94, 0.96], [0.44, 0.96], [0.06, 0.58]], walls: [], tee: [0.78, 0.84], cup: [0.22, 0.16],
         slots: [{ x: 0.5, y: 0.5, kinds: ['bank', 'bumper', 'ice'], s: 0.8 }, { x: 0.28, y: 0.34, kinds: ['boost', null], dir: [0, -1], s: 0.8 }] },
       { name: 'Ski Jump', poly: OCT, walls: [], tee: [0.5, 0.88], cup: [0.64, 0.15],
-        slots: [{ x: 0.5, y: 0.4, kinds: ['river'], s: 0.9 }, { x: 0.5, y: 0.52, kinds: ['jump'], dir: [0, -1] }, { x: 0.5, y: 0.25, kinds: ['bumper', null] }] },
+        slots: [{ x: 0.5, y: 0.4, kinds: ['river'], s: 0.9 }, { x: 0.5, y: 0.52, kinds: ['jump'], dir: [0, -1] }, { x: 0.76, y: 0.27, kinds: ['bumper', null] }] },
       { name: 'Bullwheel', poly: [[0.5, 0.03], [0.95, 0.5], [0.5, 0.97], [0.05, 0.5]], walls: [], tee: [0.5, 0.8], cup: [0.5, 0.2],
         slots: [{ x: 0.5, y: 0.5, kinds: ['windmill'], s: 0.75 }, { x: 0.28, y: 0.5, kinds: ['ice', null], s: 0.55 }, { x: 0.72, y: 0.5, kinds: ['bank', null], s: 0.45 }] }
     ];
     // Volcano: a crater cup, lava rivers, geysers, magma bumpers, a lava tube and a jump
     var LAVA = [
       { name: 'Caldera', poly: ring(0.5, 0.5, 0.45, 0.47, 10), walls: [], tee: [0.5, 0.9], cup: [0.5, 0.4],
-        slots: [{ x: 0.5, y: 0.4, kinds: ['mound'] }, { x: 0.5, y: 0.72, kinds: ['sand', 'bumper', null], s: 0.6 }] },
+        slots: [{ x: 0.5, y: 0.4, kinds: ['mound'] }, { x: 0.3, y: 0.7, kinds: ['sand', 'bumper', null], s: 0.6 }] },
       { name: 'Lava River', poly: OCT, walls: [], tee: [0.5, 0.88], cup: [0.36, 0.14],
-        slots: [{ x: 0.5, y: 0.4, kinds: ['river'], s: 0.9 }, { x: 0.5, y: 0.5, kinds: ['jump'], dir: [0, -1] }, { x: 0.5, y: 0.22, kinds: ['bumper', 'sand', null], s: 0.6 }] },
+        slots: [{ x: 0.5, y: 0.4, kinds: ['river'], s: 0.9 }, { x: 0.5, y: 0.5, kinds: ['jump'], dir: [0, -1] }, { x: 0.24, y: 0.25, kinds: ['bumper', 'sand', null], s: 0.6 }] },
       { name: 'Geyser Field', poly: [[0.16, 0.04], [0.84, 0.04], [0.9, 0.1], [0.9, 0.92], [0.84, 0.98], [0.16, 0.98], [0.1, 0.92], [0.1, 0.1]], walls: [], tee: [0.5, 0.9], cup: [0.62, 0.13],
         slots: [{ x: 0.36, y: 0.66, kinds: ['geyser'] }, { x: 0.66, y: 0.5, kinds: ['geyser'] }, { x: 0.4, y: 0.32, kinds: ['geyser'] }] },
-      { name: 'Lava Tube', poly: OCT, walls: [[[0.07, 0.5], [0.93, 0.5]]], tee: [0.3, 0.88], cup: [0.72, 0.14],
-        slots: [{ x: 0.3, y: 0.66, kinds: ['tunnel'], to: [0.72, 0.34], out: [0, -1], back: [0, 1] }, { x: 0.66, y: 0.72, kinds: ['water', null], s: 0.7 }, { x: 0.4, y: 0.26, kinds: ['bumper', null] }] },
+      { name: 'Lava Tube', poly: OCT, walls: [[[0.07, 0.5], [0.93, 0.5]]], tee: [0.3, 0.88], cup: [0.38, 0.14],
+        slots: [{ x: 0.3, y: 0.66, kinds: ['tunnel'], to: [0.72, 0.34], out: [0, -1], back: [0, 1] }, { x: 0.66, y: 0.72, kinds: ['water', null], s: 0.7 }, { x: 0.56, y: 0.24, kinds: ['bumper', null] }] },
       { name: 'Magma Pinball', poly: [[0.08, 0.04], [0.92, 0.04], [0.96, 0.1], [0.96, 0.92], [0.92, 0.98], [0.08, 0.98], [0.04, 0.92], [0.04, 0.1]], walls: [], tee: [0.2, 0.9], cup: [0.8, 0.13],
         slots: [{ x: 0.5, y: 0.56, kinds: ['bumper'] }, { x: 0.3, y: 0.36, kinds: ['bumper'] }, { x: 0.7, y: 0.34, kinds: ['bumper'] }, { x: 0.28, y: 0.72, kinds: ['bumper'] }, { x: 0.66, y: 0.78, kinds: ['bumper'] }, { x: 0.5, y: 0.2, kinds: ['sand', null], s: 0.6 }] },
-      { name: 'Ash Flats', poly: [[0.06, 0.04], [0.42, 0.04], [0.42, 0.66], [0.58, 0.66], [0.58, 0.04], [0.94, 0.04], [0.94, 0.96], [0.06, 0.96]], walls: [], tee: [0.76, 0.14], cup: [0.24, 0.14],
-        slots: [{ x: 0.76, y: 0.52, kinds: ['sand', 'mound', null], s: 0.6 }, { x: 0.5, y: 0.82, kinds: ['boost', null], dir: [-1, 0], s: 0.8 }, { x: 0.24, y: 0.5, kinds: ['bumper', null] }] },
+      { name: 'Ash Flats', poly: [[0.06, 0.04], [0.42, 0.04], [0.42, 0.58], [0.58, 0.58], [0.58, 0.04], [0.94, 0.04], [0.94, 0.96], [0.06, 0.96]], walls: [], tee: [0.76, 0.28], cup: [0.24, 0.22],
+        slots: [{ x: 0.76, y: 0.5, kinds: ['sand', 'mound', null], s: 0.55 }, { x: 0.5, y: 0.8, kinds: ['boost', null], dir: [-1, 0], s: 0.8 }, { x: 0.33, y: 0.58, kinds: ['bumper', null] }] },
       { name: 'Obsidian Gate', poly: OCT, walls: [], tee: [0.5, 0.9], cup: [0.5, 0.14],
-        slots: [{ x: 0.5, y: 0.56, kinds: ['gate'] }, { x: 0.5, y: 0.3, kinds: ['sand', 'bumper', null], s: 0.6 }, { x: 0.64, y: 0.76, kinds: ['water', null], s: 0.5 }] },
+        slots: [{ x: 0.5, y: 0.56, kinds: ['gate'] }, { x: 0.5, y: 0.3, kinds: ['sand', 'bumper', null], s: 0.6 }, { x: 0.76, y: 0.78, kinds: ['water', null], s: 0.45 }] },
       { name: 'Ring of Fire', poly: OCT, walls: [[[0.36, 0.4], [0.64, 0.4], [0.64, 0.6], [0.36, 0.6], [0.36, 0.4]]], islands: [[[0.36, 0.4], [0.64, 0.4], [0.64, 0.6], [0.36, 0.6]]], tee: [0.5, 0.88], cup: [0.5, 0.14],
         slots: [{ x: 0.2, y: 0.5, kinds: ['sand', 'geyser', null], s: 0.55 }, { x: 0.8, y: 0.5, kinds: ['geyser', 'sand', null], s: 0.55 }, { x: 0.5, y: 0.26, kinds: ['bumper', null] }] },
       { name: 'Eruption', poly: [[0.44, 0.04], [0.94, 0.04], [0.94, 0.58], [0.56, 0.96], [0.06, 0.96], [0.06, 0.42]], walls: [], tee: [0.22, 0.84], cup: [0.78, 0.16],
@@ -652,8 +652,8 @@
       if (kind === 'block' || kind === 'bank') { o.w = Math.min(0.4 * s * W, 2 * (room - LANE)); if (o.w < 24) return null; o.h = 0.045 * H; o.rect = rectAt(x, y, o.w, o.h); o.rest = kind === 'bank' ? 0.1 : 0.7; }
       else if (kind === 'slider') { o.w = Math.min(0.22 * s * W, 2 * (room - LANE)); if (o.w < 24) return null; o.h = 0.045 * H; o.travel = Math.max(0, Math.min(0.12 * s * W, room - LANE - o.w / 2)); o.period = 2400 + Math.random() * 800; o.rect = rectAt(x, y, o.w, o.h); o.vx = 0; }
       else if (kind === 'gate') {   // two floes sliding together across the whole row, a ball-and-a-bit gap between them
-        o.gap = 38; o.h = 0.045 * H; o.left = edges[0]; o.right = edges[1]; o.gx = x;
-        o.travel = Math.max(0, Math.min(0.2 * s * W, Math.min(x - o.left, o.right - x) - o.gap / 2 - 6)); o.period = 3000 + Math.random() * 1000; o.vx = 0;
+        o.gap = 50; o.h = 0.045 * H; o.left = edges[0]; o.right = edges[1]; o.gx = x;
+        o.travel = Math.max(0, Math.min(0.2 * s * W, Math.min(x - o.left, o.right - x) - o.gap / 2 - 6)); o.period = 3800 + Math.random() * 1000; o.vx = 0;
         o.rects = [{ x: o.left, y: y - o.h / 2, w: x - o.gap / 2 - o.left, h: o.h }, { x: x + o.gap / 2, y: y - o.h / 2, w: o.right - x - o.gap / 2, h: o.h }];
       }
       else if (kind === 'sand') { o.rx = 0.17 * s * W; o.ry = 0.085 * s * W; }
@@ -772,7 +772,7 @@
     // with a kick (the lip-out) and a blast barely dips at all and hops straight over. The green is dished a little around
     // the hole, so a slow ball that is nearly there curls in from any side. Every side of the cup behaves the same.
     var CUP_G = 0.65, CUP_DROP = 4.2, CUP_DISH = 1.8, CUP_PULL = 0.22, CUP_RIM_PULL = 0.5;   // clean drop under ~7 px/frame at the centre, rattles in to ~9.5, hops over above
-    var AIR_G = 0.4, JUMP_MIN = 5, JUMP_SLOPE = 0.05, MOUND_A = 0.3;   // JUMP_MIN: pace at the lip that clears the river beyond; slower rolls back
+    var AIR_G = 0.4, JUMP_MIN = 5, JUMP_SLOPE = 0.05, MOUND_A = 0.24, LAND_GRIP = 0.6;   // JUMP_MIN: pace at the lip that clears the river beyond; slower rolls back
     function onSlope(g, b) {   // on a mound's side or a ramp the ball keeps rolling; the stop rule must not freeze it there
       for (var i = 0; i < g.obs.length; i++) {
         var o = g.obs[i];
@@ -831,7 +831,7 @@
       var steps = Math.max(1, Math.ceil(Math.max(speed, Math.abs(b.vz)) * dt / fine)), sdt = dt / steps;
       for (var si = 0; si < steps; si++) {
         b.x += b.vx * sdt; b.y += b.vy * sdt;
-        if (b.z > 0) { b.vz -= AIR_G * sdt; b.z += b.vz * sdt; if (b.z <= 0) { b.z = 0; b.vz = 0; g.landFlash = now; buzz(3); } }
+        if (b.z > 0) { b.vz -= AIR_G * sdt; b.z += b.vz * sdt; if (b.z <= 0) { b.z = 0; b.vz = 0; b.vx *= LAND_GRIP; b.vy *= LAND_GRIP; g.landFlash = now; buzz(3); } }
         else rollBy(b, b.vx * sdt, b.vy * sdt);
         if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.7; }
         if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.7; }
