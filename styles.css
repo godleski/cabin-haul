@@ -375,6 +375,34 @@
   .gb-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; min-width: 0; }
   .gb-heads { margin-bottom: 6px; }
   .gb-title { justify-content: center; margin-bottom: 8px; }
+  /* the scorecard: a big title top left, a course per column with its Play badge, one row per person */
+  .gm { display: grid; grid-template-columns: 1fr 54px 54px 54px; gap: 4px 5px; align-items: end; min-width: 0; }
+  .gm-heads { padding-bottom: 6px; margin-bottom: 6px; border-bottom: 2px solid var(--line); }
+  .gm-title { display: flex; flex-direction: column; gap: 2px; align-self: end; min-width: 0; font: 800 1.2rem var(--display); line-height: 1; color: var(--fg); }
+  .gm-title .gm-ic { font-size: 1.9rem; line-height: 1; }
+  .gm-head { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; padding: 0 0 2px; border: 0; border-radius: 0; background: transparent; color: var(--muted); font: 700 0.54rem var(--display); text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .gm-head .gm-ic { font-size: 1.15rem; line-height: 1; }
+  .gm-head .gm-nm { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gm-head .bc-play { margin-left: 0; }
+  .gm-card .gb-body { flex: 1; min-height: 0; max-height: 200px; overflow-y: auto; -webkit-overflow-scrolling: touch; position: relative; }
+  .gm-name { background: var(--bg); border-radius: 8px; padding: 6px 8px; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .gm-name.me { box-shadow: inset 0 0 0 1.5px var(--ac); }
+  .gm-score { background: var(--bg); border-radius: 8px; padding: 6px 0; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--fg); }
+  .gm-score.none { color: var(--line); font-weight: 500; }
+  .gm-score.lead { background: var(--pine); color: var(--pine-ink); }
+  .gm-card.scrolls:not(.at-end)::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 34px; background: linear-gradient(transparent, var(--surface)); pointer-events: none; z-index: 1; border-radius: 0 0 14px 14px; }
+  #page-games .gm-title { font-family: var(--mono); color: #ffcc00; text-transform: uppercase; letter-spacing: 0.06em; font-size: 1.05rem; }
+  #page-games .gm-heads { border-bottom-color: #3a3f7a; }
+  #page-games .gm-head { font-family: var(--mono); color: #ffcc00; text-transform: uppercase; letter-spacing: 0.02em; }
+  #page-games .gm-name, #page-games .gm-score { background: #0d0e24; border-radius: 0; font-family: var(--mono); }
+  #page-games .gm-name { padding: 5px 8px; }
+  #page-games .gm-name.me { box-shadow: inset 0 0 0 2px #ffcc00; }
+  #page-games .gm-score { color: #c9cff2; }
+  #page-games .gm-score.under { color: #ffcc00; }
+  #page-games .gm-score.lead { background: #ffcc00; color: #000; }
+  #page-games .gm-score.none { color: #3a3f7a; }
+  #page-games .gm-card.scrolls:not(.at-end)::before { background: linear-gradient(rgba(0, 0, 0, 0), #000 80%); border-radius: 0; }
+  @media (max-width: 380px) { .gm { grid-template-columns: 1fr 50px 50px 50px; } #page-games .gm-title { font-size: 0.95rem; } }
   /* three arcade boxes in a row, one per course */
   .golf-trio { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; min-width: 0; }
   .gcard { padding: 8px 4px 6px; min-width: 0; }

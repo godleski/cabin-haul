@@ -2336,8 +2336,24 @@
   function renderGolfBoard() {
     var trio = $('golfboard'), st = $('golfboard-status'), sets = $('golfboard-sets');
     if (st) st.hidden = true;   // an older page still has the old status line
-    var cards = trio ? trio.querySelectorAll('.gcard') : [];
-    if (cards.length) {
+    var heads = $('golfboard-heads'), cards = trio ? trio.querySelectorAll('.gcard') : [];
+    if (heads) {   // the scorecard: one row per person, a column per course, the leader of each column lit up
+      if (!heads.firstChild) heads.innerHTML = '<div class="gm gm-heads"><div class="gm-title"><span class="gm-ic" aria-hidden="true">\u26F3</span><span>Mini golf</span></div>' + GOLF_SETS.map(function (c) {
+        return '<button type="button" class="gm-head" data-golfset="' + c.id + '" aria-label="Play ' + esc(c.name) + '"><span class="gm-ic" aria-hidden="true">' + c.icon + '</span><span class="gm-nm">' + esc(c.name) + '</span><span class="bc-play" aria-hidden="true">\u25B6 Play</span></button>';
+      }).join('') + '</div>';
+      var body2 = $('golfboard-body'); if (!body2) return;
+      var par = 27, perSet = {}, names = {}, lead = {};
+      GOLF_SETS.forEach(function (c) { var rows = golfBoardRows(c.id); perSet[c.id] = {}; rows.forEach(function (r) { perSet[c.id][r.name] = r.best; names[r.name] = Math.min(names[r.name] == null ? 99 : names[r.name], r.best); }); lead[c.id] = rows.length ? rows[0].best : null; });
+      // everyone who has finished a round anywhere, best finish first
+      var people = Object.keys(names).sort(function (a, b) { return names[a] - names[b] || a.localeCompare(b); });
+      body2.innerHTML = people.length ? '<div class="gm">' + people.map(function (nm) {
+        return '<div class="gm-name' + (nm === me ? ' me' : '') + '">' + esc(nm === me ? 'You' : nm) + '</div>' + GOLF_SETS.map(function (c) {
+          var b = perSet[c.id][nm]; if (b == null) return '<div class="gm-score none" data-golfset="' + c.id + '">\u2013</div>';
+          var t = golfToPar(b, par);
+          return '<div class="gm-score' + (b === lead[c.id] ? ' lead' : '') + (t.charAt(0) === '-' ? ' under' : t === 'E' ? ' even' : '') + '" data-golfset="' + c.id + '">' + t + '</div>';
+        }).join('');
+      }).join('') + '</div>' : '<div class="lb-empty">Nobody has played yet</div>';
+    } else if (cards.length) {
       Array.prototype.forEach.call(cards, function (card) { card.querySelector('.gb-body').innerHTML = '<div class="lb">' + golfListHtml(golfBoardRows(card.getAttribute('data-golfcol'))) + '</div>'; });
     } else {   // the older single box: three columns under a row of headers
       var body = $('golfboard-body'); if (!body) return;
@@ -2360,7 +2376,7 @@
       if (Date.now() < cyclePauseUntil) { cycleTimer = setTimeout(step, 800); return; }
       // every list steps by one row to the same place; the longest one decides when the walk is over
       var max = 0, rowH = 0, top = 0;
-      bodies.forEach(function (body) { var rows = body.querySelectorAll('.lb-row'); max = Math.max(max, body.scrollHeight - body.clientHeight); top = Math.max(top, body.scrollTop); if (rows.length > 1) rowH = Math.max(rowH, rows[1].offsetTop - rows[0].offsetTop); });
+      bodies.forEach(function (body) { var rows = body.querySelectorAll('.lb-row, .gm-name'); max = Math.max(max, body.scrollHeight - body.clientHeight); top = Math.max(top, body.scrollTop); if (rows.length > 1) rowH = Math.max(rowH, rows[1].offsetTop - rows[0].offsetTop); });
       if (!rowH) rowH = bodies[0].clientHeight;
       var atEnd = top >= max - 1, next = atEnd ? 0 : Math.min(max, top + rowH);
       bodies.forEach(function (body) { body.scrollTo({ top: next, behavior: reduce ? 'auto' : 'smooth' }); });
@@ -2378,7 +2394,7 @@
       // rows below this list's fold (on the older single box, the longest column's count)
       var hidden = 0, bottom = body.scrollTop + body.clientHeight, cols = body.querySelectorAll('.gb-col');
       (cols.length ? Array.prototype.slice.call(cols) : [body]).forEach(function (col) {
-        var rows = col.querySelectorAll('.lb-row'), h = 0;
+        var rows = col.querySelectorAll('.lb-row, .gm-name'), h = 0;
         for (var i = 0; i < rows.length; i++) if (rows[i].offsetTop + rows[i].offsetHeight > bottom + 6) h++;
         hidden = Math.max(hidden, h);
       });
@@ -2386,7 +2402,7 @@
       anyScrolls = anyScrolls || scrolls;
       box.classList.toggle('scrolls', scrolls);
       box.classList.toggle('at-end', scrolls && !hidden);
-      if (cue) { cue.hidden = !scrolls || !hidden; cue.textContent = '\u25BC ' + hidden; }
+      if (cue) { cue.hidden = !scrolls || !hidden; cue.textContent = '\u25BC ' + hidden + (box.classList.contains('gcard') ? '' : ' more'); }
     });
     card.classList.toggle('scrolls', anyScrolls);
   }
