@@ -1761,7 +1761,7 @@
   function showTab(name) {
     var changed = name !== tab;
     tab = name;
-    TABS.forEach(function (t) { $('page-' + t).hidden = t !== tab; });
+    TABS.forEach(function (t) { var pg = $('page-' + t); if (pg) pg.hidden = t !== tab; });   // a page this script knows but a cached older index.html lacks is simply skipped
     Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function (b) {
       var on = b.getAttribute('data-tab') === tab;
       b.setAttribute('aria-selected', String(on));
@@ -2431,16 +2431,18 @@
   function renderArcadeCues() {
     var h = foundGame('hockey'), g = foundGame('golf'), hb = $('hockeyboard'), gb = $('golfboard'), lede = $('arcade-lede');
     if (!hb || !gb) return;
-    [[hb, h, 'Play air hockey again'], [gb, g, 'Play mini golf again']].forEach(function (x) {
-      x[0].classList.toggle('replay', x[1]);
-      if (x[1]) { x[0].setAttribute('role', 'button'); x[0].setAttribute('tabindex', '0'); x[0].setAttribute('aria-label', x[2]); }
-      else { x[0].removeAttribute('role'); x[0].removeAttribute('tabindex'); x[0].removeAttribute('aria-label'); }
-    });
+    var tiles = gb.querySelectorAll('.gcard'), asButton = function (el, on, label) {
+      if (on) { el.setAttribute('role', 'button'); el.setAttribute('tabindex', '0'); el.setAttribute('aria-label', label); }
+      else { el.removeAttribute('role'); el.removeAttribute('tabindex'); el.removeAttribute('aria-label'); }
+    };
+    hb.classList.toggle('replay', h); asButton(hb, h, 'Play air hockey again');
+    gb.classList.toggle('replay', g); asButton(gb, g && !tiles.length, 'Play mini golf again');   // with course tiles, each tile is the button
     // the course you played last is the obvious next tap: it wears "Tee off" in its colour, the other two a quiet "Play"
-    Array.prototype.forEach.call(gb.querySelectorAll('.gcard'), function (c) {
+    Array.prototype.forEach.call(tiles, function (c) {
       var last = g && c.getAttribute('data-golfcol') === golfSetPick, badge = c.querySelector('.bc-play');
       c.classList.toggle('last', last);
       if (badge) badge.textContent = last ? '▶ Tee off' : 'Play';
+      asButton(c, g, 'Play ' + golfSet(c.getAttribute('data-golfcol')).name);
     });
     if (lede) lede.innerHTML = g ? 'Tap a course to <b>tee off</b>, or the rink to face Claude. Best round per person goes on the card.'
       : 'Tap the rink to face <b>Claude</b>. The courses open once you find mini golf on the name screen.';
@@ -3873,7 +3875,7 @@
   // Write "@Claude" on the wall or in a prediction thread and Claude answers in that thread as a participant. The phone
   // that sent the message makes the one call, so a question gets one answer. The key comes from the sealed secrets
   // (claudeKey), or from the kv row game-claude ({ key }); with neither, @Claude is just text.
-  var CLAUDE_NAME = 'Claude', CLAUDE_MODEL = 'claude-opus-5-5', claudeDoc = null, claudeSub = false, claudeBusy = {};
+  var CLAUDE_NAME = 'Claude', CLAUDE_MODEL = 'claude-opus-5-5', claudeDoc = null, claudeSub = false, claudeBusy = {}, claudePending = {};
   function subscribeClaude() { if (claudeSub || !store || !store.game) return; claudeSub = true; store.game('claude', function (doc) { claudeDoc = doc; claudeArrival(); claudeCatchup(); }); }
   // Catching up: an older build posted a bare "…" whenever the answer came back empty, and left the questions hanging.
   // Once, on Mitch's phone, Claude goes back to every thread it left like that and answers properly. The kv row
@@ -3997,6 +3999,8 @@
       ? (roasting
         ? 'Nobody tagged you. You are butting in on the last message with one short roast or quip aimed at someone in the thread by name, using what they just said or what the boards say. If there is nothing to work with, go after Kyle’s golf or Luke’s Smash record. One sentence, two at most. Never mention that you were not asked.'
         : 'Nobody tagged you. You are butting in on the last message with one short friendly line: back someone up, hype them, add a useful fact from the boards, or a joke at nobody’s expense. One sentence, two at most. Never mention that you were not asked.')
+      : mode === 'pending'
+        ? 'Someone tagged you while you were still typing your last answer, so their message sits just before it in the thread. Answer that message now, as if you had seen it in time.'
       : mode === 'catchup'
         ? 'Earlier you glitched: every answer you posted came out as "…" and the questions were left hanging (those blank posts are not shown to you). Mitch has just fixed you. Open with one short line owning the glitch, then answer everything you blanked on, properly and in full. If someone asked for detail, give real detail: when the ask is about everyone, write a short paragraph for each person by name, with your read on their personality and a prediction for the weekend, drawn from the boards, the bets, the orders and what you know, with a roast where it fits. Separate paragraphs with a blank line. Also answer anyone who asked whether you were still thinking or broken, in a line.'
       : mode === 'arrive'
@@ -4011,6 +4015,7 @@
     msgs.forEach(function (c) { var role = c.author === CLAUDE_NAME ? 'assistant' : 'user'; add(role, role === 'user' ? c.author + ': ' + c.text : c.text); });
     if (mode === 'arrive') add('user', 'Mitch: Claude just joined the chat.');
     if (mode === 'catchup') add('user', 'Mitch: You’re fixed now. Answer what you blanked on earlier.');
+    if (mode === 'pending') add('user', me + ': @Claude, you skipped the one I sent while you were typing.');
     if (!out.length || out[out.length - 1].role !== 'user') add('user', me + ': @Claude?');
     if (out[0].role !== 'user') out.shift();
     return out;
@@ -4018,7 +4023,7 @@
   function askClaude(threadId, mode) {
     var key = claudeKey();
     if (!key) { toast('Claude isn’t connected yet. Mitch has to add the key.'); return Promise.resolve(false); }
-    if (claudeBusy[threadId]) return Promise.resolve(false);
+    if (claudeBusy[threadId]) { if (mode !== 'chime') claudePending[threadId] = 'pending'; return Promise.resolve(false); }   // mid-answer: the new question is taken up right after
     claudeBusy[threadId] = true; claudeDraft[threadId] = ''; renderWall(); renderSheet();
     var post = function (text) {
       comments.push({ question_id: threadId, author: CLAUDE_NAME, text: text, created_at: new Date().toISOString() });
@@ -4038,15 +4043,24 @@
         if (!res.ok) return res.json().then(function (d) { throw new Error((d && d.error && d.error.message) || ('HTTP ' + res.status)); }, function () { throw new Error('HTTP ' + res.status); });
         return claudeStream(res, function (t) { claudeDraft[threadId] = t; drawDraft(threadId); });
       }).then(function (out) {
+        if (!out.stop) throw new Error('the stream broke');   // ended without a stop reason: the connection went, not the answer
         var text = out.stop === 'refusal' ? 'I’m going to sit that one out.' : out.text.trim();
         return { text: text.replace(/^claude:\s*/i, ''), capped: out.stop === 'max_tokens' };
       });
+    };
+    // cut a long or cut-off answer at the last sentence end, never inside a word or an emoji
+    var tidy = function (text, max) {
+      var cut = text.slice(0, max), end = Math.max(cut.lastIndexOf('.'), cut.lastIndexOf('!'), cut.lastIndexOf('?'));
+      if (end > max / 4) return cut.slice(0, end + 1);
+      var c = cut.charCodeAt(cut.length - 1); if (c >= 0xD800 && c <= 0xDBFF) cut = cut.slice(0, -1);   // not half a surrogate pair
+      return cut;
     };
     return call(16000).then(function (a) {
       return a.text || !a.capped ? a : call(24000);
     }).then(function (a) {
       var text = a.text;
-      if (text.length > 4000) { var cut = text.slice(0, 4000), end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '), cut.lastIndexOf('.\n'), cut.lastIndexOf('!\n'), cut.lastIndexOf('?\n')); text = end > 1000 ? cut.slice(0, end + 1) : cut; }
+      if (a.capped && text) text = tidy(text, text.length);   // ran out of room mid-sentence: end on the last full one
+      if (text.length > 4000) text = tidy(text, 4000);
       post(text || CLAUDE_BLANK);
       return true;
     }).catch(function (err) {
@@ -4057,6 +4071,8 @@
       claudeDraft[threadId] = ''; claudeBusy[threadId] = false; renderWall(); renderPredictions(); renderSheet();
       var wb = $('wall-body'); if (wb && chatOpen && threadId === WALL) wb.scrollTo({ top: wb.scrollHeight, behavior: 'smooth' });
       var sb = $('sheet-body'); if (sb && expanded !== null) sb.scrollTop = sb.scrollHeight;
+      var next = claudePending[threadId]; delete claudePending[threadId];
+      if (next && ok) setTimeout(function () { askClaude(threadId, next); }, 400);   // the question that came in mid-answer
       return ok;
     });
   }

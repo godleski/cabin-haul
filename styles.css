@@ -1033,6 +1033,7 @@
   /* the stack: no frame of its own, the tiles are the cards; the tile presses, never the whole stack */
   #page-arcade #golfboard { display: grid; gap: 10px; margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
   #page-arcade #golfboard.replay:active { transform: none; }
+  #page-arcade #golfboard::before { content: none; }   /* the old one-box fade would wash over the bottom of the last tile */
   /* each course tile carries its own colour for the badge, the leader ring and your highlighter */
   #page-arcade .gcard[data-golfcol="classic"] { --course: #2a7d47; --course-ink: #f3ead7; }
   #page-arcade .gcard[data-golfcol="frost"] { --course: #3f8fd6; --course-ink: #fff; }
@@ -1098,13 +1099,13 @@
   #page-arcade .gcard .lb-row .stat.under { box-shadow: inset 0 0 0 1.5px var(--ink); border-radius: 999px; }
   #page-arcade .gcard .lb-row .stat:not(.under):not(.even) { box-shadow: inset 0 0 0 1.5px var(--ink); border-radius: 3px; }
   #page-arcade .gcard .lb-row .stat.even { color: var(--pencil); }
-  #page-arcade .gcard .lb-row.lead .stat { background: var(--gold); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--course); }
+  #page-arcade .gcard .lb-row.lead .stat, #page-arcade .gcard .lb-row.lead .stat:not(.under):not(.even) { background: var(--gold); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--course); }   /* the leader keeps the gold and the course ring even over par */
   #page-arcade .lb-row.me { box-shadow: none; background: linear-gradient(90deg, transparent 0, color-mix(in srgb, var(--course) 22%, transparent) 6%, color-mix(in srgb, var(--course) 22%, transparent) 94%, transparent 100%); }
   #page-arcade .gcard .lb-empty { margin-top: 6px; padding: 7px 8px; text-align: left; font: 500 0.72rem/1.3 var(--body); color: var(--pencil); border: 1.5px dashed var(--rule); border-radius: 8px; }
   /* the fade over the bottom of a list with more rows: drawn on the right column itself, so it needs no offsets */
   #page-arcade .gcard.scrolls:not(.at-end)::before { content: none; }
   #page-arcade .gcard.scrolls:not(.at-end) .gt-main::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 14px; background: linear-gradient(rgba(243, 234, 215, 0), var(--paper) 85%); pointer-events: none; z-index: 1; }
-  #page-arcade .gcard .lb-scroll { left: auto; right: 14px; bottom: -8px; transform: none; font: 700 0.54rem var(--body); letter-spacing: 0.08em; color: var(--felt-ink); background: var(--felt); border-color: var(--felt); padding: 1px 6px; animation: sccue 1.2s ease-in-out infinite; }
+  #page-arcade .gcard .lb-scroll { left: 124px; right: auto; bottom: -8px; transform: none; font: 700 0.54rem var(--body); letter-spacing: 0.08em; color: var(--felt-ink); background: var(--felt); border-color: var(--felt); padding: 1px 6px; animation: sccue 1.2s ease-in-out infinite; }
   @keyframes sccue { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(2px); } }
   /* not found on this phone yet: pictures dimmed, a pencil "?" sticker, and the note under the stack */
   #page-arcade #golfboard:not(.replay) .gt-mini { opacity: 0.55; }
@@ -1139,7 +1140,7 @@
   #page-arcade .hb-rec-list small { color: var(--pencil); } #page-arcade .hb-rec-list b .w { color: var(--felt); } #page-arcade .hb-rec-list b .l { color: var(--red); }
   /* a scrawled note at the bottom */
   .sc-foot { margin: 16px 2px 0; font: 400 1.05rem/1.2 var(--script); color: var(--pencil); transform: rotate(-1.5deg); transform-origin: 0 50%; }
-  @media (prefers-reduced-motion: reduce) { #page-arcade .bc-play, #page-arcade #hockeyboard .bc-play, #page-arcade .lb-scroll, .rk-mini .rk-puck, .rk-mini .rk-mallet, .gt-mini.lava .pool::after, .gt-mini.classic .mill::before { animation: none; } #page-arcade .gcard, #page-arcade #hockeyboard { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { #page-arcade .bc-play, #page-arcade #hockeyboard .bc-play, #page-arcade .lb-scroll, #page-arcade .gcard .lb-scroll, .rk-mini .rk-puck, .rk-mini .rk-mallet, .rk-mini .rk-mallet.claude, .rk-mini .rk-mallet.you, .gt-mini.lava .pool::after, .gt-mini.classic .mill::before { animation: none !important; } #page-arcade .gcard, #page-arcade #hockeyboard { transition: none; } }
 
   /* ---- Games: retro video game. CRT scanlines, pixel-shadow title, high-score boards, level-select cards. ---- */
   #page-games {
