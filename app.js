@@ -3273,7 +3273,7 @@
       commentsLoaded = true;
       if (expanded !== null) markQSeen(QUESTIONS[expanded].id);
       renderPredictions(); renderWall(); if (chatOpen) markWallSeen(); else updateChatBadge();
-      claudeArrival();
+      claudeArrival(); claudeCatchup();
     });
     if (store.reactions) store.reactions(function (rows) { reactions = rows.slice(); renderPredictions(); renderWall(); });
   }
@@ -3846,7 +3846,24 @@
   // that sent the message makes the one call, so a question gets one answer. The key comes from the sealed secrets
   // (claudeKey), or from the kv row game-claude ({ key }); with neither, @Claude is just text.
   var CLAUDE_NAME = 'Claude', CLAUDE_MODEL = 'claude-opus-5-5', claudeDoc = null, claudeSub = false, claudeBusy = {};
-  function subscribeClaude() { if (claudeSub || !store || !store.game) return; claudeSub = true; store.game('claude', function (doc) { claudeDoc = doc; claudeArrival(); }); }
+  function subscribeClaude() { if (claudeSub || !store || !store.game) return; claudeSub = true; store.game('claude', function (doc) { claudeDoc = doc; claudeArrival(); claudeCatchup(); }); }
+  // Catching up: an older build posted a bare "…" whenever the answer came back empty, and left the questions hanging.
+  // Once, on Mitch's phone, Claude goes back to every thread it left like that and answers properly. The kv row
+  // remembers (caughtUp), so it happens on one phone and never again.
+  var claudeCaughtUp = false;
+  function claudeCatchup() {
+    if (claudeCaughtUp || me !== 'Mitch' || !commentsLoaded || !claudeKey() || !claudeDoc || !claudeDoc.arrived || claudeDoc.caughtUp || !store || !store.setGame) return;
+    var threads = [];
+    comments.forEach(function (c) { if (c.author === CLAUDE_NAME && c.text === '…' && threads.indexOf(c.question_id) < 0) threads.push(c.question_id); });
+    threads = threads.filter(function (t) { var last = comments.filter(function (c) { return c.question_id === t && c.author === CLAUDE_NAME; }).pop(); return last && last.text === '…'; });   // only where the blank is still the last word
+    if (!threads.length) return;
+    claudeCaughtUp = true;
+    setTimeout(function () {   // a moment for the boards to load, so the answers have the numbers
+      if (claudeDoc && claudeDoc.caughtUp) return;
+      var doc = Object.assign({}, claudeDoc || {}, { caughtUp: new Date().toISOString() }); claudeDoc = doc;
+      store.setGame('claude', doc).then(function () { threads.forEach(function (t) { askClaude(t, 'catchup'); }); }).catch(function () { claudeCaughtUp = false; });
+    }, 2500);
+  }
   // Claude's entrance: the first time the key is in place, Mitch's phone has Claude open with a roast of Kyle's golf
   // on the wall. The kv row remembers it happened, so no other phone and no reload repeats it.
   var commentsLoaded = false, claudeArrived = false;
@@ -3909,20 +3926,21 @@
       ? (roasting
         ? 'Nobody tagged you. You are butting in on the last message with one short roast or quip aimed at someone in the thread by name, using what they just said or what the boards say. If there is nothing to work with, go after Kyle’s golf or Luke’s Smash record. One sentence, two at most. Never mention that you were not asked.'
         : 'Nobody tagged you. You are butting in on the last message with one short friendly line: back someone up, hype them, add a useful fact from the boards, or a joke at nobody’s expense. One sentence, two at most. Never mention that you were not asked.')
+      : mode === 'catchup'
+        ? 'Earlier you glitched: every answer you posted came out as "…" and the questions were left hanging (those blank posts are not shown to you). Mitch has just fixed you. Open with one short line owning the glitch, then answer everything you blanked on, properly and in full. If someone asked for detail, give real detail: when the ask is about everyone, write a short paragraph for each person by name, with your read on their personality and a prediction for the weekend, drawn from the boards, the bets, the orders and what you know, with a roast where it fits. Separate paragraphs with a blank line. Also answer anyone who asked whether you were still thinking or broken, in a line.'
       : mode === 'arrive'
         ? 'You have just been added to the group chat. Say hello in one short line, then roast Kyle’s mini golf game using the board: his best round to par if he is on it, or the fact that he has not posted a round if he is not. Three sentences at most. Make it sting and keep it friendly. Model it closely on this opener, same shape and same jokes, with the real numbers swapped in: "Hey all, Claude here, the fourteenth member and the only one who can’t drink. Kyle’s best round is +9 on a par 27, which works out to four strokes a hole on a course built for children. Kelly, you might want to hide the putter before he hurts himself or the windmill." If Kyle is not on the board yet, keep the first and last sentences and make the middle one about him hiding from the board.'
-        : 'Someone tagged you. Answer them.');
+        : 'Someone tagged you. Answer them. If they asked for detail, length or everyone, give them the full thing: as many paragraphs as it takes, a blank line between paragraphs.');
     return lines.join('\n\n');
   }
   var CLAUDE_BLANK = 'Brain froze mid-sentence. Hit me again?';   // what Claude posts when the API came back with no words
-  function claudeThread(threadId, mode) {   // the last twenty messages as alternating turns, ending on the one that asked
-    var msgs = comments.filter(function (c) { return c.question_id === threadId && !(c.author === CLAUDE_NAME && (c.text === '…' || c.text === CLAUDE_BLANK)); }).slice(-20), out = [];
-    msgs.forEach(function (c) {
-      var role = c.author === CLAUDE_NAME ? 'assistant' : 'user', text = role === 'user' ? c.author + ': ' + c.text : c.text;
-      if (out.length && out[out.length - 1].role === role) out[out.length - 1].content += '\n' + text; else out.push({ role: role, content: text });
-    });
-    if (mode === 'arrive') out.push({ role: 'user', content: 'Mitch: Claude just joined the chat.' });
-    if (!out.length || out[out.length - 1].role !== 'user') out.push({ role: 'user', content: me + ': @Claude?' });
+  function claudeThread(threadId, mode) {   // the last forty messages (sixty when catching up) as alternating turns, ending on the one that asked
+    var msgs = comments.filter(function (c) { return c.question_id === threadId && !(c.author === CLAUDE_NAME && (c.text === '…' || c.text === CLAUDE_BLANK)); }).slice(mode === 'catchup' ? -60 : -40), out = [];
+    var add = function (role, text) { if (out.length && out[out.length - 1].role === role) out[out.length - 1].content += '\n' + text; else out.push({ role: role, content: text }); };
+    msgs.forEach(function (c) { var role = c.author === CLAUDE_NAME ? 'assistant' : 'user'; add(role, role === 'user' ? c.author + ': ' + c.text : c.text); });
+    if (mode === 'arrive') add('user', 'Mitch: Claude just joined the chat.');
+    if (mode === 'catchup') add('user', 'Mitch: You’re fixed now. Answer what you blanked on earlier.');
+    if (!out.length || out[out.length - 1].role !== 'user') add('user', me + ': @Claude?');
     if (out[0].role !== 'user') out.shift();
     return out;
   }
@@ -3935,26 +3953,26 @@
       comments.push({ question_id: threadId, author: CLAUDE_NAME, text: text, created_at: new Date().toISOString() });
       store.comment(threadId, CLAUDE_NAME, text).catch(function (err) { toast('Claude answered, but it didn’t post: ' + ((err && err.message) || err)); });
     };
-    // The model thinks before it writes and the thinking counts against max_tokens, so the budget is well above the
-    // two or three sentences we want back. A long ask can still run it dry (no text block, stop_reason max_tokens):
-    // then one retry with room to spare, and if that is blank too Claude says so instead of posting nothing.
+    // The model thinks before it writes and the thinking counts against max_tokens, so the budget is far above what
+    // an answer needs (Mitch: spend the tokens, never leave a question hanging again). If a call still comes back
+    // with no words (stop_reason max_tokens), one retry with even more room, and if that is blank too Claude says so.
     var system = claudeSystem(threadId, mode || 'asked'), thread = claudeThread(threadId, mode);
     var call = function (maxTokens) {
       return fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
-        body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: maxTokens, system: system, messages: thread, output_config: { effort: 'low' }, fallbacks: 'default' })
+        body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: maxTokens, system: system, messages: thread, output_config: { effort: 'medium' }, fallbacks: 'default' })
       }).then(function (res) { return res.json().then(function (data) { return { ok: res.ok, status: res.status, data: data }; }); }).then(function (r) {
         if (!r.ok) throw new Error((r.data && r.data.error && r.data.error.message) || ('HTTP ' + r.status));
         var text = r.data.stop_reason === 'refusal' ? 'I’m going to sit that one out.' : (r.data.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('').trim();
         return { text: text.replace(/^claude:\s*/i, ''), capped: r.data.stop_reason === 'max_tokens' };
       });
     };
-    call(3000).then(function (a) {
-      return a.text || !a.capped ? a : call(8000);
+    call(16000).then(function (a) {
+      return a.text || !a.capped ? a : call(24000);
     }).then(function (a) {
       var text = a.text;
-      if (text.length > 900) { var cut = text.slice(0, 900), end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? ')); text = end > 300 ? cut.slice(0, end + 1) : cut; }
+      if (text.length > 4000) { var cut = text.slice(0, 4000), end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '), cut.lastIndexOf('.\n'), cut.lastIndexOf('!\n'), cut.lastIndexOf('?\n')); text = end > 1000 ? cut.slice(0, end + 1) : cut; }
       post(text || CLAUDE_BLANK);
     }).catch(function (err) {
       toast('Claude couldn’t answer: ' + ((err && err.message) || err));

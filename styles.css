@@ -213,6 +213,7 @@
   .msg .who { font-weight: 700; font-size: 0.78rem; }
   .msg .when { font-size: 0.7rem; color: var(--muted); margin-left: 4px; }
   .msg .txt { overflow-wrap: anywhere; margin-top: 1px; }
+  .msg.claude .txt { white-space: pre-line; }   /* Claude's longer answers keep their paragraph breaks */
   .msg.claude { background: linear-gradient(135deg, #fff3e3, #ffe9d2); border: 1px solid #f3c99b; color: #3b2410; } .msg.claude .who { color: #b4561a; } .msg.claude .when { color: #9a6a45; } .msg.claude .who::before { content: "\2726 "; color: #d2691e; }
   .msg.claude .rx-chip, .msg.claude .rx-add { background: rgba(255, 255, 255, 0.7); border-color: #e9c9a3; color: #3b2410; } .msg.claude .rx-chip.mine { border-color: #d2691e; background: #fff; }
   .msg.claude.typing .txt { color: var(--muted); font-style: italic; white-space: nowrap; } .msg.typing .tdots i { font-style: normal; animation: dotpulse 1.2s infinite; } .msg.typing .tdots i:nth-child(2) { animation-delay: 0.2s; } .msg.typing .tdots i:nth-child(3) { animation-delay: 0.4s; }
