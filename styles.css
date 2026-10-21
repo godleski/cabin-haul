@@ -796,6 +796,23 @@
   .dk-foot .you.no { color: var(--ember); }
   .pred-card.dk .pred-chat { margin: 0 12px 12px; background: #161616; }
   .pred-card.dk .pred-chat .more { color: var(--dkg); }
+  /* the results card, once everyone has picked: the question, the favourite big, one bar, the rest in a line */
+  .pred-card.res { padding: 12px 14px 10px; }
+  .pred-card.res.dk { padding: 12px 14px 10px; overflow: visible; border-radius: 12px; }
+  .pred-card.res .pq { font: 600 0.7rem var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); line-height: 1.3; }
+  .pred-card.res .res-lead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; min-width: 0; }
+  .pred-card.res .res-lead .nm { font: 800 1.7rem/1.1 var(--display); letter-spacing: -0.02em; color: var(--dkg); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pred-card.res .res-lead .nm i { font-style: normal; font-weight: 500; color: var(--muted); margin: 0 6px; }
+  .pred-card.res .res-lead .odds { flex: none; padding: 6px 10px; border-radius: 6px; background: var(--dkg); color: var(--dkg-ink); font: 800 0.9rem var(--body); font-variant-numeric: tabular-nums; }
+  .pred-card.res .res-bar { height: 6px; margin-top: 10px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+  .pred-card.res .res-bar span { display: block; height: 100%; border-radius: 3px; background: var(--dkg); }
+  .pred-card.res .res-sub { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 7px; font-size: 0.78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pred-card.res .res-sub .share { flex: none; font-weight: 700; color: #fff; }
+  .pred-card.res .res-sub .rest { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+  .pred-card.res .res-foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 0.76rem; color: var(--muted); }
+  .pred-card.res .res-foot .you { font-weight: 600; color: #fff; } .pred-card.res .res-foot .you.on { color: var(--dkg); } .pred-card.res .res-foot .you.no { color: var(--ember); }
+  .pred-card.res .res-foot .k { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: rgba(83, 211, 55, 0.14); color: var(--dkg); font-weight: 600; }
+  .pred-card.res .res-foot .k.new { background: var(--ember); color: #1a1200; }
   .poll-n .odds { display: inline-block; margin-left: 8px; padding: 2px 7px; border-radius: 5px; background: #2c2c2c; color: var(--dkg); font: 800 0.74rem var(--body); font-variant-numeric: tabular-nums; }
   /* the detail sheet goes dark to match while the sportsbook tab is up */
   body.tab-home .sheet { --surface: #1f1f1f; --bg: #141414; --fg: #fff; --muted: #9b9b9b; --line: #313131; --pine: #53d337; --pine-soft: rgba(83, 211, 55, 0.14); --pine-ink: #06200a; --ember: #ffb347; --ember-soft: rgba(255, 179, 71, 0.14); background: var(--surface); color: var(--fg); }
@@ -902,6 +919,11 @@
   .pred-card.plain .sub .you { color: var(--vio); } .pred-card.plain .sub .you.no { color: var(--ember); }
   .pred-card.plain .pred-chat { background: var(--bg); color: var(--fg); }
   .pred-card.plain .pred-chat .more { color: var(--vio); }
+  .pred-card.res.plain .res-lead .nm { color: var(--vio); }
+  .pred-card.res.plain .res-bar { background: #ece6f8; } .pred-card.res.plain .res-bar span { background: var(--vio); }
+  .pred-card.res.plain .res-sub .share, .pred-card.res.plain .res-foot .you { color: var(--fg); }
+  .pred-card.res.plain .res-foot .you.on { color: var(--vio); } .pred-card.res.plain .res-foot .you.no { color: var(--ember); }
+  .pred-card.res.plain .res-foot .k { background: var(--pine-soft); color: var(--vio); } .pred-card.res.plain .res-foot .k.new { background: var(--ember); color: #fff; }
   /* the picks screen in plain mode: light, no odds, big name buttons */
   body.plain-picks #predict.dk-page { --vio: #6d3ddb; --vio-deep: #241557; --gold: #f5b942; --gold-ink: #2a1655; --surface: #ffffff; --bg: #f4f0fc; --fg: #231a40; --muted: #6c6488; --line: #e9e3f7; --pine: var(--vio); --pine-soft: #efe8fd; --pine-ink: #fff; --ember: #c77700; --ember-soft: #fff1d6; color: #fff; background: linear-gradient(180deg, #5b3fb0 0%, #3b2680 36%, var(--vio-deep) 100%); }
   body.plain-picks #predict .intro .eyebrow, body.plain-picks #predict .q-market .eyebrow { color: var(--gold); }

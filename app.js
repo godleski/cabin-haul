@@ -3398,14 +3398,28 @@
     var mine = myVotes(), left = QUESTIONS.length - answeredCount();
     var html = '';
     var slip = $('dk-slip'); if (slip) slip.textContent = (QUESTIONS.length - left) + '/' + QUESTIONS.length;
+    var allIn = QUESTIONS.every(function (q) { return tallyFor(q).voted >= NAMES.length; });   // every slip is in: the board reads as results
     if (left && plainPicks()) html += '<div class="pred-banner"><div><b>' + (left === QUESTIONS.length ? 'You haven\u2019t picked yet' : left + ' still to pick') + '</b><span>Six quick questions. Takes a minute.</span></div><button type="button" class="btn primary" id="pred-open">Make my picks</button></div>';
     else if (left) html += '<div class="pred-banner"><div><b>' + (left === QUESTIONS.length ? 'Your bet slip is empty' : left + ' open ' + (left === 1 ? 'market' : 'markets') + ' on your slip') + '</b><span>Six markets, no stake, pure trash talk.</span></div><button type="button" class="nudge" id="pred-open">Make my picks</button></div>';
+    else if (allIn) html += '<div class="pred-head"><span class="pred-count">All ' + NAMES.length + ' slips in</span><button type="button" class="linkbtn" id="pred-open">' + (plainPicks() ? 'Change my picks' : 'Edit my slip') + '</button></div>';
     else if (plainPicks()) html += '<div class="pred-head"><span class="pred-count">\u2713 All ' + QUESTIONS.length + ' picked</span><button type="button" class="linkbtn" id="pred-open">Change my picks</button></div>';
     else html += '<div class="pred-head"><span class="pred-count">\u2713 Slip placed \u00b7 ' + QUESTIONS.length + ' of ' + QUESTIONS.length + '</span><button type="button" class="linkbtn" id="pred-open">Edit my slip</button></div>';
     html += '<div class="pred-list">';
     QUESTIONS.forEach(function (q, i) {
       var t = tallyFor(q), total = t.rows.reduce(function (a, r) { return a + r.n; }, 0);
       var cc = qThread(q.id).length, my = mine[q.id], nu = qUnread(q.id);
+      if (t.voted >= NAMES.length && t.rows.length) {   // everyone has picked: the favourite, plainly, and nothing else shouting
+        var lead = t.rows[0], favs = t.rows.filter(function (r) { return r.n === lead.n; }), tie = favs.length > 1, rest = t.rows.slice(favs.length);
+        var onFav = favs.some(function (r) { return r.pick === my; });
+        html += '<button type="button" class="pred-card res ' + (plainPicks() ? 'plain' : 'dk') + (nu ? ' has-new' : '') + '" data-q="' + i + '">' +
+          '<div class="pq">' + esc(q.text) + '</div>' +
+          '<div class="res-lead"><span class="nm">' + favs.map(function (r) { return esc(r.pick); }).join('<i>/</i>') + '</span>' + (plainPicks() ? '' : '<span class="odds">' + oddsForQ(q, lead.n) + '</span>') + '</div>' +
+          '<div class="res-bar"><span style="width:' + (100 * lead.n / total) + '%"></span></div>' +
+          '<div class="res-sub"><span class="share">' + (tie ? 'Dead heat \u00b7 ' + lead.n + ' each' : lead.n + ' of ' + total) + '</span>' + (rest.length ? '<span class="rest">' + rest.map(function (r) { return esc(r.pick) + ' ' + r.n; }).join(' \u00b7 ') + '</span>' : '') + '</div>' +
+          '<div class="res-foot">' + (my ? (onFav ? '<span class="you on">\u2713 Your pick</span>' : '<span class="you">Your pick: ' + esc(my) + '</span>') : '<span class="you no">No pick</span>') + (cc ? '<span class="k' + (nu ? ' new' : '') + '">\ud83d\udcac ' + cc + (nu ? ' \u00b7 ' + nu + ' new' : '') + '</span>' : '') + '</div>' +
+          '</button>';
+        return;
+      }
       if (plainPicks()) {   // the simple card: question, who's winning, a bar, your pick
         var lead = t.rows[0];
         html += '<button type="button" class="pred-card plain' + (nu ? ' has-new' : '') + '" data-q="' + i + '">' +
