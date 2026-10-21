@@ -593,14 +593,15 @@
         slots: [{ x: 0.5, y: 0.5, kinds: ['mound'], s: 0.8 }, { x: 0.64, y: 0.33, kinds: ['bumper'] }, { x: 0.7, y: 0.085, kinds: ['bumper'] }, { x: 0.76, y: 0.44, kinds: ['windmill'], s: 0.55 }, { x: 0.7, y: 0.62, kinds: ['water', 'sand', null], s: 0.55 }, { x: 0.3, y: 0.62, kinds: ['sand', 'bumper', null], s: 0.5 }] }
     ];
     // Palettes. Tiles and sand/water are [base, dark, light]; rails, blocks and windmill arms are [base, body, lit]; cup is
-    // [ring, hole, deep]. tree/bloom pick the furniture in the rough; splash is the hazard note.
+    // [ring, hole, deep]. tree/bloom pick the furniture in the rough; splash is the hazard note; slick is how much of the
+    // green's friction the course does without (Frostbite is ice all over, so the ball runs a little further on every hole).
     var THEMES = {
       classic: { roughTile: 'grass', fairTile: 'grass', rough: ['#3f9238', '#347d2e', '#4aa442'], fair: ['#5fbd4b', '#52ab40', '#6fcb5a'], rail: ['#a63b0a', '#ee6a22', '#ff9448'], shade: 'rgba(0,40,0,0.25)', outline: '#1c3d18',
         cup: ['#2f6b2a', '#0f2a12', '#061508'], flag: '#e8403a', pole: '#f7f7f0', sand: ['#ecd49f', '#cdb074', '#d9bd83'], water: ['#2a7fb0', '#3dbcec', '#8fe4ff'], hub: ['#4a2a16', '#6b3e22', '#ffd23f'],
         tree: 'pine', bloom: ['#ff6fae', '#ffd23f', '#7ec8ff', '#ffffff'], splash: 'SPLASH! +1', plate: 'rgba(255,255,255,0.16)' },
       frost: { roughTile: 'snow', fairTile: 'ice', rough: ['#e4eef8', '#cfdeee', '#ffffff'], fair: ['#b7e0f4', '#9fd0ea', '#d9f1fc'], rail: ['#3f6a9a', '#7fb3e0', '#d6efff'], shade: 'rgba(20,50,90,0.22)', outline: '#1f3a5a',
         cup: ['#7fb3d8', '#17263d', '#0a1322'], flag: '#ff5a3c', pole: '#ffffff', sand: ['#f3f6fa', '#c6d4e3', '#dde6f0'], water: ['#0f3560', '#1d5a9a', '#7cc3ef'], hub: ['#2b3f5a', '#44608a', '#ffd23f'],
-        tree: 'snowpine', bloom: ['#8fb8dc', '#b9d6ee'], splash: 'BRRR! +1', plate: 'rgba(40,100,160,0.16)', tee: 'rgba(20,50,90,0.4)' },
+        tree: 'snowpine', bloom: ['#8fb8dc', '#b9d6ee'], splash: 'BRRR! +1', plate: 'rgba(40,100,160,0.16)', tee: 'rgba(20,50,90,0.4)', slick: 0.22 },
       lava: { roughTile: 'rock', fairTile: 'ash', rough: ['#2b2326', '#1d171a', '#3b3135'], fair: ['#5b545c', '#4d4750', '#6b646e'], rail: ['#3c0d09', '#7a1e12', '#ff7a2a'], shade: 'rgba(0,0,0,0.38)', outline: '#1a0d0a',
         cup: ['#8a3a1a', '#1a0a08', '#000000'], flag: '#ffd23f', pole: '#f7f7f0', sand: ['#8c8780', '#6f6a64', '#a39d95'], water: ['#b3300c', '#ff6a1f', '#ffd34a'], hub: ['#2a1a18', '#4a2a26', '#ff7a2a'],
         tree: 'boulder', bloom: ['#ff7a2a', '#ffd23f', '#ff3b1f'], splash: 'LAVA! +1', plate: 'rgba(255,200,120,0.18)' }
@@ -824,6 +825,7 @@
       }
       var speed = Math.hypot(b.vx, b.vy), air = b.z > 0;
       var fr = air ? 1 : speed > 6 ? 0.991 : 0.978;
+      if (T.slick) fr = 1 - (1 - fr) * (1 - T.slick);   // an icy course: the same roll, with less of the green holding it back
       b.vx *= Math.pow(fr, dt); b.vy *= Math.pow(fr, dt);
       var cupD = Math.hypot(b.x - g.cup.x, b.y - g.cup.y);
       if (speed < 0.3 && !air && cupD >= g.cup.r * CUP_DISH && !onSlope(g, b)) { b.vx = 0; b.vy = 0; if (speed > 0) golfRelief(g, now); }   // in the dish it creeps on in
