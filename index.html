@@ -267,16 +267,52 @@
       </div>
     </section>
 
+    <section class="page themed" id="page-arcade" hidden>
+      <div class="hero card-hero">
+        <div class="eyebrow">Scorecard · Par 27</div>
+        <h1>Arcade</h1>
+        <div class="scrawl" aria-hidden="true">the 19th hole</div>
+        <p class="lede" id="arcade-lede">Tap a course to <b>tee off</b>, or the rink to face Claude.</p>
+        <div class="stamp" aria-hidden="true"><span>Winter Park</span><b>27</b><span>Par · Oct 23</span></div>
+        <div class="pencil" aria-hidden="true"><i class="eraser"></i><i class="ferrule"></i><i class="wood"></i><i class="lead"></i></div>
+      </div>
+
+      <div class="sc-head"><span class="sc-h">⛳ Mini golf</span><span class="sc-meta">9 holes · best round</span></div>
+      <div class="board-card golf-card" id="golfboard" aria-label="Mini golf courses">
+        <div class="gcard" data-golfcol="classic">
+          <div class="gt-pic"><div class="gt-mini classic" aria-hidden="true"><i class="hole"></i><i class="flag"></i><i class="ball"></i><i class="mill"></i></div><div class="gt-me" hidden><small>You</small><b></b></div><div class="gt-lead"><small>Leader</small><b>Open</b></div></div>
+          <div class="gt-main"><div class="bc-title"><span class="gt-nm">Classic</span><span class="bc-play" aria-hidden="true">▶ Tee off</span></div><div class="gt-blurb">Grass, rails, a windmill</div><div class="gb-body" id="golfboard-body"></div></div>
+          <div class="lb-scroll" hidden></div>
+        </div>
+        <div class="gcard" data-golfcol="frost">
+          <div class="gt-pic"><div class="gt-mini frost" aria-hidden="true"><i class="hole"></i><i class="flag"></i><i class="ball"></i><i class="igloo"></i></div><div class="gt-me" hidden><small>You</small><b></b></div><div class="gt-lead"><small>Leader</small><b>Open</b></div></div>
+          <div class="gt-main"><div class="bc-title"><span class="gt-nm">Frostbite</span><span class="bc-play" aria-hidden="true">Play</span></div><div class="gt-blurb">Ice, igloos, snowmen</div><div class="gb-body"></div></div>
+          <div class="lb-scroll" hidden></div>
+        </div>
+        <div class="gcard" data-golfcol="lava">
+          <div class="gt-pic"><div class="gt-mini lava" aria-hidden="true"><i class="pool"></i><i class="cone"></i><i class="hole"></i><i class="flag"></i><i class="ball"></i></div><div class="gt-me" hidden><small>You</small><b></b></div><div class="gt-lead"><small>Leader</small><b>Open</b></div></div>
+          <div class="gt-main"><div class="bc-title"><span class="gt-nm">Volcano</span><span class="bc-play" aria-hidden="true">Play</span></div><div class="gt-blurb">Lava, geysers, a jump</div><div class="gb-body"></div></div>
+          <div class="lb-scroll" hidden></div>
+        </div>
+        <div class="bc-sub" id="golfboard-status" hidden></div>
+      </div>
+      <p class="sc-locked">🔒 Mini golf is hidden on the name screen. Tap <b>Not you?</b> and poke around the green.</p>
+
+      <div class="sc-head"><span class="sc-h">🏒 Air hockey</span><span class="sc-meta">you vs Claude</span></div>
+      <div class="board-card rink-card" id="hockeyboard">
+        <div class="rk-mini" aria-hidden="true"><i class="rk-line"></i><i class="rk-circle"></i><i class="rk-goal top"></i><i class="rk-goal bot"></i><i class="rk-mallet claude"></i><i class="rk-mallet you"></i><i class="rk-puck"></i></div>
+        <div class="rk-main"><div class="bc-title"><span class="gt-nm">Air hockey</span><span class="bc-play" aria-hidden="true">▶ Play</span></div><div class="bc-sub" id="hockeyboard-status"></div><div class="hb mini" id="hockeyboard-tally"></div><div class="rk-you" id="hockeyboard-you"></div></div>
+        <div id="hockeyboard-body"></div>
+      </div>
+      <p class="sc-foot">Time on the course is kept for Claude.</p>
+    </section>
+
     <section class="page themed" id="page-games" hidden>
       <div class="hero arcade-hero">
         <div class="dice" aria-hidden="true">👾</div>
         <div class="eyebrow">&gt; Press start<span class="cursor">_</span></div>
         <h1 class="neon">Game<br>night</h1>
-        <p class="lede" id="arcade-lede">Tap the air hockey board to <b>play</b>. Mini golf is hidden on the name screen. Tap <b>Not you?</b> and poke around.</p>
-      </div>
-      <div class="boards">
-        <div class="board-card" id="hockeyboard"><div class="bc-head"><div><div class="bc-title">🏒 Air hockey<span class="bc-play" aria-hidden="true">▶ Play</span></div><div class="bc-sub" id="hockeyboard-status"></div></div><div class="hb mini" id="hockeyboard-tally"></div></div><div id="hockeyboard-body"></div></div>
-        <div class="board-card golf-cab" id="golfboard" aria-label="Mini golf boards"><div class="bc-title golf-cab-title">⛳ Mini golf</div><div class="golf-trio"><div class="gcard" data-golfcol="classic"><div class="bc-title">⛳ Classic<span class="bc-play" aria-hidden="true">▶ Play</span></div><div class="gb-body" id="golfboard-body"></div><div class="lb-scroll" hidden></div></div><div class="gcard" data-golfcol="frost"><div class="bc-title">❄️ Frostbite<span class="bc-play" aria-hidden="true">▶ Play</span></div><div class="gb-body"></div><div class="lb-scroll" hidden></div></div><div class="gcard" data-golfcol="lava"><div class="bc-title">🌋 Volcano<span class="bc-play" aria-hidden="true">▶ Play</span></div><div class="gb-body"></div><div class="lb-scroll" hidden></div></div></div><div class="bc-sub" id="golfboard-status" hidden></div></div>
+        <p class="lede">Mafia, Spyfall, Fishbowl, the <b>Smash</b> tally and a team picker. Air hockey and mini golf moved to the <b>Arcade</b> tab.</p>
       </div>
       <p class="lede section-lede">Stuff to play once the drinks are poured.</p>
       <div class="game-card" id="teams">
@@ -331,7 +367,8 @@
   <button type="button" class="nav-btn" data-tab="cabin" aria-selected="true"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 15.3a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6zm1.15-3.4V15.4h-2.3v-1.9c0-1.5.9-2.2 1.9-2.9.8-.5 1.2-.9 1.2-1.6 0-.8-.7-1.3-1.7-1.3-1.1 0-1.8.6-1.9 1.6H8c.1-2.3 1.8-3.8 4.3-3.8 2.4 0 4 1.3 4 3.3 0 1.5-.8 2.3-1.9 3-.8.5-1.25.9-1.25 1.5z"/></svg></span><span>FAQ</span></button>
   <button type="button" class="nav-btn" data-tab="home" aria-selected="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.7 1.5 6.8L12 17l-6.1 3.5 1.5-6.8L2.2 9l6.9-.7z"/></svg></span><span>Predictions</span><span class="badge nav-badge" id="pred-badge" hidden></span></button>
   <button type="button" class="nav-btn" data-tab="bringing" aria-selected="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M7 4h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm1 5h8v2H8zm0 4h8v2H8zm0 4h5v2H8z"/></svg></span><span>Bringing</span></button>
-  <button type="button" class="nav-btn" data-tab="games" aria-selected="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm3 3.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg></span><span>Games</span></button>
+  <button type="button" class="nav-btn" data-tab="arcade" aria-selected="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.6 2h2v15.5h-2z"/><path d="M12.6 3.1l7.3 2.7-7.3 2.8z"/><path fill-rule="evenodd" d="M4 19.1c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 2.9-8 2.9-8-1.2-8-2.9zm2.9 0c0 .6 2.3 1.2 5.1 1.2s5.1-.6 5.1-1.2-2.3-1.2-5.1-1.2-5.1.6-5.1 1.2z"/></svg></span><span>Arcade</span></button>
+  <button type="button" class="nav-btn" data-tab="games" aria-selected="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm3 3.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg></span><span>Party</span></button>
   <button type="button" class="nav-btn" data-tab="hibachi" aria-selected="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v2.1a8 8 0 0 1 7 7.9H4a8 8 0 0 1 7-7.9zM2 15h20v2H2zm3 4h14v2H5z"/></svg></span><span>Hibachi</span></button>
 </nav>
 <button type="button" class="fab" id="chat-fab" hidden aria-label="Open the wall"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg><span class="badge" id="chat-badge" hidden></span></button>

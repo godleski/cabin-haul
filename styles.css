@@ -241,8 +241,8 @@
 
   /* ---- Bottom dock: floats above the page, hides while you scroll down ---- */
   .nav {
-    position: fixed; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); z-index: 5;
-    max-width: 536px; margin-inline: auto; display: flex; padding: 6px; border-radius: 24px;
+    position: fixed; left: 8px; right: 8px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); z-index: 5;
+    max-width: 536px; margin-inline: auto; display: flex; padding: 6px 4px; border-radius: 24px;
     --nav-ac: #d2691e; --nav-ink: #fff;
     background: rgba(17, 19, 24, 0.80);
     -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
@@ -253,6 +253,7 @@
   body[data-tab="home"] .nav { --nav-ac: #53d337; --nav-ink: #06200a; }
   body.plain-picks[data-tab="home"] .nav { --nav-ac: #6d3ddb; --nav-ink: #fff; }
   body[data-tab="bringing"] .nav { --nav-ac: #1769d6; --nav-ink: #fff; }
+  body[data-tab="arcade"] .nav { --nav-ac: #f3ead7; --nav-ink: #2b2a26; }   /* the scorecard's card stock */
   body[data-tab="games"] .nav { --nav-ac: #ffcc00; --nav-ink: #1a1200; }
   body[data-tab="hibachi"] .nav { --nav-ac: #d63a1f; --nav-ink: #fff; }
   .nav.away { transform: translateY(calc(100% + 28px)); opacity: 0; pointer-events: none; }
@@ -263,7 +264,7 @@
   .nav-ind.noanim { transition: none; }
   .nav-btn {
     position: relative; flex: 1; min-width: 0; border: 0; background: none; color: var(--muted); cursor: pointer; -webkit-tap-highlight-color: transparent;
-    display: grid; justify-items: center; gap: 2px; padding: 7px 2px 6px; font: 600 0.64rem var(--body); border-radius: 18px; transition: color 200ms;
+    display: grid; justify-items: center; gap: 2px; padding: 7px 0 6px; font: 600 0.6rem var(--body); letter-spacing: -0.01em; border-radius: 18px; transition: color 200ms;
   }
   .nav-btn span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nav-ico { position: relative; display: inline-grid; }
@@ -275,6 +276,7 @@
   .nav-btn.bump svg { animation: tabbump 420ms cubic-bezier(0.2, 0.9, 0.3, 1.4); }
   @keyframes tabbump { 0% { transform: scale(0.8); } 50% { transform: translateY(-3px) scale(1.22); } 100% { transform: translateY(-1px) scale(1.1); } }
   @media (prefers-reduced-motion: reduce) { .nav, .nav-ind, .nav-btn svg { transition: none; } .nav-btn.bump svg { animation: none; } }
+  @media (max-width: 389px) { .nav-btn { font-size: 0.56rem; } .nav-btn svg { width: 21px; height: 21px; } }   /* six labels across a 375px phone */
   .page h1 { margin-top: 8px; }
 
   .summary-card {
@@ -366,7 +368,7 @@
   .gp-card .gp-title { font: 700 1.1rem var(--display); margin-bottom: 2px; }
   .gp-card .name-grid { margin-top: 10px; }
   .gp-card .gp-hint { margin-top: 9px; padding: 7px 10px; border-radius: 10px; background: rgba(45, 106, 79, 0.1); border: 1px dashed rgba(45, 106, 79, 0.5); font-size: 0.78rem; line-height: 1.35; }
-  /* the three courses: a pill each, on the putting card and on the Games tab board */
+  /* the three courses: a pill each, on the putting card (the Arcade tab has a tile per course instead) */
   .gp-sets { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px; }
   .gs { display: flex; align-items: center; justify-content: center; gap: 3px; min-width: 0; padding: 7px 2px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font: 600 0.74rem var(--body); cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .gs .gs-ic { font-size: 0.95rem; line-height: 1; }
@@ -994,6 +996,150 @@
   .br-row .items.none { color: var(--ink-muted); font-style: italic; }
   .br-foot { margin-top: 22px; text-align: center; }
   .br-foot .linkbtn { color: var(--cmuted); font-weight: 600; }
+
+  /* ---- Arcade: a putt-putt scorecard. Cream card stock, pencil type, felt header strips, and a CSS miniature of every course.
+          Every rule is scoped under #page-arcade (or a class that exists only here), so the Party page's retro rules are untouched. ---- */
+  #page-arcade {
+    --paper: #f3ead7; --paper-2: #eadfc6; --rule: #cdbf9f; --ink: #2b2a26; --pencil: #5a564d; --felt: #2a7d47; --felt-deep: #1f6236; --felt-ink: #f3ead7;
+    --gold: #e9c46a; --red: #c8102e; --rail: #c96a24; --ice: #3f8fd6; --lava: #ff6a1f; --claude: #d97757;
+    --felt-tx: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.04) 0 2px, transparent 2px 4px), repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.06) 0 2px, transparent 2px 4px);
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    /* the shared board and list components read these */
+    --surface: var(--paper); --bg: transparent; --fg: var(--ink); --muted: var(--pencil); --line: var(--rule); --pine: var(--felt); --pine-ink: var(--felt-ink); --pine-soft: rgba(42, 125, 71, 0.12); --ac: var(--felt);
+    color: var(--ink); color-scheme: light;
+    background: repeating-linear-gradient(0deg, rgba(90, 70, 30, 0.045) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(90, 70, 30, 0.03) 0 1px, transparent 1px 5px), var(--paper);
+  }
+  /* hero: pencil caps, a felt-tip underline, a scrawl, a rubber stamp and the scorecard pencil */
+  .card-hero { padding-right: 116px; }
+  .card-hero .eyebrow { color: var(--pencil); font: 700 0.68rem var(--body); letter-spacing: 0.16em; white-space: nowrap; }
+  .card-hero h1 { color: var(--ink); display: inline-block; position: relative; }
+  .card-hero h1::after { content: ""; position: absolute; left: -2px; right: -8px; bottom: -3px; height: 5px; border-radius: 3px; background: var(--felt); transform: rotate(-1.3deg); }
+  .card-hero .scrawl { margin: 10px 0 0 6px; font: 400 1.55rem/1 var(--script); color: var(--felt); transform: rotate(-4deg); transform-origin: 0 50%; }
+  .card-hero .lede { color: var(--pencil); font-size: 0.92rem; max-width: none; }
+  .card-hero .lede b { color: var(--ink); }
+  .card-hero .stamp { position: absolute; right: 0; top: 4px; width: 94px; height: 94px; border-radius: 50%; border: 3px double var(--red); color: var(--red); display: grid; place-content: center; gap: 1px; text-align: center; font: 800 0.56rem/1.1 var(--display); letter-spacing: 0.14em; text-transform: uppercase; transform: rotate(-14deg); opacity: 0.78; }
+  .card-hero .stamp b { font: 800 2rem/1 var(--display); letter-spacing: -0.03em; }
+  .card-hero .pencil { position: absolute; right: 0; top: 112px; width: 112px; height: 12px; display: flex; align-items: center; transform: rotate(-13deg); transform-origin: 0 50%; }
+  .card-hero .pencil i { display: block; height: 12px; }
+  .card-hero .pencil .eraser { width: 14px; background: #e39aa6; border-radius: 4px 0 0 4px; }
+  .card-hero .pencil .ferrule { width: 9px; background: repeating-linear-gradient(90deg, #d6d1c6 0 2px, #9c968a 2px 3px); }
+  .card-hero .pencil .wood { flex: 1; background: linear-gradient(180deg, #f6d35a 0 30%, #e9b935 30% 70%, #c99a22 70%); }
+  .card-hero .pencil .lead { position: relative; width: 0; height: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-left: 16px solid #e6cfa0; }
+  .card-hero .pencil .lead::after { content: ""; position: absolute; left: -6px; top: -2px; border-top: 2px solid transparent; border-bottom: 2px solid transparent; border-left: 6px solid var(--ink); }
+  /* felt header strips */
+  .sc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 24px 0 10px; padding: 8px 12px; border-radius: 8px; color: var(--felt-ink); background: var(--felt-tx), var(--felt-deep); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 2px 0 rgba(40, 30, 10, 0.18); }
+  .sc-head .sc-h { font: 800 0.88rem var(--display); letter-spacing: 0.08em; text-transform: uppercase; }
+  .sc-head .sc-meta { font: 600 0.6rem var(--body); letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.82; white-space: nowrap; }
+  /* the stack: no frame of its own, the tiles are the cards; the tile presses, never the whole stack */
+  #page-arcade #golfboard { display: grid; gap: 10px; margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
+  #page-arcade #golfboard.replay:active { transform: none; }
+  /* each course tile carries its own colour for the badge, the leader ring and your highlighter */
+  #page-arcade .gcard[data-golfcol="classic"] { --course: #2a7d47; --course-ink: #f3ead7; }
+  #page-arcade .gcard[data-golfcol="frost"] { --course: #3f8fd6; --course-ink: #fff; }
+  #page-arcade .gcard[data-golfcol="lava"] { --course: #ff6a1f; --course-ink: #1d1716; }
+  #page-arcade #hockeyboard { --course: var(--claude); --course-ink: #fff; }
+  /* the tiles: a picture on the left, words and the card on the right */
+  #page-arcade .gcard, #page-arcade #hockeyboard { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 0 12px; align-items: start; margin: 0; padding: 8px 10px 8px 8px; border-radius: 14px; background: var(--paper); border: 1.5px solid var(--rule); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 6px 16px rgba(60, 45, 20, 0.12); position: relative; transition: transform 120ms ease; }
+  #page-arcade #golfboard:not(.replay) .gcard { cursor: default; }
+  #page-arcade #golfboard.replay .gcard:active, #page-arcade #hockeyboard.replay:active { transform: scale(0.97); box-shadow: inset 0 0 0 2px var(--course), 0 2px 6px rgba(60, 45, 20, 0.12); }
+  .gt-pic { position: relative; width: 104px; display: grid; gap: 4px; align-content: start; }
+  .gt-mini, .rk-mini { position: relative; width: 104px; height: 96px; border-radius: 10px; overflow: hidden; contain: paint; }
+  .gt-mini { height: 74px; }   /* the leader's label sits under the picture */
+  .gt-mini i, .rk-mini i { position: absolute; display: block; }
+  /* every course: a hole, a pennant, a ball with a dotted putt line */
+  .gt-mini .hole { width: 14px; height: 7px; border-radius: 50%; background: #111; right: 18px; top: 22px; box-shadow: inset 0 2px 2px rgba(0, 0, 0, 0.6); }
+  .gt-mini .flag { width: 2px; height: 26px; background: #f3ead7; right: 24px; top: -2px; }
+  .gt-mini .flag::after { content: ""; position: absolute; left: 2px; top: 1px; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 12px solid var(--red); }
+  .gt-mini .ball { width: 9px; height: 9px; border-radius: 50%; background: #fff; left: 10px; bottom: 22px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), inset -2px -2px 2px rgba(0, 0, 0, 0.1); }
+  .gt-mini .ball::before { content: ""; position: absolute; left: 10px; top: 3px; width: 44px; height: 2px; border-radius: 2px; background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.75) 0 4px, transparent 4px 7px); transform: rotate(-18deg); transform-origin: 0 50%; }
+  /* Classic: felt, an orange rail, a windmill that turns */
+  .gt-mini.classic { background: var(--felt-tx), #2f8a4c; border: 5px solid var(--rail); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25), inset 0 0 18px rgba(0, 40, 10, 0.35); }
+  .gt-mini.classic .mill { left: 30px; top: 4px; width: 18px; height: 22px; background: #e8d9b5; border-radius: 3px 3px 0 0; box-shadow: inset -3px 0 0 rgba(0, 0, 0, 0.12); }
+  .gt-mini.classic .mill::before { content: ""; position: absolute; left: 50%; top: -9px; width: 26px; height: 26px; margin-left: -13px; background: linear-gradient(#7a4a1e, #7a4a1e) center / 26px 3px no-repeat, linear-gradient(#7a4a1e, #7a4a1e) center / 3px 26px no-repeat; animation: mill 7s linear infinite; }
+  @keyframes mill { to { transform: rotate(360deg); } }
+  /* Frostbite: ice, blue rails, an igloo, snow */
+  .gt-mini.frost { background: repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.45) 0 5px, transparent 5px 16px), linear-gradient(160deg, #eaf8ff, #bfe1f5); border: 5px solid var(--ice); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5), inset 0 0 16px rgba(20, 80, 140, 0.25); }
+  .gt-mini.frost::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle, #fff 0 1.5px, transparent 2px) 12px 10px / 22px 18px repeat; opacity: 0.8; pointer-events: none; }
+  .gt-mini.frost .flag { background: #2b4a66; } .gt-mini.frost .flag::after { border-left-color: #1769d6; }
+  .gt-mini.frost .igloo { left: 40px; bottom: 6px; width: 36px; height: 20px; border-radius: 18px 18px 0 0; background: repeating-linear-gradient(0deg, #fff 0 4px, #dbeefa 4px 5px); box-shadow: inset 0 -3px 0 rgba(120, 170, 210, 0.4); }
+  .gt-mini.frost .igloo::after { content: ""; position: absolute; left: 13px; bottom: 0; width: 10px; height: 9px; border-radius: 5px 5px 0 0; background: #2b4a66; }
+  /* Volcano: black rock, a rail that glows, a pool that breathes, a cone with a lit crater */
+  .gt-mini.lava { background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.06), transparent 50%), #1d1716; border: 4px solid var(--lava); box-shadow: inset 0 0 0 2px rgba(255, 106, 31, 0.35), inset 0 0 18px rgba(255, 80, 0, 0.25), 0 0 14px rgba(255, 106, 31, 0.35); }
+  .gt-mini.lava .flag { background: #ffd166; } .gt-mini.lava .flag::after { border-left-color: var(--lava); }
+  .gt-mini.lava .pool { left: 6px; top: 4px; width: 40px; height: 22px; border-radius: 50%; background: radial-gradient(ellipse at 40% 40%, #ffe08a, #ff6a1f 45%, #c3261d 80%); box-shadow: 0 0 10px rgba(255, 106, 31, 0.6); }
+  .gt-mini.lava .pool::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; background: radial-gradient(ellipse, rgba(255, 140, 40, 0.55), transparent 70%); animation: lavaglow 1.8s ease-in-out infinite alternate; }
+  @keyframes lavaglow { from { opacity: 0.35; } to { opacity: 1; } }
+  .gt-mini.lava .cone { left: 56px; bottom: 4px; width: 0; height: 0; border-left: 16px solid transparent; border-right: 16px solid transparent; border-bottom: 28px solid #3a2a26; }
+  .gt-mini.lava .cone::after { content: ""; position: absolute; left: -5px; top: 3px; width: 10px; height: 6px; border-radius: 0 0 5px 5px; background: var(--lava); box-shadow: 0 0 6px var(--lava); }
+  /* the leader, written on a label under the picture; and you, stuck on the picture when you are on the board but below the three rows showing */
+  .gt-lead, .gt-me { z-index: 1; padding: 2px 6px; border-radius: 6px; background: rgba(243, 234, 215, 0.94); color: var(--ink); font: 700 0.62rem/1.2 var(--body); white-space: nowrap; overflow: hidden; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); max-width: 100%; }
+  .gt-lead { display: grid; justify-self: start; min-width: 72px; padding: 3px 7px 2px; line-height: 1.15; transform: rotate(-1.5deg); transform-origin: 0 50%; border: 1px solid var(--rule); }
+  .gt-me { position: absolute; right: 4px; top: 52px; display: flex; align-items: baseline; gap: 4px; transform: rotate(1.5deg); background: rgba(233, 196, 106, 0.96); }
+  .gt-lead small, .gt-me small { font: 700 0.5rem var(--body); letter-spacing: 0.1em; text-transform: uppercase; color: var(--pencil); flex: none; }
+  .gt-lead b, .gt-me b { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+  #page-arcade .gcard.open .gt-lead b { color: var(--felt); }
+  /* the words */
+  .gt-main, .rk-main { position: relative; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  #page-arcade .bc-title, #page-arcade .gcard .bc-title { flex-direction: row; align-items: center; gap: 8px; text-align: left; font: 800 1.02rem var(--display); color: var(--ink); letter-spacing: -0.01em; text-transform: uppercase; }
+  .gt-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* the badge: the course you played last gets "Tee off" in its colour, the others a quiet pencil "Play"; the rink's "Play" is the page's one pulse */
+  #page-arcade .bc-play { margin-left: auto; font: 700 0.58rem var(--body); letter-spacing: 0.1em; text-transform: uppercase; color: var(--pencil); background: transparent; box-shadow: inset 0 0 0 1.5px var(--rule); border-radius: 999px; padding: 3px 8px; animation: none; }
+  #page-arcade .gcard.last .bc-play, #page-arcade #hockeyboard .bc-play { color: var(--course-ink); background: var(--course); box-shadow: none; }
+  #page-arcade #hockeyboard .bc-play { animation: playcue 1.6s ease-in-out infinite; }
+  @keyframes playcue { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+  .gt-blurb { font: 500 0.72rem var(--body); color: var(--pencil); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* the card: pencil-ruled rows, three showing in a fixed 62px, the rest scroll and idle (golfCycle) */
+  #page-arcade #golfboard-body, #page-arcade .gcard .gb-body { flex: none; height: 62px; max-height: 62px; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; position: relative; margin-top: 2px; border-top: 1.5px solid var(--rule); }
+  #page-arcade .lb { gap: 0; }
+  #page-arcade .gcard .lb-row { grid-template-columns: 14px minmax(0, 1fr) auto; gap: 6px; height: 20px; padding: 0 2px 0 0; border-radius: 0; background: transparent; border-bottom: 1px solid var(--rule); font: 500 0.74rem/1 var(--body); color: var(--ink); }
+  #page-arcade .lb-row .rank, #page-arcade .lb-row:nth-child(-n+3) .rank { font: 700 0.64rem var(--mono); color: var(--pencil); }
+  #page-arcade .gcard .lb-row .stat { font: 700 0.72rem var(--mono); min-width: 22px; height: 16px; display: inline-grid; place-items: center; padding: 0 4px; border-radius: 999px; color: var(--ink); background: transparent; border: 0; }
+  /* golf scorecard notation: under par circled, over par boxed, even plain pencil */
+  #page-arcade .gcard .lb-row .stat.under { box-shadow: inset 0 0 0 1.5px var(--ink); border-radius: 999px; }
+  #page-arcade .gcard .lb-row .stat:not(.under):not(.even) { box-shadow: inset 0 0 0 1.5px var(--ink); border-radius: 3px; }
+  #page-arcade .gcard .lb-row .stat.even { color: var(--pencil); }
+  #page-arcade .gcard .lb-row.lead .stat { background: var(--gold); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--course); }
+  #page-arcade .lb-row.me { box-shadow: none; background: linear-gradient(90deg, transparent 0, color-mix(in srgb, var(--course) 22%, transparent) 6%, color-mix(in srgb, var(--course) 22%, transparent) 94%, transparent 100%); }
+  #page-arcade .gcard .lb-empty { margin-top: 6px; padding: 7px 8px; text-align: left; font: 500 0.72rem/1.3 var(--body); color: var(--pencil); border: 1.5px dashed var(--rule); border-radius: 8px; }
+  /* the fade over the bottom of a list with more rows: drawn on the right column itself, so it needs no offsets */
+  #page-arcade .gcard.scrolls:not(.at-end)::before { content: none; }
+  #page-arcade .gcard.scrolls:not(.at-end) .gt-main::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 14px; background: linear-gradient(rgba(243, 234, 215, 0), var(--paper) 85%); pointer-events: none; z-index: 1; }
+  #page-arcade .gcard .lb-scroll { left: auto; right: 14px; bottom: -8px; transform: none; font: 700 0.54rem var(--body); letter-spacing: 0.08em; color: var(--felt-ink); background: var(--felt); border-color: var(--felt); padding: 1px 6px; animation: sccue 1.2s ease-in-out infinite; }
+  @keyframes sccue { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(2px); } }
+  /* not found on this phone yet: pictures dimmed, a pencil "?" sticker, and the note under the stack */
+  #page-arcade #golfboard:not(.replay) .gt-mini { opacity: 0.55; }
+  #page-arcade #golfboard:not(.replay) .gt-pic::after { content: "?"; position: absolute; left: 38px; top: 23px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--paper); color: var(--pencil); font: 800 1rem var(--display); box-shadow: 0 0 0 2px var(--pencil), 0 2px 4px rgba(0, 0, 0, 0.25); transform: rotate(8deg); z-index: 2; }
+  .sc-locked { margin: 10px 2px 0; padding: 8px 10px; border: 1.5px dashed var(--rule); border-radius: 10px; font: 500 0.8rem/1.4 var(--body); color: var(--pencil); }
+  .sc-locked b { color: var(--ink); }
+  #golfboard.replay + .sc-locked { display: none; }
+  /* the rink */
+  .rk-mini { background: radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.08), transparent 60%), #15161a; border: 4px solid #2b2f36; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+  .rk-mini .rk-line { left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: var(--red); }
+  .rk-mini .rk-circle { left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; border: 2px solid var(--red); }
+  .rk-mini .rk-goal { left: 50%; width: 30px; height: 4px; margin-left: -15px; background: #f3ead7; border-radius: 2px; }
+  .rk-mini .rk-goal.top { top: 0; } .rk-mini .rk-goal.bot { bottom: 0; }
+  .rk-mini .rk-mallet { width: 16px; height: 16px; border-radius: 50%; left: 50%; margin-left: -8px; box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.6); }
+  .rk-mini .rk-mallet.claude { top: 8px; background: var(--claude); animation: malletc 2.4s ease-in-out infinite alternate; }
+  .rk-mini .rk-mallet.you { bottom: 8px; background: #f3ead7; animation: mallety 2.4s ease-in-out infinite alternate; }
+  .rk-mini .rk-puck { width: 8px; height: 8px; border-radius: 50%; left: 50%; top: 50%; margin: -4px 0 0 -4px; background: #000; box-shadow: 0 0 0 1.5px #f3ead7; animation: puck 2.4s ease-in-out infinite alternate; }
+  @keyframes puck { from { transform: translate(-22px, -18px); } to { transform: translate(22px, 18px); } }
+  @keyframes malletc { from { transform: translateX(-18px); } to { transform: translateX(18px); } }
+  @keyframes mallety { from { transform: translateX(14px); } to { transform: translateX(-16px); } }
+  #page-arcade .bc-sub { margin: 0; font: 600 0.68rem var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--pencil); }
+  #page-arcade .hb.mini { justify-content: flex-start; gap: 12px; padding: 2px 0 0; }
+  #page-arcade .hb-side .n { font: 800 1.9rem/1 var(--display); letter-spacing: -0.03em; color: var(--pencil); }
+  #page-arcade .hb-side.lead .n { color: var(--felt); } #page-arcade .hb-side.claude.lead .n { color: var(--claude); }
+  #page-arcade .hb-side small, #page-arcade .hb-vs { color: var(--pencil); }
+  .rk-you { font: 600 0.66rem var(--body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--pencil); font-variant-numeric: tabular-nums; }
+  .rk-you:empty { display: none; }
+  #page-arcade #hockeyboard-body { grid-column: 1 / -1; }
+  #page-arcade #hockeyboard-body:empty { display: none; }
+  #page-arcade .hb-rec { margin-top: 8px; padding-top: 6px; border-top: 1.5px solid var(--rule); }
+  #page-arcade .hb-rec-list { font: 500 0.76rem var(--body); color: var(--ink); }
+  #page-arcade .hb-rec-list small { color: var(--pencil); } #page-arcade .hb-rec-list b .w { color: var(--felt); } #page-arcade .hb-rec-list b .l { color: var(--red); }
+  /* a scrawled note at the bottom */
+  .sc-foot { margin: 16px 2px 0; font: 400 1.05rem/1.2 var(--script); color: var(--pencil); transform: rotate(-1.5deg); transform-origin: 0 50%; }
+  @media (prefers-reduced-motion: reduce) { #page-arcade .bc-play, #page-arcade #hockeyboard .bc-play, #page-arcade .lb-scroll, .rk-mini .rk-puck, .rk-mini .rk-mallet, .gt-mini.lava .pool::after, .gt-mini.classic .mill::before { animation: none; } #page-arcade .gcard, #page-arcade #hockeyboard { transition: none; } }
 
   /* ---- Games: retro video game. CRT scanlines, pixel-shadow title, high-score boards, level-select cards. ---- */
   #page-games {

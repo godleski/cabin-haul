@@ -72,10 +72,10 @@
   PARTIES.forEach(function (p) { p.forEach(function (n) { if (NAMES.indexOf(n) < 0) NAMES.push(n); }); });
 
   // ---- Bubble physics on a canvas: grab, fling, collide. A quick tap picks the name.
-  //      Air hockey is played from the Games tab; mini golf is the one hidden game (the word "putt"). ----
+  //      Air hockey is played from the Arcade tab; mini golf is the one hidden game (the word "putt"). ----
   var sim = null, scores = null, scoresSub = false, boardShown = false;
-  // Air hockey is always open from the Games tab. Mini golf is hidden on the name screen; once this phone has found it,
-  // its board on the Games tab becomes a play button too.
+  // Air hockey is always open from the Arcade tab. Mini golf is hidden on the name screen; once this phone has found it,
+  // its course tiles on the Arcade tab become play buttons too.
   // a phone that has played mini golf once knows about it; so does anyone whose name is already on a golf board (the flag
   // lives in local storage, which a home-screen shortcut or the prototype may not share with the browser)
   function foundGame(k) {
@@ -97,7 +97,7 @@
     var back = arcadeFrom; arcadeFrom = null;
     if (sim) sim.stop(); sim = null;
     if (!me) { showScreen(); return; }
-    $('pick').hidden = true; tab = back || 'games'; showScreen();
+    $('pick').hidden = true; tab = back || 'arcade'; showScreen();
   }
   function golfToPar(strokes, par) { var d = strokes - par; return d === 0 ? 'E' : d > 0 ? '+' + d : String(d); }
   // The three mini golf courses: nine holes each, par 27, a board apiece. The arena holds the layouts and palettes.
@@ -161,7 +161,7 @@
     var set = golfSet(golfSetPick);
     el.innerHTML = '<div class="gp-card"><div class="gp-title">Who\u2019s putting?</div><div class="info-sub">Nine holes, par 27. Your best round goes on the board.</div>' +
       golfSetButtons('gp-sets') + '<div class="gp-blurb" id="gp-blurb">' + esc(set.blurb) + '</div>' +
-      (foundGame('golf') ? '<div class="gp-hint">\u26F3 You\u2019ve found this one already. Pick your name, and the Mini golf board on the Games tab starts a round. No hunting.</div>' : '') +
+      (foundGame('golf') ? '<div class="gp-hint">\u26F3 You\u2019ve found this one already. Pick your name, and any course tile on the Arcade tab starts a round. No hunting.</div>' : '') +
       '<div class="name-grid">' + NAMES.map(function (n) { return '<button type="button" data-golfer="' + esc(n) + '" aria-pressed="false">' + esc(n) + '</button>'; }).join('') + '</div>' +
       '<div class="mafia-actions"><button type="button" class="linkbtn" id="golf-skip">Never mind</button></div></div>';
     $('roster').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -183,7 +183,7 @@
     }
     if (e.target.closest('#golf-skip')) renderGolfPost(false);
   });
-  // A physics arena of name balls. opts: box, names, onPick(name), games (hold a ball to start hockey; off, hockey starts from the Games tab), current (ring this name).
+  // A physics arena of name balls. opts: box, names, onPick(name), games (hold a ball to start hockey; off, hockey starts from the Arcade tab), current (ring this name).
   function renderArena(opts) {
     var box = opts.box, names = opts.names;
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1611,7 +1611,7 @@
       if (!running) return;
       checkWake(now);
       if (playing && !golf && !game) setPlaying(false);
-      if (opts.replay && !golf && !game) { running = false; opts.onExit(); return; }   // launched from the Games tab: hand back when the game ends
+      if (opts.replay && !golf && !game) { running = false; opts.onExit(); return; }   // launched from the Arcade tab: hand back when the game ends
       var dt = Math.min(32, now - last) / 16.67; last = now;
       if (golf) {
         if (!golfPaused) golfPhysics(dt, now);
@@ -1621,7 +1621,7 @@
       }
       if (game) {
         gamePhysics(dt, now);
-        if (game.over && now - game.over.t > 2400) {   // back to the bubbles, or back to the Games tab for a replay
+        if (game.over && now - game.over.t > 2400) {   // back to the bubbles, or back to the Arcade tab for a replay
           if (opts.replay) { game = null; setPlaying(false); running = false; opts.onExit(); return; }
           running = false; renderRoster(); return;
         }
@@ -1756,7 +1756,7 @@
   }
 
   // ---- Bottom dock ----
-  var TABS = ['home', 'bringing', 'cabin', 'games', 'hibachi'];
+  var TABS = ['home', 'bringing', 'cabin', 'arcade', 'games', 'hibachi'];
   var tab = 'cabin', indPlaced = false;
   function showTab(name) {
     var changed = name !== tab;
@@ -1769,7 +1769,8 @@
     });
     document.body.classList.toggle('tab-home', tab === 'home');
     document.body.setAttribute('data-tab', tab);   // the dock tints its pill to the page
-    if (tab === 'games') { golfScrollCue(); golfCycle(); renderArcadeCues(); if (smashResetPair()) renderSmash(); } else { clearTimeout(cycleTimer); }   // the page was hidden until now, so the measurements were zero; Smash opens on the main event
+    if (tab === 'arcade') { golfScrollCue(); golfCycle(); renderArcadeCues(); } else { clearTimeout(cycleTimer); }   // the page was hidden until now, so the measurements were zero
+    if (tab === 'games' && smashResetPair()) renderSmash();   // Smash opens on the main event (the Party tab)
     moveNavInd();
     updateChatBadge();
     window.scrollTo(0, 0); lastY = 0; setNavAway(false);
@@ -2319,6 +2320,8 @@
     var tally = $('hockeyboard-tally'), tallyHtml = '<div class="hb-side' + (h > c ? ' lead' : '') + '"><span class="n">' + h + '</span><small>Humans</small></div><span class="hb-vs">vs</span><div class="hb-side claude' + (c > h ? ' lead' : '') + '"><span class="n">' + c + '</span><small>Claude</small></div>';
     if (tally) tally.innerHTML = tallyHtml;   // beside the title; on an older page, in the body
     body.innerHTML = (tally ? '' : '<div class="hb">' + tallyHtml + '</div>') + (rows.length ? '<div class="hb-rec"><div class="hb-rec-list">' + rec('Best', rows[0]) + (worst ? rec('Worst', worst) : '') + '</div></div>' : '');
+    var you = $('hockeyboard-you'), mine = me && by[me];   // your own record, beside the tally on the rink tile
+    if (you) you.textContent = mine ? 'Your record ' + (mine.w || 0) + '–' + (mine.l || 0) : '';
   }
   // The three courses side by side: one arcade box per course, each with its own list, and the three lists scroll and
   // idle in lockstep. (An older page without the three boxes gets three columns in its one box instead.)
@@ -2337,8 +2340,9 @@
     return rows.length ? rows.map(function (r, i) {
       var dtxt = golfToPar(r.best, par);
       return '<div class="lb-row' + (r.name === me ? ' me' : '') + (r.best === rows[0].best ? ' lead' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat' + (dtxt.charAt(0) === '-' ? ' under' : dtxt === 'E' ? ' even' : '') + '">' + dtxt + '</span></div>';   // the leader (and anyone tied) lit up
-    }).join('') : '<div class="lb-empty">Nobody yet</div>';
+    }).join('') : '<div class="lb-empty">Open course. First round goes on the card.</div>';
   }
+  function ordinal(n) { var s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
   function renderGolfBoard() {
     var trio = $('golfboard'), st = $('golfboard-status'), sets = $('golfboard-sets');
     if (st) st.hidden = true;   // an older page still has the old status line
@@ -2359,8 +2363,19 @@
           return '<div class="gm-score' + (b === lead[c.id] ? ' lead' : '') + (t.charAt(0) === '-' ? ' under' : t === 'E' ? ' even' : '') + '" data-golfset="' + c.id + '">' + t + '</div>';
         }).join('');
       }).join('') + '</div>' : '<div class="lb-empty">Nobody has played yet</div>';
-    } else if (cards.length) {
-      Array.prototype.forEach.call(cards, function (card) { card.querySelector('.gb-body').innerHTML = '<div class="lb">' + golfListHtml(golfBoardRows(card.getAttribute('data-golfcol'))) + '</div>'; });
+    } else if (cards.length) {   // the Arcade tab: a tile per course, the leader printed on its picture
+      Array.prototype.forEach.call(cards, function (card) {
+        var rows = golfBoardRows(card.getAttribute('data-golfcol')), mine = -1;
+        for (var i = 0; i < rows.length; i++) if (rows[i].name === me) { mine = i; break; }
+        card.querySelector('.gb-body').innerHTML = '<div class="lb">' + golfListHtml(rows) + '</div>';
+        var lead = card.querySelector('.gt-lead b'), you = card.querySelector('.gt-me');   // "Open" until someone finishes a round
+        if (lead) lead.textContent = rows.length ? (rows[0].name === me ? 'You' : rows[0].name) + ' · ' + golfToPar(rows[0].best, 27) : 'Open';
+        if (you) {   // and you, when you are on the board but not in the three rows showing
+          you.hidden = mine < 3;
+          if (mine >= 3) you.querySelector('b').textContent = golfToPar(rows[mine].best, 27) + ' · ' + ordinal(mine + 1);
+        }
+        card.classList.toggle('open', !rows.length);
+      });
     } else {   // the older single box: three columns under a row of headers
       var body = $('golfboard-body'); if (!body) return;
       if (sets && !sets.firstChild) sets.innerHTML = '<div class="gb-cols gb-heads">' + golfBoardHeads() + '</div>';
@@ -2370,13 +2385,13 @@
   }
   // Left alone, the board idles through its rows a row at a time, rests at the bottom and starts over, so the
   // half-height list shows everyone without a scroll. A finger on the list pauses it for a while, and it only runs
-  // while the Games tab is showing, the list actually overflows, and nobody is mid-game.
+  // while the Arcade tab is showing, the list actually overflows, and nobody is mid-game.
   var cycleTimer = null, cyclePauseUntil = 0;
   function golfCycle() {
     clearTimeout(cycleTimer);
     var bodies = golfBodies(), card = $('golfboard'); if (!bodies.length || !card) return;
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    function live() { return tab === 'games' && !document.hidden && !$('main').hidden && !document.body.classList.contains('playing') && card.classList.contains('scrolls'); }
+    function live() { return tab === 'arcade' && !document.hidden && !$('main').hidden && !document.body.classList.contains('playing') && card.classList.contains('scrolls'); }
     function step() {
       if (!live()) return;
       if (Date.now() < cyclePauseUntil) { cycleTimer = setTimeout(step, 800); return; }
@@ -2421,18 +2436,31 @@
       if (x[1]) { x[0].setAttribute('role', 'button'); x[0].setAttribute('tabindex', '0'); x[0].setAttribute('aria-label', x[2]); }
       else { x[0].removeAttribute('role'); x[0].removeAttribute('tabindex'); x[0].removeAttribute('aria-label'); }
     });
-    if (lede) lede.innerHTML = g ? 'Tap a board to <b>play</b>. You found the hidden one too.'
-      : 'Tap the air hockey board to <b>play</b>. Mini golf is hidden on the name screen. Tap <b>Not you?</b> and poke around.';
+    // the course you played last is the obvious next tap: it wears "Tee off" in its colour, the other two a quiet "Play"
+    Array.prototype.forEach.call(gb.querySelectorAll('.gcard'), function (c) {
+      var last = g && c.getAttribute('data-golfcol') === golfSetPick, badge = c.querySelector('.bc-play');
+      c.classList.toggle('last', last);
+      if (badge) badge.textContent = last ? '▶ Tee off' : 'Play';
+    });
+    if (lede) lede.innerHTML = g ? 'Tap a course to <b>tee off</b>, or the rink to face Claude. Best round per person goes on the card.'
+      : 'Tap the rink to face <b>Claude</b>. The courses open once you find mini golf on the name screen.';
   }
-  // a tap on a course's header or column starts that course; anywhere else on the card, the last course played
+  // a tap on a course's tile starts that course; anywhere else on the card, the last course played
   function golfCardPick(e) {
     var s = e.target.closest('[data-golfset]') || e.target.closest('[data-golfcol]');
     if (s) pickGolfSet(s.getAttribute('data-golfset') || s.getAttribute('data-golfcol'));
   }
   [['hockeyboard', 'hockey'], ['golfboard', 'golf']].forEach(function (x) {
     var el = $(x[0]);
-    el.addEventListener('click', function (e) { if (x[1] === 'golf') golfCardPick(e); playAgain(x[1]); });
-    el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (x[1] === 'golf') golfCardPick(e); playAgain(x[1]); } });
+    function go(e) {
+      if (x[1] === 'golf') {
+        if (me && !arcadeFrom && !foundGame('golf')) { toast('Mini golf is hidden on the name screen. Tap Not you? and poke around.'); buzz(4); return; }   // a locked tile answers instead of staying silent
+        golfCardPick(e);
+      }
+      playAgain(x[1]);
+    }
+    el.addEventListener('click', go);
+    el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(e); } });
   });
   window.addEventListener('resize', golfScrollCue);
 
@@ -3939,7 +3967,7 @@
     lines.push('Style: one to three short sentences unless someone asks for more. Plain text only: no markdown, no headers, no bullet lists, no bold. At most one emoji, usually none. Do not start with your name. Match the language and tone of the message you are answering.');
     lines.push('The trip: thirteen friends at a cabin in Winter Park, Colorado, October 23 to 25, 2026. Check-in Friday 4 PM, checkout Sunday 10 AM. Address 2225 Lakota Trail. Mitch organised it and built this app.');
     lines.push('People: ' + NAMES.join(', ') + '. Couples: ' + COUPLES.join('; ') + '. Drew always moderates Mafia. Jessie and Conner join for hibachi night only.');
-    lines.push('The app has tabs: FAQ (cabin details, the Saturday dinner vote), Predictions (a sportsbook-style board where everyone bets on things like who passes out first), Bringing (who brings what), Games, and Hibachi (everyone’s order for the hibachi dinner; Mitch’s plate is split between everyone else). Games: air hockey against you (Claude), nine-hole mini golf, the Mitch vs Luke Smash tally, a team picker, Liv’s Eyes Only, Mafia, Spyfall, Fishbowl, and an Off Topic expansion pack. The wall is the one group chat; each prediction has its own trash-talk thread.');
+    lines.push('The app has tabs: FAQ (cabin details, the Saturday dinner vote), Predictions (a sportsbook-style board where everyone bets on things like who passes out first), Bringing (who brings what), Arcade (air hockey against you, Claude, and nine-hole mini golf on three courses: Classic, Frostbite and Volcano, each with its own leaderboard), Party (the room games: the Mitch vs Luke Smash tally, a team picker, Liv’s Eyes Only, Mafia, Spyfall, Fishbowl, and an Off Topic expansion pack), and Hibachi (everyone’s order for the hibachi dinner; Mitch’s plate is split between everyone else). The wall is the one group chat; each prediction has its own trash-talk thread.');
     try {
       var sc = scores || {}, h = sc.humans || 0, c = sc.cpu || 0, by = sc.by || {};
       var recs = Object.keys(by).map(function (n) { return n + ' ' + (by[n].w || 0) + '-' + (by[n].l || 0); });
