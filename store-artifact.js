@@ -173,12 +173,13 @@
     golfScores: function (onDoc) {
       ensure().then(function () {
         if (!db) return;
-        ['classic', 'frost', 'lava'].forEach(function (c) {
+        ['lava', 'frost', 'classic'].forEach(function (c) {
           db.doc('meta/' + (c === 'classic' ? 'golf9' : 'golf9-' + c)).onSnapshot(function (snap) { onDoc(snap.exists ? Object.assign({}, snap.data()) : { by: {} }, c); }, function () { /* ignore */ });
         });
       });
     },
-    recordGolf: function (name, strokes, course) {
+    // A finished round (strokes) and/or time spent on the course (secs). Either may be omitted.
+    recordGolf: function (name, strokes, course, secs) {
       return ensure().then(function () {
         if (!db) throw new Error('not signed in');
         var ref = db.doc('meta/' + (!course || course === 'classic' ? 'golf9' : 'golf9-' + course));
@@ -186,12 +187,16 @@
           var sc = snap.exists ? JSON.parse(JSON.stringify(snap.data())) : { by: {} };
           sc.by = sc.by || {};
           var p = sc.by[name] || { best: null, rounds: 0 };
-          p.rounds++; p.last = strokes; p.last_at = new Date().toISOString();
-          if (p.best == null || strokes < p.best) p.best = strokes;
+          if (strokes != null) {
+            p.rounds++; p.last = strokes; p.last_at = new Date().toISOString();
+            if (p.best == null || strokes < p.best) p.best = strokes;
+          }
+          if (secs > 0) p.secs = (p.secs || 0) + Math.round(secs);
           sc.by[name] = p;
           return ref.set(sc);
         });
       });
-    }
+    },
+    recordGolfTime: function (name, secs, course) { return window.STORE.recordGolf(name, null, course, secs); }
   };
 })();

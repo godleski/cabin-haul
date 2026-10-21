@@ -330,7 +330,7 @@
   .bc-title { font: 700 0.95rem var(--display); display: flex; align-items: center; gap: 6px; }
   .bc-play { display: none; margin-left: auto; font: 700 0.62rem var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--pine-ink); background: var(--pine); padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
   .board-card.replay { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; transition: transform 120ms ease; }
-  .board-card.replay:active { transform: scale(0.97); }
+  .board-card.replay:not(:has(.gs:active)):active { transform: scale(0.97); }
   .board-card.replay .bc-play { display: inline-block; }
   .bc-sub { font-size: 0.74rem; color: var(--muted); margin: 2px 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .bc-sub b { color: var(--ac); }
@@ -368,7 +368,7 @@
   .gp-sets, .gb-sets { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
   .gp-sets { margin-top: 10px; }
   .gb-sets { margin-bottom: 8px; }
-  .gs { display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; padding: 7px 4px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font: 600 0.8rem var(--body); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .gs { display: flex; align-items: center; justify-content: center; gap: 3px; min-width: 0; padding: 7px 2px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font: 600 0.74rem var(--body); cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .gs .gs-ic { font-size: 0.95rem; line-height: 1; }
   .gs .gs-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .gs[aria-pressed="true"] { background: var(--pine); border-color: var(--pine); color: var(--pine-ink); }

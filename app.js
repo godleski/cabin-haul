@@ -128,17 +128,23 @@
     sim = renderArena({ box: $('roster'), names: NAMES, games: false, replay: !!arcadeFrom, onExit: arcadeExit, onPick: function (name) {
       me = name; myParty = partyOf(me); lsSet('cabin-haul-me', me);
       showScreen();
-    }, onGolfDone: function (total, setId) {
+    }, onGolfDone: function (total, setId, secs) {
       var who = golfer; golfer = null;
       if (!who || !store || !store.recordGolf) return;
       var par = 27, d = golfToPar(total, par), set = golfSet(setId);
-      store.recordGolf(who, total, set.id).then(function () { toast(who + ' finished ' + set.name + ' ' + (d === 'E' ? 'even' : d) + '. On the board.'); }).catch(function (err) { toast('Couldn\u2019t post that: ' + ((err && err.message) || err)); });
+      if (set.id !== 'classic' && store.recordGolf.length < 3) { toast('Reload the app to post ' + set.name + ' rounds.'); return; }   // an older data layer only knows the classic board
+      store.recordGolf(who, total, set.id, secs).then(function () { toast(who + ' finished ' + set.name + ' ' + (d === 'E' ? 'even' : d) + '. On the board.'); }).catch(function (err) { toast('Couldn\u2019t post that: ' + ((err && err.message) || err)); });
+    }, onGolfTime: function (setId, secs, quit) {   // time on the course, banked hole by hole and when someone quits
+      var who = golfer; if (quit) golfer = null;
+      if (!who || !store || !store.recordGolfTime || !(secs > 0)) return;
+      store.recordGolfTime(who, secs, golfSet(setId).id).catch(function () { /* the next flush carries on */ });
     } });
   }
+  function golfMins(secs) { var m = Math.round((secs || 0) / 60); return m >= 60 ? Math.floor(m / 60) + 'h ' + (m % 60) + 'm' : m + 'm'; }
   // mini golf: pick a course and say who's putting before the round so the board can keep score
   var golfer = null;
   function golfSetButtons(cls) {
-    return '<div class="' + cls + '" role="radiogroup" aria-label="Course">' + GOLF_SETS.map(function (s) {
+    return '<div class="' + cls + '" role="group" aria-label="Course">' + GOLF_SETS.map(function (s) {
       return '<button type="button" class="gs" data-golfset="' + s.id + '" aria-pressed="' + (s.id === golfSetPick) + '"><span class="gs-ic" aria-hidden="true">' + s.icon + '</span><span class="gs-nm">' + s.name + '</span></button>';
     }).join('') + '</div>';
   }
@@ -593,7 +599,7 @@
         tree: 'pine', bloom: ['#ff6fae', '#ffd23f', '#7ec8ff', '#ffffff'], splash: 'SPLASH! +1', plate: 'rgba(255,255,255,0.16)' },
       frost: { roughTile: 'snow', fairTile: 'ice', rough: ['#e4eef8', '#cfdeee', '#ffffff'], fair: ['#b7e0f4', '#9fd0ea', '#d9f1fc'], rail: ['#3f6a9a', '#7fb3e0', '#d6efff'], shade: 'rgba(20,50,90,0.22)', outline: '#1f3a5a',
         cup: ['#7fb3d8', '#17263d', '#0a1322'], flag: '#ff5a3c', pole: '#ffffff', sand: ['#f3f6fa', '#c6d4e3', '#dde6f0'], water: ['#0f3560', '#1d5a9a', '#7cc3ef'], hub: ['#2b3f5a', '#44608a', '#ffd23f'],
-        tree: 'snowpine', bloom: ['#ffffff', '#cfe8ff'], splash: 'BRRR! +1', plate: 'rgba(255,255,255,0.3)' },
+        tree: 'snowpine', bloom: ['#8fb8dc', '#b9d6ee'], splash: 'BRRR! +1', plate: 'rgba(40,100,160,0.16)', tee: 'rgba(20,50,90,0.4)' },
       lava: { roughTile: 'rock', fairTile: 'ash', rough: ['#2b2326', '#1d171a', '#3b3135'], fair: ['#5b545c', '#4d4750', '#6b646e'], rail: ['#3c0d09', '#7a1e12', '#ff7a2a'], shade: 'rgba(0,0,0,0.38)', outline: '#1a0d0a',
         cup: ['#8a3a1a', '#1a0a08', '#000000'], flag: '#ffd23f', pole: '#f7f7f0', sand: ['#8c8780', '#6f6a64', '#a39d95'], water: ['#b3300c', '#ff6a1f', '#ffd34a'], hub: ['#2a1a18', '#4a2a26', '#ff7a2a'],
         tree: 'boulder', bloom: ['#ff7a2a', '#ffd23f', '#ff3b1f'], splash: 'LAVA! +1', plate: 'rgba(255,200,120,0.18)' }
@@ -607,7 +613,7 @@
       setPlaying(true);
       var id = HOLES_BY_SET[setId] ? setId : 'classic';
       var order = HOLES_BY_SET[id].slice().sort(function () { return Math.random() - 0.5; }).slice(0, GOLF_HOLES);
-      golf = { set: id, hole: 0, strokes: 0, total: 0, t0: performance.now(), msg: null, done: false, courses: order };
+      golf = { set: id, hole: 0, strokes: 0, total: 0, t0: performance.now(), started: performance.now(), flushed: performance.now(), msg: null, done: false, courses: order };
       loadHole();
     }
     // The rails that cross row y around x: the inner faces of the nearest wall on each side (the canvas edge if none).
@@ -797,8 +803,8 @@
         b.x = g.sinkFrom.x + (g.cup.x - g.sinkFrom.x) * e; b.y = g.sinkFrom.y + (g.cup.y - g.sinkFrom.y) * e;   // rolls the last inch, no snap
         b.scale = Math.max(0, 1 - t * 0.9); b.alpha = Math.max(0, 1 - t);
         if (now - g.sunk > 1700) {
-          if (g.hole + 1 < g.courses.length) { g.hole++; loadHole(); }
-          else if (!g.done) { g.done = now; if (opts.onGolfDone) opts.onGolfDone(g.total, g.set); }
+          if (g.hole + 1 < g.courses.length) { if (opts.onGolfTime) opts.onGolfTime(g.set, (now - g.flushed) / 1000, false); g.flushed = now; g.hole++; loadHole(); }
+          else if (!g.done) { g.done = now; g.roundSecs = (now - g.started) / 1000; if (opts.onGolfDone) opts.onGolfDone(g.total, g.set, (now - g.flushed) / 1000); g.flushed = now; }
         }
         if (g.done && now - g.done > 2600) { golf = null; }
         return;
@@ -1024,13 +1030,13 @@
       o.strokeStyle = T.rail[1]; o.lineWidth = width; pathFn(); o.stroke();
       o.save(); o.translate(0, -2); o.strokeStyle = T.rail[2]; o.lineWidth = Math.max(2, width - 7); pathFn(); o.stroke(); o.restore();
     }
-    function rr(o, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); o.beginPath(); o.moveTo(x + r, y); o.arcTo(x + w, y, x + w, y + h, r); o.arcTo(x + w, y + h, x, y + h, r); o.arcTo(x, y + h, x, y, r); o.arcTo(x, y, x + w, y, r); o.closePath(); }
+    function rr(o, x, y, w, h, r) { r = Math.max(0, Math.min(r, w / 2, h / 2)); o.beginPath(); o.moveTo(x + r, y); o.arcTo(x + w, y, x + w, y + h, r); o.arcTo(x + w, y + h, x, y + h, r); o.arcTo(x, y + h, x, y, r); o.arcTo(x, y, x + w, y, r); o.closePath(); }
     function railBlock(o, rc) {
       if (rc.w <= 0 || rc.h <= 0) return;
       o.fillStyle = T.shade; rr(o, rc.x + 3, rc.y + 8, rc.w, rc.h, 6); o.fill();
       o.fillStyle = T.rail[0]; rr(o, rc.x, rc.y + 5, rc.w, rc.h, 6); o.fill();
       o.fillStyle = T.rail[1]; rr(o, rc.x, rc.y, rc.w, rc.h, 6); o.fill();
-      o.fillStyle = T.rail[2]; rr(o, rc.x + 4, rc.y + 3, rc.w - 8, Math.max(3, rc.h * 0.3), 3); o.fill();
+      if (rc.w > 10) { o.fillStyle = T.rail[2]; rr(o, rc.x + 4, rc.y + 3, rc.w - 8, Math.max(3, rc.h * 0.3), 3); o.fill(); }
     }
     function snowBank(o, rc) {   // a soft drift: a puffy white mound with a cold shadow
       o.fillStyle = T.shade; rr(o, rc.x + 2, rc.y + 7, rc.w, rc.h, rc.h / 2); o.fill();
@@ -1229,7 +1235,7 @@
       o.fillStyle = T.flag; o.beginPath(); o.moveTo(px + 1, py - 48); o.lineTo(px + 30, py - 39); o.lineTo(px + 1, py - 30); o.closePath(); o.fill();
       o.fillStyle = T.flag === '#ffd23f' ? '#1a0d0a' : '#fff'; o.font = '800 10px ' + fontFamily; o.textAlign = 'center'; o.textBaseline = 'middle'; o.fillText(String(g.hole + 1), px + 12, py - 39);
       // tee marker
-      o.fillStyle = 'rgba(255,255,255,0.45)'; o.beginPath(); o.arc(g.def.tee[0] * W, g.def.tee[1] * H, 3.5, 0, Math.PI * 2); o.fill();
+      o.fillStyle = T.tee || 'rgba(255,255,255,0.45)'; o.beginPath(); o.arc(g.def.tee[0] * W, g.def.tee[1] * H, 3.5, 0, Math.PI * 2); o.fill();
       // the rough's furniture
       g.flowers.forEach(function (f) { drawFlower(o, f.x, f.y, f.c); });
       g.trees.sort(function (a, b) { return a.y - b.y; }).forEach(function (t) { drawTree(o, t.x, t.y, t.r, t.kind); });
@@ -1346,7 +1352,7 @@
         ctx.globalAlpha = 0.4 * k; ctx.fillStyle = T.outline; ctx.fillRect(0, H / 2 - 56, W, 112); ctx.globalAlpha = k;
         chunky(g.done ? 'ROUND OVER' : g.msg, W / 2, H / 2 - 14, 34, '#ffd23f', 'center');
         var rp2 = golfToPar(g.total, GOLF_PAR * g.courses.length);
-        chunky(g.done ? (rp2 === 'E' ? 'EVEN PAR' : rp2) + ' FOR THE ROUND' : g.strokes + (g.strokes === 1 ? ' stroke' : ' strokes') + ' · par ' + GOLF_PAR, W / 2, H / 2 + 22, 14, '#fff', 'center');
+        chunky(g.done ? (rp2 === 'E' ? 'EVEN PAR' : rp2) + ' FOR THE ROUND' + (g.roundSecs ? ' \u00b7 ' + Math.floor(g.roundSecs / 60) + ':' + ('0' + Math.floor(g.roundSecs % 60)).slice(-2) : '') : g.strokes + (g.strokes === 1 ? ' stroke' : ' strokes') + ' · par ' + GOLF_PAR, W / 2, H / 2 + 22, 14, '#fff', 'center');
         ctx.globalAlpha = 1;
       }
       if (g.reliefFlash && now - g.reliefFlash < 1100) {
@@ -1630,7 +1636,7 @@
       if (popping) return;
       var p = pos(e);
       if (golf) {
-        if (p.x > W - 58 && p.y < 34) { golf = null; return; }                 // quit
+        if (p.x > W - 58 && p.y < 34) { if (opts.onGolfTime && !golf.done) opts.onGolfTime(golf.set, (performance.now() - golf.flushed) / 1000, true); golf = null; return; }   // quit
         if (golfCanPutt(golf)) { golf.drag = { x: p.x, y: p.y }; golf.aim = null; try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ } }
         e.preventDefault(); return;
       }
@@ -2279,7 +2285,7 @@
   var golfScores = {}, golfSub = false;   // one board per course, keyed by course id
   function subscribeBoards() {
     if (store && store.scores && !scoresSub) { scoresSub = true; store.scores(function (sc) { scores = sc; renderScores(); renderHockeyBoard(); }); }
-    if (store && store.golfScores && !golfSub) { golfSub = true; store.golfScores(function (doc, setId) { golfScores[golfSet(setId).id] = doc; renderGolfBoard(); }); }
+    if (store && store.golfScores && !golfSub) { golfSub = true; store.golfScores(function (doc, setId) { var sid = setId == null ? 'classic' : setId; if (golfSet(sid).id !== sid) return; golfScores[sid] = doc; renderGolfBoard(); }); }
   }
   var BOARD_MAX = 5;
   function renderHockeyBoard() {
@@ -2299,15 +2305,21 @@
   function renderGolfBoard() {
     var body = $('golfboard-body'), st = $('golfboard-status'), sets = $('golfboard-sets'); if (!body) return;
     var set = golfSet(golfSetPick), doc = golfScores[set.id], by = (doc && doc.by) || {}, par = 27;   // nine holes, all par 3
-    if (sets) sets.innerHTML = golfSetButtons('gb-sets');   // the course pills; tapping one swaps the board (and what \u25b6 Play starts)
-    var rows = Object.keys(by).map(function (n) { return { name: n, best: by[n].best, rounds: by[n].rounds || 0 }; })
-      .sort(function (a, b) { return a.best - b.best || b.rounds - a.rounds || a.name.localeCompare(b.name); });
+    if (sets) {   // the course pills; tapping one swaps the board (and what \u25b6 Play starts). Built once, then only the pressed state moves
+      if (!sets.firstChild) sets.innerHTML = golfSetButtons('gb-sets');
+      else sets.querySelectorAll('[data-golfset]').forEach(function (x) { x.setAttribute('aria-pressed', String(x.getAttribute('data-golfset') === golfSetPick)); });
+    }
+    // finished rounds rank by best; anyone who has only put in time (quit, or mid-round) trails with a dash
+    var rows = Object.keys(by).map(function (n) { return { name: n, best: by[n].best, rounds: by[n].rounds || 0, secs: by[n].secs || 0 }; })
+      .filter(function (r) { return r.best != null || r.secs > 0; })
+      .sort(function (a, b) { return (a.best == null) - (b.best == null) || a.best - b.best || b.rounds - a.rounds || b.secs - a.secs || a.name.localeCompare(b.name); });
+    var lead = rows.filter(function (r) { return r.best != null; })[0];
     // one short phrase: the leader once there is one, the course until then
-    st.innerHTML = rows.length ? '<b>' + esc(rows[0].name === me ? 'you lead' : rows[0].name + ' leads') + '</b> \u00b7 ' + esc(set.name) : esc(set.name) + ' \u00b7 9 holes \u00b7 par ' + par;
+    st.innerHTML = lead ? '<b>' + esc(lead.name === me ? 'you lead' : lead.name + ' leads') + '</b> \u00b7 ' + esc(set.name) : esc(set.name) + ' \u00b7 9 holes \u00b7 par ' + par;
     if (!rows.length) { body.innerHTML = '<div class="lb-empty">Nobody has played ' + esc(set.name) + ' yet</div>'; golfScrollCue(); golfCycle(); return; }
     body.innerHTML = '<div class="lb">' + rows.map(function (r, i) {
-      var dtxt = golfToPar(r.best, par);
-      return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat' + (dtxt.charAt(0) === '-' ? ' under' : dtxt === 'E' ? ' even' : '') + '">' + dtxt + '</span></div>';
+      var dtxt = r.best == null ? '\u2013' : golfToPar(r.best, par), mins = r.secs >= 60 ? '<small title="time on this course">' + golfMins(r.secs) + '</small>' : '';
+      return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (r.best == null ? '' : i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat' + (dtxt.charAt(0) === '-' ? ' under' : dtxt === 'E' ? ' even' : '') + '">' + dtxt + mins + '</span></div>';
     }).join('') + '</div>';
     golfScrollCue(); golfCycle();
   }
@@ -3817,10 +3829,14 @@
       lines.push('Air hockey right now: humans ' + h + ', Claude ' + c + (recs.length ? '. Records (wins-losses vs Claude): ' + recs.join(', ') : '') + '. You lose a lot at air hockey and own it.');
       var mc = smashCounts(SMASH_MAIN), allWins = {}; smashLog().forEach(function (e) { allWins[e.w] = (allWins[e.w] || 0) + 1; });
       lines.push('Mitch vs Luke Smash tally: Mitch ' + mc.Mitch + ', Luke ' + mc.Luke + (Object.keys(allWins).length ? '. All Smash wins: ' + Object.keys(allWins).map(function (n) { return n + ' ' + allWins[n]; }).join(', ') : '') + '.');
+      var golfTime = {};
       GOLF_SETS.forEach(function (s) {
         var gb = (golfScores[s.id] && golfScores[s.id].by) || {}, gr = Object.keys(gb).map(function (n) { return { n: n, b: gb[n].best }; }).filter(function (r) { return r.b != null; }).sort(function (a, b) { return a.b - b.b; });
+        Object.keys(gb).forEach(function (n) { if (gb[n].secs > 0) golfTime[n] = (golfTime[n] || 0) + gb[n].secs; });
         if (gr.length) lines.push('Mini golf, ' + s.name + ' course board (best round to par 27): ' + gr.map(function (r) { return r.n + ' ' + golfToPar(r.b, 27); }).join(', ') + '.');
       });
+      var gt = Object.keys(golfTime).sort(function (a, b) { return golfTime[b] - golfTime[a]; });
+      if (gt.length) lines.push('Time spent playing mini golf (all courses): ' + gt.map(function (n) { return n + ' ' + golfMins(golfTime[n]); }).join(', ') + '. Fair game for a roast.');
       var dv = dinnerVotes(), pasta = dv.filter(function (v) { return v.pick === 'pasta'; }).map(function (v) { return v.voter; }), tacos = dv.filter(function (v) { return v.pick === 'tacos'; }).map(function (v) { return v.voter; });
       lines.push('Saturday dinner vote: pasta ' + pasta.length + ' (' + (pasta.join(', ') || 'nobody') + '), tacos ' + tacos.length + ' (' + (tacos.join(', ') || 'nobody') + ').');
       var preds = QUESTIONS.map(function (q) { var t = tallyFor(q); return q.text + ' → ' + (t.rows.length ? t.rows.slice(0, 2).map(function (r) { return r.pick + ' (' + r.n + ')'; }).join(', ') : 'no bets yet'); });

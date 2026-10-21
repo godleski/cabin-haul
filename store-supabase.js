@@ -180,7 +180,8 @@
     },
 
     // Mini golf: one board per course. The classic nine keep the kv key "golf9"; the other courses use "golf9-<course>".
-    // onDoc(doc, course) fires once per course on every read; an older app that ignores the second argument sees classic.
+    // onDoc(doc, course) fires once per course on every read, classic last, so an older app that ignores the second
+    // argument and keeps the last doc still shows the classic board.
     golfScores: function (onDoc) {
       if (!ensure()) return;
       var keys = GOLF_COURSES.map(golfKey);
@@ -188,24 +189,30 @@
         sb.from('kv').select('key,value').in('key', keys).then(function (res) {
           if (!ok(res, 'golf')) return;
           var byKey = {}; (res.data || []).forEach(function (r) { byKey[r.key] = r.value; });
-          GOLF_COURSES.forEach(function (c) { onDoc(byKey[golfKey(c)] || { by: {} }, c); });
+          GOLF_COURSES.slice().reverse().forEach(function (c) { onDoc(byKey[golfKey(c)] || { by: {} }, c); });   // classic last: an older app keeps only the last doc
         });
       });
       try { sb.channel('cabin-golf').on('postgres_changes', { event: '*', schema: 'public', table: 'kv' }, read).subscribe(); } catch (e) { /* ignore */ }
       read();
     },
-    recordGolf: function (name, strokes, course) {
+    // A finished round (strokes) and/or time spent on the course (secs, flushed every hole and on quit, so a closed app
+    // loses at most one hole). Either may be omitted.
+    recordGolf: function (name, strokes, course, secs) {
       if (!ensure()) return Promise.reject(new Error('not connected'));
       var key = golfKey(course);
       return sb.from('kv').select('value').eq('key', key).maybeSingle().then(function (res) {
         var sc = (res.data && res.data.value) || { by: {} };
         sc.by = sc.by || {};
         var p = sc.by[name] || { best: null, rounds: 0 };
-        p.rounds++; p.last = strokes; p.last_at = new Date().toISOString();
-        if (p.best == null || strokes < p.best) p.best = strokes;
+        if (strokes != null) {
+          p.rounds++; p.last = strokes; p.last_at = new Date().toISOString();
+          if (p.best == null || strokes < p.best) p.best = strokes;
+        }
+        if (secs > 0) p.secs = (p.secs || 0) + Math.round(secs);
         sc.by[name] = p;
         return sb.from('kv').upsert({ key: key, value: sc }).then(one);
       });
-    }
+    },
+    recordGolfTime: function (name, secs, course) { return window.STORE.recordGolf(name, null, course, secs); }
   };
 })();
