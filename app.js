@@ -3350,7 +3350,7 @@
     var counts = {}, voters = {}, who = {};
     votes.forEach(function (v) { if (v.question_id !== q.id) return; counts[v.pick] = (counts[v.pick] || 0) + 1; voters[v.voter] = true; (who[v.pick] = who[v.pick] || []).push(v.voter); });
     var rows = Object.keys(counts).map(function (k) { return { pick: k, n: counts[k], who: who[k].sort() }; }).sort(function (a, b) { return b.n - a.n || a.pick.localeCompare(b.pick); });
-    return { rows: rows, voted: Object.keys(voters).length };
+    return { rows: rows, voted: Object.keys(voters).length, missing: NAMES.filter(function (n) { return !voters[n]; }) };
   }
   // Fake book odds from the votes, American style. Shares are sharpened (power 1.8) so the runner with the most
   // bets prices like a real favourite (negative) while the rest of the field stays plus-money.
@@ -3408,15 +3408,16 @@
     QUESTIONS.forEach(function (q, i) {
       var t = tallyFor(q), total = t.rows.reduce(function (a, r) { return a + r.n; }, 0);
       var cc = qThread(q.id).length, my = mine[q.id], nu = qUnread(q.id);
-      if (t.voted >= NAMES.length && t.rows.length) {   // everyone has picked: the favourite, plainly, and nothing else shouting
+      if (t.voted * 2 > NAMES.length && t.rows.length) {   // a majority has picked: the favourite, plainly, and nothing else shouting
         var lead = t.rows[0], favs = t.rows.filter(function (r) { return r.n === lead.n; }), tie = favs.length > 1, rest = t.rows.slice(favs.length);
         var onFav = favs.some(function (r) { return r.pick === my; });
+        var miss = t.missing.length ? (t.missing.length <= 2 ? t.missing.join(' and ') + (t.missing.length === 1 ? ' hasn’t' : ' haven’t') + ' picked' : t.missing.length + ' haven’t picked') : '';
         html += '<button type="button" class="pred-card res ' + (plainPicks() ? 'plain' : 'dk') + (nu ? ' has-new' : '') + '" data-q="' + i + '">' +
           '<div class="pq">' + esc(q.text) + '</div>' +
           '<div class="res-lead"><span class="nm">' + favs.map(function (r) { return esc(r.pick); }).join('<i>/</i>') + '</span>' + (plainPicks() ? '' : '<span class="odds">' + oddsForQ(q, lead.n) + '</span>') + '</div>' +
           '<div class="res-bar"><span style="width:' + (100 * lead.n / total) + '%"></span></div>' +
           '<div class="res-sub"><span class="share">' + (tie ? 'Dead heat \u00b7 ' + lead.n + ' each' : lead.n + ' of ' + total) + '</span>' + (rest.length ? '<span class="rest">' + rest.map(function (r) { return esc(r.pick) + ' ' + r.n; }).join(' \u00b7 ') + '</span>' : '') + '</div>' +
-          '<div class="res-foot">' + (my ? (onFav ? '<span class="you on">\u2713 Your pick</span>' : '<span class="you">Your pick: ' + esc(my) + '</span>') : '<span class="you no">No pick</span>') + (cc ? '<span class="k' + (nu ? ' new' : '') + '">\ud83d\udcac ' + cc + (nu ? ' \u00b7 ' + nu + ' new' : '') + '</span>' : '') + '</div>' +
+          '<div class="res-foot">' + (my ? (onFav ? '<span class="you on">\u2713 Your pick</span>' : '<span class="you">Your pick: ' + esc(my) + '</span>') : '<span class="you no">No pick</span>') + (miss ? '<span class="miss">' + esc(miss) + '</span>' : '') + (cc ? '<span class="k' + (nu ? ' new' : '') + '">\ud83d\udcac ' + cc + (nu ? ' \u00b7 ' + nu + ' new' : '') + '</span>' : '') + '</div>' +
           '</button>';
         return;
       }

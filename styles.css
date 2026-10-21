@@ -811,6 +811,7 @@
   .pred-card.res .res-sub .rest { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
   .pred-card.res .res-foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 0.76rem; color: var(--muted); }
   .pred-card.res .res-foot .you { font-weight: 600; color: #fff; } .pred-card.res .res-foot .you.on { color: var(--dkg); } .pred-card.res .res-foot .you.no { color: var(--ember); }
+  .pred-card.res .res-foot .miss { color: var(--ember); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* who still owes a pick */
   .pred-card.res .res-foot .k { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: rgba(83, 211, 55, 0.14); color: var(--dkg); font-weight: 600; }
   .pred-card.res .res-foot .k.new { background: var(--ember); color: #1a1200; }
   .poll-n .odds { display: inline-block; margin-left: 8px; padding: 2px 7px; border-radius: 5px; background: #2c2c2c; color: var(--dkg); font: 800 0.74rem var(--body); font-variant-numeric: tabular-nums; }
