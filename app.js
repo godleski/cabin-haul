@@ -2322,7 +2322,7 @@
       .sort(function (a, b) { return a.best - b.best || b.rounds - a.rounds || a.name.localeCompare(b.name); });
   }
   function golfBoardHeads() {
-    return GOLF_SETS.map(function (s) { return '<button type="button" class="gb-head" data-golfset="' + s.id + '" aria-label="Play ' + esc(s.name) + '"><span aria-hidden="true">' + s.icon + '</span> ' + esc(s.name) + '</button>'; }).join('');
+    return GOLF_SETS.map(function (s) { return '<button type="button" class="gb-head" data-golfset="' + s.id + '" aria-label="Play ' + esc(s.name) + '"><span class="gb-name"><span aria-hidden="true">' + s.icon + '</span> ' + esc(s.name) + '</span><span class="bc-play" aria-hidden="true">\u25B6 Play</span></button>'; }).join('');
   }
   function renderGolfBoard() {
     var body = $('golfboard-body'), st = $('golfboard-status'), sets = $('golfboard-sets'); if (!body) return;
