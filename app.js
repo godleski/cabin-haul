@@ -3914,8 +3914,9 @@
         : 'Someone tagged you. Answer them.');
     return lines.join('\n\n');
   }
+  var CLAUDE_BLANK = 'Brain froze mid-sentence. Hit me again?';   // what Claude posts when the API came back with no words
   function claudeThread(threadId, mode) {   // the last twenty messages as alternating turns, ending on the one that asked
-    var msgs = comments.filter(function (c) { return c.question_id === threadId; }).slice(-20), out = [];
+    var msgs = comments.filter(function (c) { return c.question_id === threadId && !(c.author === CLAUDE_NAME && (c.text === '…' || c.text === CLAUDE_BLANK)); }).slice(-20), out = [];
     msgs.forEach(function (c) {
       var role = c.author === CLAUDE_NAME ? 'assistant' : 'user', text = role === 'user' ? c.author + ': ' + c.text : c.text;
       if (out.length && out[out.length - 1].role === role) out[out.length - 1].content += '\n' + text; else out.push({ role: role, content: text });
@@ -3934,16 +3935,27 @@
       comments.push({ question_id: threadId, author: CLAUDE_NAME, text: text, created_at: new Date().toISOString() });
       store.comment(threadId, CLAUDE_NAME, text).catch(function (err) { toast('Claude answered, but it didn’t post: ' + ((err && err.message) || err)); });
     };
-    fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
-      body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 400, system: claudeSystem(threadId, mode || 'asked'), messages: claudeThread(threadId, mode), output_config: { effort: 'low' }, fallbacks: 'default' })
-    }).then(function (res) { return res.json().then(function (data) { return { ok: res.ok, status: res.status, data: data }; }); }).then(function (r) {
-      if (!r.ok) throw new Error((r.data && r.data.error && r.data.error.message) || ('HTTP ' + r.status));
-      var text = r.data.stop_reason === 'refusal' ? 'I’m going to sit that one out.' : (r.data.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('').trim();
-      text = text.replace(/^claude:\s*/i, '').slice(0, 600);
-      if (!text) text = '…';
-      post(text);
+    // The model thinks before it writes and the thinking counts against max_tokens, so the budget is well above the
+    // two or three sentences we want back. A long ask can still run it dry (no text block, stop_reason max_tokens):
+    // then one retry with room to spare, and if that is blank too Claude says so instead of posting nothing.
+    var system = claudeSystem(threadId, mode || 'asked'), thread = claudeThread(threadId, mode);
+    var call = function (maxTokens) {
+      return fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
+        body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: maxTokens, system: system, messages: thread, output_config: { effort: 'low' }, fallbacks: 'default' })
+      }).then(function (res) { return res.json().then(function (data) { return { ok: res.ok, status: res.status, data: data }; }); }).then(function (r) {
+        if (!r.ok) throw new Error((r.data && r.data.error && r.data.error.message) || ('HTTP ' + r.status));
+        var text = r.data.stop_reason === 'refusal' ? 'I’m going to sit that one out.' : (r.data.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('').trim();
+        return { text: text.replace(/^claude:\s*/i, ''), capped: r.data.stop_reason === 'max_tokens' };
+      });
+    };
+    call(3000).then(function (a) {
+      return a.text || !a.capped ? a : call(8000);
+    }).then(function (a) {
+      var text = a.text;
+      if (text.length > 900) { var cut = text.slice(0, 900), end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? ')); text = end > 300 ? cut.slice(0, end + 1) : cut; }
+      post(text || CLAUDE_BLANK);
     }).catch(function (err) {
       toast('Claude couldn’t answer: ' + ((err && err.message) || err));
     }).then(function () {
