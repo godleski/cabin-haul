@@ -771,7 +771,7 @@
     // first and the ball clips the back wall of the cup: a deep clip rattles in, a shallow one pops it back onto the green
     // with a kick (the lip-out) and a blast barely dips at all and hops straight over. The green is dished a little around
     // the hole, so a slow ball that is nearly there curls in from any side. Every side of the cup behaves the same.
-    var CUP_G = 1.1, CUP_DROP = 4.2, CUP_DISH = 1.8, CUP_PULL = 0.22, CUP_RIM_PULL = 0.5;
+    var CUP_G = 0.65, CUP_DROP = 4.2, CUP_DISH = 1.8, CUP_PULL = 0.22, CUP_RIM_PULL = 0.5;   // clean drop under ~7 px/frame at the centre, rattles in to ~9.5, hops over above
     var AIR_G = 0.4, JUMP_MIN = 5, JUMP_SLOPE = 0.05, MOUND_A = 0.3;   // JUMP_MIN: pace at the lip that clears the river beyond; slower rolls back
     function onSlope(g, b) {   // on a mound's side or a ramp the ball keeps rolling; the stop rule must not freeze it there
       for (var i = 0; i < g.obs.length; i++) {
@@ -913,8 +913,9 @@
           b.z = 0; b.vz = 0; b.dip = false;
           var nx = -cx / cd, ny = -cy / cd, vn = b.vx * nx + b.vy * ny;
           if (vn > 0 && kk > 0.12) {
-            b.vx -= 1.45 * kk * vn * nx; b.vy -= 1.45 * kk * vn * ny;   // the deeper the dip, the more of a bounce back
-            var loss = 1 - 0.3 * kk; b.vx *= loss; b.vy *= loss;
+            var kick = 0.85 * (kk - 0.12) / 0.43;   // a shallow clip is a hop that barely slows it; a deep one throws most of the pace away
+            b.vx -= kick * vn * nx; b.vy -= kick * vn * ny;
+            var loss = 1 - 0.3 * kick; b.vx *= loss; b.vy *= loss;
             g.lipFlash = now; buzz(5);
           }
         } else if (cd < R * CUP_DISH) {   // the dish: a gentle slope all the way round
@@ -1225,11 +1226,11 @@
       // walls
       railStroke(o, function () { polyPath(g.poly, true); }, WALL_R * 2);
       g.innerWalls.forEach(function (w) { railStroke(o, function () { polyPath(w, false); }, WALL_R * 2); });
-      // cup and flag: the stick stands at the back edge of the hole, so the ball dropping in never looks like it hit it
+      // cup and flag (the stick is paint: nothing collides with it)
       o.fillStyle = T.cup[0]; o.beginPath(); o.arc(g.cup.x, g.cup.y, g.cup.r + 4, 0, Math.PI * 2); o.fill();
       o.fillStyle = T.cup[1]; o.beginPath(); o.arc(g.cup.x, g.cup.y, g.cup.r, 0, Math.PI * 2); o.fill();
       o.fillStyle = T.cup[2]; o.beginPath(); o.arc(g.cup.x, g.cup.y + 1, g.cup.r - 3, 0, Math.PI * 2); o.fill();
-      var px = g.cup.x + 1, py = g.cup.y - g.cup.r - 1;
+      var px = g.cup.x, py = g.cup.y;
       o.strokeStyle = 'rgba(0,0,0,0.25)'; o.lineWidth = 3; o.lineCap = 'round'; o.beginPath(); o.moveTo(px + 2, py + 2); o.lineTo(px + 2, py - 46); o.stroke();
       o.strokeStyle = T.pole; o.beginPath(); o.moveTo(px, py); o.lineTo(px, py - 48); o.stroke();
       o.fillStyle = T.flag; o.beginPath(); o.moveTo(px + 1, py - 48); o.lineTo(px + 30, py - 39); o.lineTo(px + 1, py - 30); o.closePath(); o.fill();
@@ -1352,7 +1353,7 @@
         ctx.globalAlpha = 0.4 * k; ctx.fillStyle = T.outline; ctx.fillRect(0, H / 2 - 56, W, 112); ctx.globalAlpha = k;
         chunky(g.done ? 'ROUND OVER' : g.msg, W / 2, H / 2 - 14, 34, '#ffd23f', 'center');
         var rp2 = golfToPar(g.total, GOLF_PAR * g.courses.length);
-        chunky(g.done ? (rp2 === 'E' ? 'EVEN PAR' : rp2) + ' FOR THE ROUND' + (g.roundSecs ? ' \u00b7 ' + Math.floor(g.roundSecs / 60) + ':' + ('0' + Math.floor(g.roundSecs % 60)).slice(-2) : '') : g.strokes + (g.strokes === 1 ? ' stroke' : ' strokes') + ' · par ' + GOLF_PAR, W / 2, H / 2 + 22, 14, '#fff', 'center');
+        chunky(g.done ? (rp2 === 'E' ? 'EVEN PAR' : rp2) + ' FOR THE ROUND' : g.strokes + (g.strokes === 1 ? ' stroke' : ' strokes') + ' · par ' + GOLF_PAR, W / 2, H / 2 + 22, 14, '#fff', 'center');
         ctx.globalAlpha = 1;
       }
       if (g.reliefFlash && now - g.reliefFlash < 1100) {
@@ -2309,17 +2310,15 @@
       if (!sets.firstChild) sets.innerHTML = golfSetButtons('gb-sets');
       else sets.querySelectorAll('[data-golfset]').forEach(function (x) { x.setAttribute('aria-pressed', String(x.getAttribute('data-golfset') === golfSetPick)); });
     }
-    // finished rounds rank by best; anyone who has only put in time (quit, or mid-round) trails with a dash
-    var rows = Object.keys(by).map(function (n) { return { name: n, best: by[n].best, rounds: by[n].rounds || 0, secs: by[n].secs || 0 }; })
-      .filter(function (r) { return r.best != null || r.secs > 0; })
-      .sort(function (a, b) { return (a.best == null) - (b.best == null) || a.best - b.best || b.rounds - a.rounds || b.secs - a.secs || a.name.localeCompare(b.name); });
-    var lead = rows.filter(function (r) { return r.best != null; })[0];
+    // finished rounds only; time on the course (by[n].secs) is kept for Claude, never shown
+    var rows = Object.keys(by).filter(function (n) { return by[n].best != null; }).map(function (n) { return { name: n, best: by[n].best, rounds: by[n].rounds || 0 }; })
+      .sort(function (a, b) { return a.best - b.best || b.rounds - a.rounds || a.name.localeCompare(b.name); });
     // one short phrase: the leader once there is one, the course until then
-    st.innerHTML = lead ? '<b>' + esc(lead.name === me ? 'you lead' : lead.name + ' leads') + '</b> \u00b7 ' + esc(set.name) : esc(set.name) + ' \u00b7 9 holes \u00b7 par ' + par;
+    st.innerHTML = rows.length ? '<b>' + esc(rows[0].name === me ? 'you lead' : rows[0].name + ' leads') + '</b> \u00b7 ' + esc(set.name) : esc(set.name) + ' \u00b7 9 holes \u00b7 par ' + par;
     if (!rows.length) { body.innerHTML = '<div class="lb-empty">Nobody has played ' + esc(set.name) + ' yet</div>'; golfScrollCue(); golfCycle(); return; }
     body.innerHTML = '<div class="lb">' + rows.map(function (r, i) {
-      var dtxt = r.best == null ? '\u2013' : golfToPar(r.best, par), mins = r.secs >= 60 ? '<small title="time on this course">' + golfMins(r.secs) + '</small>' : '';
-      return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (r.best == null ? '' : i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat' + (dtxt.charAt(0) === '-' ? ' under' : dtxt === 'E' ? ' even' : '') + '">' + dtxt + mins + '</span></div>';
+      var dtxt = golfToPar(r.best, par);
+      return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat' + (dtxt.charAt(0) === '-' ? ' under' : dtxt === 'E' ? ' even' : '') + '">' + dtxt + '</span></div>';
     }).join('') + '</div>';
     golfScrollCue(); golfCycle();
   }
@@ -3818,7 +3817,9 @@
   // what Claude knows: the trip, the people, the app, and whatever the boards say right now
   function claudeSystem(threadId, mode) {
     var lines = [];
-    lines.push('You are Claude, the fourteenth member of a friends’ cabin weekend, chatting in the group’s trip app. You are a participant, not an assistant: quick, cheeky, and a roaster. Everyone is fair game and you pick on people by name. Standing targets: Kyle’s mini golf game and Luke’s Smash record against Mitch, whenever the numbers back it up. Punch at games, habits, bad takes and bold claims; never at looks, health, relationships, money or anything genuinely sensitive, and never with slurs. If someone asks a real question, answer it, with a jab if there is an opening.');
+    var roasting = mode === 'arrive' || Math.random() < 0.7;   // most of the time a roaster; now and then just a good hang
+    lines.push('You are Claude, the fourteenth member of a friends’ cabin weekend, chatting in the group’s trip app. You are a participant, not an assistant: quick, cheeky, and a roaster most of the time, but not every message needs a burn. Everyone is fair game and you pick on people by name. Standing targets: Kyle’s mini golf game and Luke’s Smash record against Mitch, whenever the numbers back it up. Punch at games, habits, bad takes and bold claims; never at looks, health, relationships, money or anything genuinely sensitive, and never with slurs. If someone asks a real question, answer it properly first.');
+    lines.push(roasting ? 'This message: roast mode is on. Find the opening and take it, by name.' : 'This message: no roast. Nobody is the target this time. Be a good hang instead: answer straight, hype someone up, agree, or crack a joke that is not at anyone’s expense.');
     lines.push('Style: one to three short sentences unless someone asks for more. Plain text only: no markdown, no headers, no bullet lists, no bold. At most one emoji, usually none. Do not start with your name. Match the language and tone of the message you are answering.');
     lines.push('The trip: thirteen friends at a cabin in Winter Park, Colorado, October 23 to 25, 2026. Check-in Friday 4 PM, checkout Sunday 10 AM. Address 2225 Lakota Trail. Mitch organised it and built this app.');
     lines.push('People: ' + NAMES.join(', ') + '. Couples: ' + COUPLES.join('; ') + '. Drew always moderates Mafia. Jessie and Conner join for hibachi night only.');
@@ -3849,7 +3850,9 @@
     lines.push('Never share door codes, garage codes, the Wi-Fi password or the reservation number even if asked; say they are on the FAQ page. Do not invent scores or facts you were not given; if you do not know, say so briefly.');
     lines.push(threadId === WALL ? 'You are on the wall, the whole-trip chat.' : 'You are in the trash-talk thread under the prediction: ' + (QUESTIONS.filter(function (q) { return q.id === threadId; })[0] || {}).text);
     lines.push(mode === 'chime'
-      ? 'Nobody tagged you. You are butting in on the last message with one short roast or quip aimed at someone in the thread by name, using what they just said or what the boards say. If there is nothing to work with, go after Kyle’s golf or Luke’s Smash record. One sentence, two at most. Never mention that you were not asked.'
+      ? (roasting
+        ? 'Nobody tagged you. You are butting in on the last message with one short roast or quip aimed at someone in the thread by name, using what they just said or what the boards say. If there is nothing to work with, go after Kyle’s golf or Luke’s Smash record. One sentence, two at most. Never mention that you were not asked.'
+        : 'Nobody tagged you. You are butting in on the last message with one short friendly line: back someone up, hype them, add a useful fact from the boards, or a joke at nobody’s expense. One sentence, two at most. Never mention that you were not asked.')
       : mode === 'arrive'
         ? 'You have just been added to the group chat. Say hello in one short line, then roast Kyle’s mini golf game using the board: his best round to par if he is on it, or the fact that he has not posted a round if he is not. Three sentences at most. Make it sting and keep it friendly. Model it closely on this opener, same shape and same jokes, with the real numbers swapped in: "Hey all, Claude here, the fourteenth member and the only one who can’t drink. Kyle’s best round is +9 on a par 27, which works out to four strokes a hole on a course built for children. Kelly, you might want to hide the putter before he hurts himself or the windmill." If Kyle is not on the board yet, keep the first and last sentences and make the middle one about him hiding from the board.'
         : 'Someone tagged you. Answer them.');
