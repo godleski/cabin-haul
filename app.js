@@ -76,7 +76,13 @@
   var sim = null, scores = null, scoresSub = false, boardShown = false;
   // Air hockey is always open from the Games tab. Mini golf is hidden on the name screen; once this phone has found it,
   // its board on the Games tab becomes a play button too.
-  function foundGame(k) { return k === 'hockey' || lsGet('cabin-haul-found-' + k) === '1'; }
+  // a phone that has played mini golf once knows about it; so does anyone whose name is already on a golf board (the flag
+  // lives in local storage, which a home-screen shortcut or the prototype may not share with the browser)
+  function foundGame(k) {
+    if (k === 'hockey' || lsGet('cabin-haul-found-' + k) === '1') return true;
+    if (k === 'golf' && me && typeof golfScores === 'object' && golfScores) return GOLF_SETS.some(function (s) { var d = golfScores[s.id]; return !!(d && d.by && d.by[me]); });
+    return false;
+  }
   function markFound(k) { if (foundGame(k)) return; lsSet('cabin-haul-found-' + k, '1'); renderArcadeCues(); }
   var arcadeFrom = null;   // the tab that launched a replay, so the game can hand back to it when it ends
   function playAgain(kind) {
@@ -2360,7 +2366,7 @@
       if (sets && !sets.firstChild) sets.innerHTML = '<div class="gb-cols gb-heads">' + golfBoardHeads() + '</div>';
       body.innerHTML = (sets ? '' : '<div class="gb-cols gb-heads">' + golfBoardHeads() + '</div>') + '<div class="gb-cols">' + GOLF_SETS.map(function (s) { return '<div class="lb gb-col" data-golfcol="' + s.id + '">' + golfListHtml(golfBoardRows(s.id)) + '</div>'; }).join('') + '</div>';
     }
-    golfScrollCue(); golfCycle();
+    renderArcadeCues(); golfScrollCue(); golfCycle();
   }
   // Left alone, the board idles through its rows a row at a time, rests at the bottom and starts over, so the
   // half-height list shows everyone without a scroll. A finger on the list pauses it for a while, and it only runs
