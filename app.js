@@ -2328,8 +2328,7 @@
     var body = $('golfboard-body'), st = $('golfboard-status'), sets = $('golfboard-sets'); if (!body) return;
     var par = 27, cols = GOLF_SETS.map(function (s) { return { set: s, rows: golfBoardRows(s.id) }; }), any = cols.some(function (c) { return c.rows.length; });
     if (sets && !sets.firstChild) sets.innerHTML = '<div class="gb-cols gb-heads">' + golfBoardHeads() + '</div>';
-    // one short phrase: the leader of each column, in column order
-    st.innerHTML = any ? cols.map(function (c) { return c.rows.length ? '<b>' + esc(c.rows[0].name === me ? 'you' : c.rows[0].name) + '</b>' : '\u2013'; }).join(' \u00b7 ') + ' lead' : '3 courses \u00b7 9 holes each \u00b7 par 27';
+    if (st) st.hidden = true;   // the columns are the whole card now; an older page still has the old status line
     if (!any) { body.innerHTML = '<div class="lb-empty">Nobody has played yet</div>'; golfScrollCue(); golfCycle(); return; }
     body.innerHTML = (sets ? '' : '<div class="gb-cols gb-heads">' + golfBoardHeads() + '</div>') + '<div class="gb-cols">' + cols.map(function (c) {
       return '<div class="lb gb-col" data-golfcol="' + c.set.id + '">' + (c.rows.length ? c.rows.map(function (r, i) {
