@@ -2336,7 +2336,7 @@
     var par = 27;
     return rows.length ? rows.map(function (r, i) {
       var dtxt = golfToPar(r.best, par);
-      return '<div class="lb-row' + (r.name === me ? ' me' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat' + (dtxt.charAt(0) === '-' ? ' under' : dtxt === 'E' ? ' even' : '') + '">' + dtxt + '</span></div>';
+      return '<div class="lb-row' + (r.name === me ? ' me' : '') + (r.best === rows[0].best ? ' lead' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="nm">' + esc(r.name === me ? 'You' : r.name) + '</span><span class="stat' + (dtxt.charAt(0) === '-' ? ' under' : dtxt === 'E' ? ' even' : '') + '">' + dtxt + '</span></div>';   // the leader (and anyone tied) lit up
     }).join('') : '<div class="lb-empty">Nobody yet</div>';
   }
   function renderGolfBoard() {
