@@ -889,14 +889,15 @@
               else { b.vx += ddx / dd * 0.5 * sdt; b.vy += ddy / dd * 0.5 * sdt; }
             }
           }
-          else if (o.kind === 'tunnel') {   // in one mouth, out of the other, same pace
+          else if (o.kind === 'tunnel') {   // in one mouth, out of the other, same pace and same heading
             if (now - o.cool > 500 && Math.hypot(b.vx, b.vy) > 0.5) {
               var ends = [[o, o.to, o.out], [o.to, o, o.back]];
               for (var ti = 0; ti < 2; ti++) {
                 var from = ends[ti][0], to = ends[ti][1], dir = ends[ti][2];
                 if (Math.hypot(b.x - from.x, b.y - from.y) < o.r + 2) {
-                  var sp = Math.max(3, Math.hypot(b.vx, b.vy)), m = o.r + b.r + 4;
-                  b.x = to.x + dir[0] * m; b.y = to.y + dir[1] * m; b.vx = dir[0] * sp; b.vy = dir[1] * sp; b.z = 0; b.vz = 0; b.dip = false;
+                  // it comes out the far mouth still heading the way it went in: in from six o'clock, out at twelve; in from three, out at nine
+                  var spd = Math.hypot(b.vx, b.vy), sp = Math.max(3, spd), m = o.r + b.r + 4, ux = spd ? b.vx / spd : dir[0], uy = spd ? b.vy / spd : dir[1];
+                  b.x = to.x + ux * m; b.y = to.y + uy * m; b.vx = ux * sp; b.vy = uy * sp; b.z = 0; b.vz = 0; b.dip = false;
                   o.cool = now; g.portal = { x: to.x, y: to.y, t0: now }; buzz(4); break;
                 }
               }
