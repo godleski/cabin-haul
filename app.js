@@ -1761,7 +1761,7 @@
   function showTab(name) {
     var changed = name !== tab;
     tab = name;
-    TABS.forEach(function (t) { $('page-' + t).hidden = t !== tab; });
+    TABS.forEach(function (t) { var pg = $('page-' + t); if (pg) pg.hidden = t !== tab; });
     Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function (b) {
       var on = b.getAttribute('data-tab') === tab;
       b.setAttribute('aria-selected', String(on));
@@ -2423,6 +2423,10 @@
     });
     if (lede) lede.innerHTML = g ? 'Tap a board to <b>play</b>. You found the hidden one too.'
       : 'Tap the air hockey board to <b>play</b>. Mini golf is hidden on the name screen. Tap <b>Not you?</b> and poke around.';
+    // the 1UP strip under the hero: you, and the best round to par on any course
+    var hm = $('hud-me'), hh = $('hud-hi');
+    if (hm) hm.textContent = me || '—';
+    if (hh) { var best = null; GOLF_SETS.forEach(function (s) { var r = golfBoardRows(s.id); if (r.length && (best == null || r[0].best < best)) best = r[0].best; }); hh.textContent = best == null ? '---' : golfToPar(best, 27); }
   }
   // a tap on a course's header or column starts that course; anywhere else on the card, the last course played
   function golfCardPick(e) {
