@@ -168,17 +168,20 @@
       });
     },
 
-    // Mini golf: best round per person, one document (future Supabase kv key "golf").
+    // Mini golf: best round per person, one document per course (meta/golf9 for the classic nine, meta/golf9-<course>
+    // for the others). onDoc(doc, course) fires per course.
     golfScores: function (onDoc) {
       ensure().then(function () {
         if (!db) return;
-        db.doc('meta/golf9').onSnapshot(function (snap) { onDoc(snap.exists ? Object.assign({}, snap.data()) : { by: {} }); }, function () { /* ignore */ });
+        ['classic', 'frost', 'lava'].forEach(function (c) {
+          db.doc('meta/' + (c === 'classic' ? 'golf9' : 'golf9-' + c)).onSnapshot(function (snap) { onDoc(snap.exists ? Object.assign({}, snap.data()) : { by: {} }, c); }, function () { /* ignore */ });
+        });
       });
     },
-    recordGolf: function (name, strokes) {
+    recordGolf: function (name, strokes, course) {
       return ensure().then(function () {
         if (!db) throw new Error('not signed in');
-        var ref = db.doc('meta/golf9');
+        var ref = db.doc('meta/' + (!course || course === 'classic' ? 'golf9' : 'golf9-' + course));
         return ref.get().then(function (snap) {
           var sc = snap.exists ? JSON.parse(JSON.stringify(snap.data())) : { by: {} };
           sc.by = sc.by || {};

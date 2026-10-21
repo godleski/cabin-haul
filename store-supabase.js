@@ -32,6 +32,8 @@
   function refreshAll() { readers.forEach(function (r) { try { r(); } catch (e) { /* ignore */ } }); }
   function reader(fn) { var read = function () { try { fn(); } catch (e) { /* ignore */ } }; readers.push(read); return read; }
   function ok(res, what) { if (res.error) { console.warn(what + ' read failed', res.error); return false; } return true; }
+  var GOLF_COURSES = ['classic', 'frost', 'lava'];
+  function golfKey(course) { return !course || course === 'classic' ? 'golf9' : 'golf9-' + course; }
 
   window.STORE = {
     init: function (callbacks) {
@@ -177,23 +179,32 @@
       });
     },
 
-    // Mini golf: kv key "golf9" (nine-hole board; the old three-hole "golf" key is retired).
+    // Mini golf: one board per course. The classic nine keep the kv key "golf9"; the other courses use "golf9-<course>".
+    // onDoc(doc, course) fires once per course on every read; an older app that ignores the second argument sees classic.
     golfScores: function (onDoc) {
       if (!ensure()) return;
-      var read = reader(function () { sb.from('kv').select('value').eq('key', 'golf9').maybeSingle().then(function (res) { if (ok(res, 'golf9')) onDoc((res.data && res.data.value) || { by: {} }); }); });
+      var keys = GOLF_COURSES.map(golfKey);
+      var read = reader(function () {
+        sb.from('kv').select('key,value').in('key', keys).then(function (res) {
+          if (!ok(res, 'golf')) return;
+          var byKey = {}; (res.data || []).forEach(function (r) { byKey[r.key] = r.value; });
+          GOLF_COURSES.forEach(function (c) { onDoc(byKey[golfKey(c)] || { by: {} }, c); });
+        });
+      });
       try { sb.channel('cabin-golf').on('postgres_changes', { event: '*', schema: 'public', table: 'kv' }, read).subscribe(); } catch (e) { /* ignore */ }
       read();
     },
-    recordGolf: function (name, strokes) {
+    recordGolf: function (name, strokes, course) {
       if (!ensure()) return Promise.reject(new Error('not connected'));
-      return sb.from('kv').select('value').eq('key', 'golf9').maybeSingle().then(function (res) {
+      var key = golfKey(course);
+      return sb.from('kv').select('value').eq('key', key).maybeSingle().then(function (res) {
         var sc = (res.data && res.data.value) || { by: {} };
         sc.by = sc.by || {};
         var p = sc.by[name] || { best: null, rounds: 0 };
         p.rounds++; p.last = strokes; p.last_at = new Date().toISOString();
         if (p.best == null || strokes < p.best) p.best = strokes;
         sc.by[name] = p;
-        return sb.from('kv').upsert({ key: 'golf9', value: sc }).then(one);
+        return sb.from('kv').upsert({ key: key, value: sc }).then(one);
       });
     }
   };
