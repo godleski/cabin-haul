@@ -1389,7 +1389,7 @@
       game = { me: paddle, t0: performance.now(), over: null,
         goal: { x1: (W - gw) / 2, x2: (W + gw) / 2 },
         cpu: { x: W / 2, y: 56, vx: 0, vy: 0, r: 28 },
-        puck: { x: W / 2, y: H / 2, vx: 0, vy: 0, r: 12 }, kickoff: true, humanHits: 0, cpuHits: 0 };
+        puck: { x: W / 2, y: H / 2, vx: 0, vy: 0, r: 22 }, kickoff: true, humanHits: 0, cpuHits: 0 };   // a real puck: wide and flat, most of a mallet across
       paddle.held = true; paddle.tx = paddle.x; paddle.ty = Math.max(H / 2 + paddle.r, paddle.y); paddle.gx = 0; paddle.gy = 0;
       paddle.targetR = 28; paddle.bubbleR = paddle.r;
       box.classList.add('hockey');
@@ -1510,51 +1510,54 @@
         ctx.beginPath(); ctx.arc(x - r * 0.12, y - r * 0.12, r * 0.3, Math.PI * 1.05, Math.PI * 1.65);
         ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.stroke();   // highlight
       }
-      if (label) { ctx.fillStyle = colors.muted; ctx.font = '600 11px ' + fontFamily; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, x, y + r + 12); }
+      if (label) { ctx.fillStyle = HK.cream; ctx.font = '600 11px ' + fontFamily; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, x, y + r + 12); }
     }
-    // The table: an arcade air hockey table, pre-rendered once per size. Black rail with corner bolts, white playfield with
-    // the air-hole grid and a sheen, red centre line, circle and goal creases, and lit goal mouths (Claude's orange, yours green).
+    // The table, in the Games page's arcade palette: a near-black rail with a hairline of yellow neon, a deep navy
+    // playfield with the air-hole grid, neon red markings that glow, and lit goal mouths (Claude's orange, yours yellow).
+    // Pre-rendered once per size, so the glows cost nothing during play.
     var tableCache = null;
-    var TABLE = { rail: 10, field: '#f4f4ef', red: '#d9382f', railCol: '#15161a' };
+    var HK = { rail: 10, railCol: '#0b0c14', field: ['#1d2048', '#141633', '#0f1128'], line: '#ff4757', you: '#ffcc00', cream: '#f5efe6', dim: 'rgba(255,255,255,0.6)' };
     function tableLayer(g) {
       if (tableCache && tableCache.w === W && tableCache.h === H && tableCache.dpr === dpr) return tableCache.c;
       var off = document.createElement('canvas'); off.width = Math.round(W * dpr); off.height = Math.round(H * dpr);
       var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
-      var r = TABLE.rail, fx = r, fy = r, fw = W - 2 * r, fh = H - 2 * r;
+      var r = HK.rail, fx = r, fy = r, fw = W - 2 * r, fh = H - 2 * r;
       function rr(x, y, w, h, rad) { o.beginPath(); o.moveTo(x + rad, y); o.arcTo(x + w, y, x + w, y + h, rad); o.arcTo(x + w, y + h, x, y + h, rad); o.arcTo(x, y + h, x, y, rad); o.arcTo(x, y, x + w, y, rad); o.closePath(); }
       // rail
-      var rg = o.createLinearGradient(0, 0, W, H); rg.addColorStop(0, '#24262c'); rg.addColorStop(0.5, TABLE.railCol); rg.addColorStop(1, '#1d1f24');
-      o.fillStyle = rg; o.fillRect(0, 0, W, H);
-      rr(fx - 2, fy - 2, fw + 4, fh + 4, 12); o.strokeStyle = 'rgba(255,255,255,0.10)'; o.lineWidth = 2; o.stroke();   // bevel highlight
-      // playfield with a soft sheen
+      o.fillStyle = HK.railCol; o.fillRect(0, 0, W, H);
+      // playfield
       rr(fx, fy, fw, fh, 10); o.save(); o.clip();
-      var fg = o.createLinearGradient(0, fy, 0, fy + fh); fg.addColorStop(0, '#f8f8f3'); fg.addColorStop(0.5, TABLE.field); fg.addColorStop(1, '#ecece6');
+      var fg = o.createLinearGradient(0, fy, 0, fy + fh); fg.addColorStop(0, HK.field[0]); fg.addColorStop(0.5, HK.field[1]); fg.addColorStop(1, HK.field[2]);
       o.fillStyle = fg; o.fillRect(fx, fy, fw, fh);
       // air holes
-      o.fillStyle = 'rgba(70,80,92,0.20)';
+      o.fillStyle = 'rgba(255,255,255,0.09)';
       for (var y = fy + 12; y < fy + fh - 6; y += 14) for (var x = fx + 12 + ((Math.round((y - fy) / 14) % 2) ? 7 : 0); x < fx + fw - 6; x += 14) { o.beginPath(); o.arc(x, y, 1.1, 0, Math.PI * 2); o.fill(); }
-      // markings
-      o.strokeStyle = TABLE.red; o.lineWidth = 3; o.lineCap = 'butt';
+      // markings: neon red, glowing
+      o.save(); o.shadowColor = 'rgba(255,71,87,0.85)'; o.shadowBlur = 10;
+      o.strokeStyle = HK.line; o.lineWidth = 3; o.lineCap = 'butt';
       o.beginPath(); o.moveTo(fx, H / 2); o.lineTo(fx + fw, H / 2); o.stroke();
       o.beginPath(); o.arc(W / 2, H / 2, 46, 0, Math.PI * 2); o.stroke();
-      o.beginPath(); o.arc(W / 2, H / 2, 5, 0, Math.PI * 2); o.fillStyle = TABLE.red; o.fill();
+      o.beginPath(); o.arc(W / 2, H / 2, 5, 0, Math.PI * 2); o.fillStyle = HK.line; o.fill();
       var gw = g.goal.x2 - g.goal.x1, cr = gw / 2 + 14;
       o.lineWidth = 2.5; o.beginPath(); o.arc(W / 2, fy, cr, 0, Math.PI); o.stroke();                 // goal creases
       o.beginPath(); o.arc(W / 2, fy + fh, cr, Math.PI, Math.PI * 2); o.stroke();
       o.beginPath(); o.arc(W / 2, fy + 54, 3.5, 0, Math.PI * 2); o.fill(); o.beginPath(); o.arc(W / 2, fy + fh - 54, 3.5, 0, Math.PI * 2); o.fill();   // face-off dots
-      var sheen = o.createLinearGradient(fx, fy, fx + fw, fy + fh * 0.6); sheen.addColorStop(0, 'rgba(255,255,255,0)'); sheen.addColorStop(0.45, 'rgba(255,255,255,0.22)'); sheen.addColorStop(0.55, 'rgba(255,255,255,0)');
+      o.restore();
+      var sheen = o.createLinearGradient(fx, fy, fx + fw, fy + fh * 0.6); sheen.addColorStop(0, 'rgba(255,255,255,0)'); sheen.addColorStop(0.45, 'rgba(255,255,255,0.06)'); sheen.addColorStop(0.55, 'rgba(255,255,255,0)');
       o.fillStyle = sheen; o.fillRect(fx, fy, fw, fh);
-      var vig = o.createRadialGradient(W / 2, H / 2, W * 0.4, W / 2, H / 2, W * 1.3); vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.10)');
+      var vig = o.createRadialGradient(W / 2, H / 2, W * 0.4, W / 2, H / 2, W * 1.3); vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.3)');
       o.fillStyle = vig; o.fillRect(fx, fy, fw, fh);
       o.restore();
+      // the rail's neon hairline round the playfield
+      rr(fx - 1.5, fy - 1.5, fw + 3, fh + 3, 11); o.save(); o.strokeStyle = 'rgba(255,204,0,0.7)'; o.lineWidth = 1.5; o.shadowColor = HK.you; o.shadowBlur = 8; o.stroke(); o.restore();
       // goal mouths: a dark slot in the rail, lit in each side's colour
-      [[fy - r, colors.claude], [fy + fh, colors.pine[0]]].forEach(function (gl) {
-        o.fillStyle = '#07080a'; o.fillRect(g.goal.x1, gl[0], gw, r);
-        o.save(); o.shadowColor = gl[1]; o.shadowBlur = 14; o.fillStyle = gl[1];
+      [[fy - r, colors.claude], [fy + fh, HK.you]].forEach(function (gl) {
+        o.fillStyle = '#000'; o.fillRect(g.goal.x1, gl[0], gw, r);
+        o.save(); o.shadowColor = gl[1]; o.shadowBlur = 18; o.fillStyle = gl[1];
         o.fillRect(g.goal.x1, gl[0] === fy - r ? fy - 3 : fy + fh, gw, 3); o.restore();
       });
       // bolts
-      o.fillStyle = '#3a3d45'; [[6, 6], [W - 6, 6], [6, H - 6], [W - 6, H - 6]].forEach(function (b) { o.beginPath(); o.arc(b[0], b[1], 2.6, 0, Math.PI * 2); o.fill(); o.fillStyle = '#5b5f69'; o.beginPath(); o.arc(b[0] - 0.7, b[1] - 0.7, 1.1, 0, Math.PI * 2); o.fill(); o.fillStyle = '#3a3d45'; });
+      o.fillStyle = '#2a2d3a'; [[6, 6], [W - 6, 6], [6, H - 6], [W - 6, H - 6]].forEach(function (b) { o.beginPath(); o.arc(b[0], b[1], 2.6, 0, Math.PI * 2); o.fill(); o.fillStyle = 'rgba(255,204,0,0.5)'; o.beginPath(); o.arc(b[0] - 0.7, b[1] - 0.7, 1.1, 0, Math.PI * 2); o.fill(); o.fillStyle = '#2a2d3a'; });
       tableCache = { w: W, h: H, dpr: dpr, c: off };
       return off;
     }
@@ -1562,35 +1565,38 @@
       var g = game, p = g.puck, c = g.cpu, me = g.me;
       var fade = Math.min(1, (now - g.t0) / 500);
       ctx.globalAlpha = fade; ctx.drawImage(tableLayer(g), 0, 0, W, H);
-      ctx.font = '700 10px ' + fontFamily; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.font = '700 10px ' + fontFamily; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(255,204,0,0.75)';
       ctx.fillText('S H O O T', W / 2, 5.5); ctx.fillText('D E F E N D', W / 2, H - 5);   // on the rails
       ctx.globalAlpha = 1;
       // fading bubbles
       balls.forEach(function (b) { if (b.fade) { b.alpha = Math.max(0, 1 - fade); if (b.alpha > 0) drawBubble(b, now); } });
       // cpu mallet
       mallet(c.x, c.y, c.r, colors.claude, 'Claude', true);
-      // puck
       if (g.kickoff && !g.over) {
-        ctx.globalAlpha = 0.6 + 0.4 * Math.sin(now / 300); ctx.fillStyle = '#5b6168'; ctx.font = '600 13px ' + fontFamily;
-        ctx.fillText('your finger is the paddle', W / 2, H / 2 + 64); ctx.fillText('hit the puck to start', W / 2, H / 2 + 84); ctx.globalAlpha = 1;
+        ctx.globalAlpha = 0.6 + 0.4 * Math.sin(now / 300); ctx.fillStyle = HK.dim; ctx.font = '600 13px ' + fontFamily;
+        ctx.fillText('your finger is the paddle', W / 2, H / 2 + 74); ctx.fillText('hit the puck to start', W / 2, H / 2 + 94); ctx.globalAlpha = 1;
       }
       if (g.serveFlash && now - g.serveFlash < 900) {
-        ctx.globalAlpha = 1 - (now - g.serveFlash) / 900; ctx.fillStyle = '#5b6168'; ctx.font = '600 13px ' + fontFamily;
-        ctx.fillText('re-serve', W / 2, H / 2 + 64); ctx.globalAlpha = 1;
+        ctx.globalAlpha = 1 - (now - g.serveFlash) / 900; ctx.fillStyle = HK.dim; ctx.font = '600 13px ' + fontFamily;
+        ctx.fillText('re-serve', W / 2, H / 2 + 74); ctx.globalAlpha = 1;
       }
-      circle(p.x + 1, p.y + 3, p.r, 'rgba(0,0,0,0.28)'); circle(p.x, p.y, p.r, '#1c1d22'); circle(p.x, p.y, p.r - 2.5, null, TABLE.red, 2);
-      circle(p.x - p.r * 0.3, p.y - p.r * 0.35, p.r * 0.28, 'rgba(255,255,255,0.35)');
+      // the puck: a wide flat disc. A dark side band gives it its thickness, a red ring on the top face catches the light
+      circle(p.x + 1, p.y + 5, p.r, 'rgba(0,0,0,0.5)');
+      circle(p.x, p.y + 3, p.r, '#050609');
+      circle(p.x, p.y, p.r, '#2b2d3a', '#0b0c14', 1.5);
+      circle(p.x, p.y, p.r - 4.5, null, HK.line, 2.5);
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r - 1.5, Math.PI * 1.08, Math.PI * 1.55); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.stroke();
       // player mallet (the bubble shrinks into it)
       var k2 = Math.min(1, (now - g.t0) / 450);
       if (k2 < 1) { me.alpha = 1; drawBubble(me, now); }
-      ctx.globalAlpha = k2; mallet(me.x, me.y, me.r, colors.pine[0], me.name); ctx.globalAlpha = 1;
-      if (held === me && !g.over) circle(me.x, me.y, me.r + 9, null, 'rgba(255,255,255,0.45)', 2);   // the paddle's edge, showing round the fingertip that covers it
+      ctx.globalAlpha = k2; mallet(me.x, me.y, me.r, HK.you, me.name); ctx.globalAlpha = 1;
+      if (held === me && !g.over) circle(me.x, me.y, me.r + 9, null, 'rgba(255,255,255,0.5)', 2);   // the paddle's edge, showing round the fingertip that covers it
       if (g.over) {
         var k = Math.min(1, (now - g.over.t) / 300);
-        ctx.globalAlpha = 0.9 * k; ctx.fillStyle = '#15161a'; ctx.fillRect(0, H / 2 - 60, W, 120); ctx.globalAlpha = k;
-        ctx.fillStyle = g.over.winner === 'human' ? colors.pine[0] : colors.claude;
+        ctx.globalAlpha = 0.92 * k; ctx.fillStyle = HK.railCol; ctx.fillRect(0, H / 2 - 60, W, 120); ctx.globalAlpha = k;
+        ctx.fillStyle = g.over.winner === 'human' ? HK.you : colors.claude;
         ctx.font = '800 34px ' + fontFamily; ctx.fillText(g.over.winner === 'human' ? 'GOAL!' : 'CLAUDE SCORES', W / 2, H / 2 - 14);
-        ctx.fillStyle = '#f4f4ef'; ctx.font = '600 15px ' + fontFamily;
+        ctx.fillStyle = HK.cream; ctx.font = '600 15px ' + fontFamily;
         ctx.fillText(g.over.winner === 'human' ? me.name + ' beats Claude' : 'Nice try, ' + me.name, W / 2, H / 2 + 22);
         ctx.globalAlpha = 1;
       }
@@ -1711,7 +1717,7 @@
     }
     function finishPick() { opts.onPick(pendingPick); }
     box.__golf = function () { return golf; };
-    box.__hockey = function () { return game ? { me: { x: game.me.x, y: game.me.y, vx: game.me.vx, vy: game.me.vy, r: game.me.r }, puck: { x: game.puck.x, y: game.puck.y, vx: game.puck.vx, vy: game.puck.vy }, held: held === game.me, pid: game.pid, hits: game.humanHits, over: game.over, W: W, H: H } : null; };
+    box.__hockey = function () { return game ? { me: { x: game.me.x, y: game.me.y, vx: game.me.vx, vy: game.me.vy, r: game.me.r }, puck: { x: game.puck.x, y: game.puck.y, vx: game.puck.vx, vy: game.puck.vy, r: game.puck.r }, held: held === game.me, pid: game.pid, hits: game.humanHits, over: game.over, W: W, H: H } : null; };
     var golfPaused = false;   // tests drive golfPhysics themselves through __golfStep
     box.__golfPause = function (v) { golfPaused = !!v; };
     box.__golfStep = function (dt, now) { if (golf) golfPhysics(dt, now); return golf; };
