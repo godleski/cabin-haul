@@ -1429,7 +1429,17 @@
       if (p.y > H + p.r) endGame('cpu');
       [me, c].forEach(function (pad) {
         var dx = p.x - pad.x, dy = p.y - pad.y, d = Math.hypot(dx, dy) || 0.01, min = p.r + pad.r;
-        if (pad.ghost) { if (d >= min) pad.ghost = false; else return; }   // a paddle that landed on the puck passes through it until they part
+        if (pad.ghost) {   // a paddle that landed on the puck: no shove while it sits still; the first flick carries the puck out ahead of it
+          if (d >= min) { pad.ghost = false; }
+          else {
+            var pv = Math.hypot(pad.vx, pad.vy); if (pv < 1.5) return;
+            var ux = pad.vx / pv, uy = pad.vy / pv;
+            p.x = pad.x + ux * min; p.y = pad.y + uy * min; p.vx = pad.vx * 1.1; p.vy = pad.vy * 1.1;
+            var fs = Math.hypot(p.vx, p.vy); if (fs > 16) { p.vx *= 16 / fs; p.vy *= 16 / fs; }
+            pad.ghost = false; pad.touching = true; if (pad === me) { g.humanHits++; g.kickoff = false; } else g.cpuHits++;
+            return;
+          }
+        }
         if (d >= min) { pad.touching = false; return; }
         if (!pad.touching) { pad.touching = true; if (pad === me) { g.humanHits++; g.kickoff = false; } else g.cpuHits++; }
         var nx = dx / d, ny = dy / d;
