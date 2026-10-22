@@ -1602,31 +1602,24 @@
         if (g.over.winner === 'cpu') drawClawd(now - g.over.t);
       }
     }
-    // Clawd, Claude's crab, scuttles across the table when Claude scores: a body, two eyes looking where it's going,
-    // two claws held up and snapping, six legs going in alternate phase, and a bob. A beat after the card, 2.5s across.
+    // Clawd, the Claude Code crab (the pixel one: a 9-wide body with a wider band for the arms, two square eyes in that
+    // band, four legs with a gap in the middle), crab-walks across the table when Claude scores. A beat after the card,
+    // 2.5s across; two legs step while the other two are down, and it bobs a half-pixel with each step.
     function drawClawd(ms) {
       if (reduce) return;
       var t = ms / 1000, k = Math.max(0, (t - 0.25) / 2.5);
       if (k >= 1) return;
-      var bw = 46, bh = 30, x = -70 + (W + 140) * k, y = H / 2 + 100 + Math.sin(t * 14) * 2, leg = Math.sin(t * 18), oc = colors.claude;
-      ctx.save(); ctx.translate(x, y); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(0, bh / 2 + 8, bw / 2 + 8, 5, 0, 0, Math.PI * 2); ctx.fill();   // shadow
-      ctx.strokeStyle = oc; ctx.lineWidth = 3.5;
-      for (var i = 0; i < 3; i++) {   // legs
-        var ph = leg * (i % 2 ? 5 : -5), ly = -8 + i * 8;
-        ctx.beginPath(); ctx.moveTo(-bw / 2 + 3, ly); ctx.lineTo(-bw / 2 - 9, ly + 5 + ph); ctx.lineTo(-bw / 2 - 13, ly + 15 + ph); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(bw / 2 - 3, ly); ctx.lineTo(bw / 2 + 9, ly + 5 - ph); ctx.lineTo(bw / 2 + 13, ly + 15 - ph); ctx.stroke();
-      }
-      var open = 0.3 + 0.35 * Math.abs(Math.sin(t * 5));
-      [-1, 1].forEach(function (s) {   // claws, up and snapping, opening up and outward
-        var cx = s * (bw / 2 + 10), cy = -bh / 2 - 8, a = s > 0 ? -Math.PI / 4 : -3 * Math.PI / 4;
-        ctx.lineWidth = 4.5; ctx.beginPath(); ctx.moveTo(s * (bw / 2 - 8), -bh / 2 + 6); ctx.lineTo(cx, cy + 4); ctx.stroke();
-        ctx.fillStyle = oc; ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = 'rgba(11,12,20,0.92)'; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, 9.5, a - open, a + open); ctx.closePath(); ctx.fill();
-      });
-      ctx.fillStyle = oc; rr(ctx, -bw / 2, -bh / 2, bw, bh, 11); ctx.fill();   // body
-      [-9, 9].forEach(function (ex) { circle(ex, -5, 5.5, '#fff'); circle(ex + 1.5, -5, 2.6, '#0b0c14'); });   // eyes
-      ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 5, 6, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();   // a grin
+      var u = 9, w = 11 * u, h = 8 * u, step = Math.floor(t * 8) % 2;
+      var x = Math.round(-w - 20 + (W + w + 40) * k), y = Math.round(H / 2 + 70);
+      ctx.save(); ctx.translate(x, y);
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(u, h + 2, w - 2 * u, 3);   // shadow stays on the table
+      ctx.translate(0, step ? 0 : -Math.round(u / 2));                           // the bob
+      ctx.fillStyle = colors.claude;
+      ctx.fillRect(u, 0, 9 * u, 2 * u);          // top of the body
+      ctx.fillRect(0, 2 * u, 11 * u, 2 * u);     // the wide band, arms out
+      ctx.fillRect(u, 4 * u, 9 * u, 2 * u);      // lower body
+      [1, 3, 7, 9].forEach(function (c, i) { ctx.fillRect(c * u, 6 * u, u, (i % 2) === step ? 2 * u : u); });   // legs: two down, two lifted
+      ctx.fillStyle = '#000'; ctx.fillRect(2 * u, 2 * u, u, u); ctx.fillRect(8 * u, 2 * u, u, u);   // eyes
       ctx.restore();
     }
 
