@@ -1403,7 +1403,8 @@
       // your paddle is your finger: it sits under it and tracks it almost one to one, bottom half only. The speed cap keeps
       // a hit physical (a finger moves maybe 30px a frame; a far tap teleports the paddle with no swing instead, see pointerdown).
       var tx = Math.max(me.r, Math.min(W - me.r, me.tx)), ty = Math.max(H / 2 + me.r, Math.min(H - me.r, me.ty));
-      me.vx = (tx - me.x) * 0.85; me.vy = (ty - me.y) * 0.85;
+      var kf = (1 - Math.pow(0.15, dt)) / dt;   // 85% of the gap per 60Hz frame, the same closing rate at 30 or 120Hz
+      me.vx = (tx - me.x) * kf; me.vy = (ty - me.y) * kf;
       var mv = Math.hypot(me.vx, me.vy), mcap = 44; if (mv > mcap) { me.vx *= mcap / mv; me.vy *= mcap / mv; }
       me.x += me.vx * dt; me.y += me.vy * dt;
       // Claude's mallet: reads where the puck is heading, blocks on a line in front of its goal, and when the puck sits in
@@ -1418,13 +1419,6 @@
       // puck; if it gets pinned or dies in a corner, re-serve it from center
       p.x += p.vx * dt; p.y += p.vy * dt;
       p.vx *= Math.pow(0.996, dt); p.vy *= Math.pow(0.996, dt);
-      var ps = Math.hypot(p.vx, p.vy);
-      g.stuck = (ps < 0.6 && !g.kickoff) ? (g.stuck || 0) + dt : 0;
-      if (g.stuck > 75) {                                       // ~1.25 s without moving
-        p.x = W / 2; p.y = H / 2; g.stuck = 0;
-        var dir = Math.random() < 0.5 ? -1 : 1;
-        p.vx = (Math.random() - 0.5) * 4; p.vy = dir * 3.5; g.serveFlash = now;
-      }
       if (p.x < p.r) { p.x = p.r; p.vx = Math.abs(p.vx) * 0.9; }
       if (p.x > W - p.r) { p.x = W - p.r; p.vx = -Math.abs(p.vx) * 0.9; }
       var inGoal = p.x > g.goal.x1 && p.x < g.goal.x2;
@@ -1435,6 +1429,7 @@
       if (p.y > H + p.r) endGame('cpu');
       [me, c].forEach(function (pad) {
         var dx = p.x - pad.x, dy = p.y - pad.y, d = Math.hypot(dx, dy) || 0.01, min = p.r + pad.r;
+        if (pad.ghost) { if (d >= min) pad.ghost = false; else return; }   // a paddle that landed on the puck passes through it until they part
         if (d >= min) { pad.touching = false; return; }
         if (!pad.touching) { pad.touching = true; if (pad === me) { g.humanHits++; g.kickoff = false; } else g.cpuHits++; }
         var nx = dx / d, ny = dy / d;
@@ -1451,6 +1446,16 @@
         if (p.y < p.r && (!inG || !open2)) { p.y = p.r; p.vy = Math.abs(p.vy) + 1; }
         if (p.y > H - p.r && !inG) { p.y = H - p.r; p.vy = -Math.abs(p.vy) - 1; }
       });
+      // a puck that has died in a corner or is pinned under a paddle against the rail goes nowhere frame to frame
+      // (whatever its velocity says): after ~1.25s of that it is re-served from the centre
+      var moved = g.px == null ? 1 : Math.hypot(p.x - g.px, p.y - g.py); g.px = p.x; g.py = p.y;
+      g.stuck = (moved < 0.35 * dt && !g.kickoff) ? (g.stuck || 0) + dt : 0;
+      if (g.stuck > 75) {
+        p.x = W / 2; p.y = H / 2; g.stuck = 0; g.px = p.x; g.py = p.y;
+        var dir = Math.random() < 0.5 ? -1 : 1;
+        p.vx = (Math.random() - 0.5) * 4; p.vy = dir * 3.5; g.serveFlash = now;
+        me.ghost = Math.hypot(p.x - me.x, p.y - me.y) < p.r + me.r;   // served onto a paddle sitting at the centre: no shove
+      }
     }
     // where the puck's x will be when it reaches y, folding in wall bounces (friction ignored: it's a short look-ahead)
     function puckXAt(p, y) {
@@ -1689,8 +1694,11 @@
         e.preventDefault(); return;
       }
       if (game) {   // the paddle is wherever the finger lands (bottom half), with no swing from the jump; the latest finger steers
+        if (game.over) { e.preventDefault(); return; }   // the end card: nothing to steer
         var me = game.me, fx = Math.max(me.r, Math.min(W - me.r, p.x)), fy = Math.max(H / 2 + me.r, Math.min(H - me.r, p.y));
+        game.touches = game.touches || {}; game.touches[e.pointerId] = { x: p.x, y: p.y };
         me.x = fx; me.y = fy; me.tx = fx; me.ty = fy; me.vx = 0; me.vy = 0; me.gx = 0; me.gy = 0; game.pid = e.pointerId;
+        var pk = game.puck; me.ghost = Math.hypot(pk.x - me.x, pk.y - me.y) < pk.r + me.r;   // landed on the puck: no shove; it turns solid again once they part
         held = me; try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
         e.preventDefault(); return;
       }
@@ -1705,16 +1713,25 @@
         if (golf.drag) golfAim(golf, pos(e));
         return;
       }
+      var p = pos(e);
+      if (game && game.touches && game.touches[e.pointerId]) game.touches[e.pointerId] = { x: p.x, y: p.y };   // every finger's place is kept, in case it has to take over
       if (!held) return;
       if (game && game.pid != null && e.pointerId !== game.pid) return;   // a second finger doesn't fight the first
-      var p = pos(e);
       held.tx = p.x - held.gx; held.ty = p.y - held.gy;
       trail.push(p); if (trail.length > 6) trail.shift();
     });
     function release(e) {
       if (golf) { if (golf.drag) golfPutt(golf, performance.now()); return; }
+      if (game) {   // paddle stays where you left it; if another finger is still down, it steers from here
+        if (game.touches) delete game.touches[e.pointerId];
+        if (held && (game.pid == null || e.pointerId === game.pid)) {
+          var rest = game.touches ? Object.keys(game.touches) : [];
+          if (rest.length) { var tp = game.touches[rest[rest.length - 1]]; game.pid = +rest[rest.length - 1]; game.me.tx = tp.x; game.me.ty = tp.y; }
+          else { held = null; game.pid = null; }
+        }
+        return;
+      }
       if (!held) return;
-      if (game) { if (game.pid == null || e.pointerId === game.pid) { held = null; game.pid = null; } return; }   // paddle stays where you left it
       if (!start) { held = null; return; }             // a game that ended under the finger: nothing to fling
       var b = held, p = pos(e); held = null; b.held = false;
       var moved = Math.hypot(p.x - start.x, p.y - start.y), dur = p.t - start.t;
@@ -1739,6 +1756,7 @@
     function finishPick() { opts.onPick(pendingPick); }
     box.__golf = function () { return golf; };
     box.__hockeyGoal = function (winner) { if (game && !game.over) endGame(winner); };   // tests: call the game
+    box.__hockeyPuck = function (x, y, vx, vy) { if (game) { game.puck.x = x; game.puck.y = y; game.puck.vx = vx || 0; game.puck.vy = vy || 0; game.kickoff = false; game.px = null; } };   // tests: place the puck
     box.__hockey = function () { return game ? { me: { x: game.me.x, y: game.me.y, vx: game.me.vx, vy: game.me.vy, r: game.me.r }, puck: { x: game.puck.x, y: game.puck.y, vx: game.puck.vx, vy: game.puck.vy, r: game.puck.r }, held: held === game.me, pid: game.pid, hits: game.humanHits, over: game.over, W: W, H: H } : null; };
     var golfPaused = false;   // tests drive golfPhysics themselves through __golfStep
     box.__golfPause = function (v) { golfPaused = !!v; };
