@@ -1390,7 +1390,7 @@
         goal: { x1: (W - gw) / 2, x2: (W + gw) / 2 },
         cpu: { x: W / 2, y: 56, vx: 0, vy: 0, r: 28 },
         puck: { x: W / 2, y: H / 2, vx: 0, vy: 0, r: 12 }, kickoff: true, humanHits: 0, cpuHits: 0 };
-      paddle.held = true; paddle.tx = paddle.x; paddle.ty = Math.max(H / 2 + paddle.r, paddle.y);
+      paddle.held = true; paddle.tx = paddle.x; paddle.ty = Math.max(H / 2 + paddle.r, paddle.y); paddle.gx = 0; paddle.gy = 0;
       paddle.targetR = 28; paddle.bubbleR = paddle.r;
       box.classList.add('hockey');
       balls.forEach(function (b) { if (b !== paddle) b.fade = true; });
@@ -1400,9 +1400,11 @@
       var g = game, me = g.me, p = g.puck, c = g.cpu;
       if (me.r > me.targetR + 0.2) me.r += (me.targetR - me.r) * Math.min(1, 0.18 * dt); else me.r = me.targetR;
       if (g.over) return;
-      // player paddle follows finger, bottom half only
+      // your paddle is your finger: it sits under it and tracks it almost one to one, bottom half only. The speed cap keeps
+      // a hit physical (a finger moves maybe 30px a frame; a far tap teleports the paddle with no swing instead, see pointerdown).
       var tx = Math.max(me.r, Math.min(W - me.r, me.tx)), ty = Math.max(H / 2 + me.r, Math.min(H - me.r, me.ty));
-      me.vx = (tx - me.x) * 0.55; me.vy = (ty - me.y) * 0.55;
+      me.vx = (tx - me.x) * 0.85; me.vy = (ty - me.y) * 0.85;
+      var mv = Math.hypot(me.vx, me.vy), mcap = 44; if (mv > mcap) { me.vx *= mcap / mv; me.vy *= mcap / mv; }
       me.x += me.vx * dt; me.y += me.vy * dt;
       // Claude's mallet: reads where the puck is heading, blocks on a line in front of its goal, and when the puck sits in
       // its half it swings through it toward whichever side of your goal you've left open. Reaction time and a little
@@ -1570,7 +1572,7 @@
       // puck
       if (g.kickoff && !g.over) {
         ctx.globalAlpha = 0.6 + 0.4 * Math.sin(now / 300); ctx.fillStyle = '#5b6168'; ctx.font = '600 13px ' + fontFamily;
-        ctx.fillText('hit the puck to start', W / 2, H / 2 + 64); ctx.globalAlpha = 1;
+        ctx.fillText('your finger is the paddle', W / 2, H / 2 + 64); ctx.fillText('hit the puck to start', W / 2, H / 2 + 84); ctx.globalAlpha = 1;
       }
       if (g.serveFlash && now - g.serveFlash < 900) {
         ctx.globalAlpha = 1 - (now - g.serveFlash) / 900; ctx.fillStyle = '#5b6168'; ctx.font = '600 13px ' + fontFamily;
@@ -1582,6 +1584,7 @@
       var k2 = Math.min(1, (now - g.t0) / 450);
       if (k2 < 1) { me.alpha = 1; drawBubble(me, now); }
       ctx.globalAlpha = k2; mallet(me.x, me.y, me.r, colors.pine[0], me.name); ctx.globalAlpha = 1;
+      if (held === me && !g.over) circle(me.x, me.y, me.r + 9, null, 'rgba(255,255,255,0.45)', 2);   // the paddle's edge, showing round the fingertip that covers it
       if (g.over) {
         var k = Math.min(1, (now - g.over.t) / 300);
         ctx.globalAlpha = 0.9 * k; ctx.fillStyle = '#15161a'; ctx.fillRect(0, H / 2 - 60, W, 120); ctx.globalAlpha = k;
@@ -1658,9 +1661,9 @@
         if (golfCanPutt(golf)) { golf.drag = { x: p.x, y: p.y }; golf.aim = null; try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ } }
         e.preventDefault(); return;
       }
-      if (game) {
-        var me = game.me; me.gx = p.x - me.x; me.gy = p.y - me.y;
-        if (Math.hypot(me.gx, me.gy) > me.r + 24) { me.gx = 0; me.gy = 0; }   // tapped far away: paddle jumps to finger
+      if (game) {   // the paddle is wherever the finger lands (bottom half), with no swing from the jump; the latest finger steers
+        var me = game.me, fx = Math.max(me.r, Math.min(W - me.r, p.x)), fy = Math.max(H / 2 + me.r, Math.min(H - me.r, p.y));
+        me.x = fx; me.y = fy; me.tx = fx; me.ty = fy; me.vx = 0; me.vy = 0; me.gx = 0; me.gy = 0; game.pid = e.pointerId;
         held = me; try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
         e.preventDefault(); return;
       }
@@ -1676,6 +1679,7 @@
         return;
       }
       if (!held) return;
+      if (game && game.pid != null && e.pointerId !== game.pid) return;   // a second finger doesn't fight the first
       var p = pos(e);
       held.tx = p.x - held.gx; held.ty = p.y - held.gy;
       trail.push(p); if (trail.length > 6) trail.shift();
@@ -1683,7 +1687,7 @@
     function release(e) {
       if (golf) { if (golf.drag) golfPutt(golf, performance.now()); return; }
       if (!held) return;
-      if (game) { held = null; return; }               // paddle stays where you left it
+      if (game) { if (game.pid == null || e.pointerId === game.pid) { held = null; game.pid = null; } return; }   // paddle stays where you left it
       if (!start) { held = null; return; }             // a game that ended under the finger: nothing to fling
       var b = held, p = pos(e); held = null; b.held = false;
       var moved = Math.hypot(p.x - start.x, p.y - start.y), dur = p.t - start.t;
@@ -1707,6 +1711,7 @@
     }
     function finishPick() { opts.onPick(pendingPick); }
     box.__golf = function () { return golf; };
+    box.__hockey = function () { return game ? { me: { x: game.me.x, y: game.me.y, vx: game.me.vx, vy: game.me.vy, r: game.me.r }, puck: { x: game.puck.x, y: game.puck.y, vx: game.puck.vx, vy: game.puck.vy }, held: held === game.me, pid: game.pid, hits: game.humanHits, over: game.over, W: W, H: H } : null; };
     var golfPaused = false;   // tests drive golfPhysics themselves through __golfStep
     box.__golfPause = function (v) { golfPaused = !!v; };
     box.__golfStep = function (dt, now) { if (golf) golfPhysics(dt, now); return golf; };
