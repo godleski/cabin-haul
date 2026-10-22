@@ -1599,7 +1599,35 @@
         ctx.fillStyle = HK.cream; ctx.font = '600 15px ' + fontFamily;
         ctx.fillText(g.over.winner === 'human' ? me.name + ' beats Claude' : 'Nice try, ' + me.name, W / 2, H / 2 + 22);
         ctx.globalAlpha = 1;
+        if (g.over.winner === 'cpu') drawClawd(now - g.over.t);
       }
+    }
+    // Clawd, Claude's crab, scuttles across the table when Claude scores: a body, two eyes looking where it's going,
+    // two claws held up and snapping, six legs going in alternate phase, and a bob. A beat after the card, 2.5s across.
+    function drawClawd(ms) {
+      if (reduce) return;
+      var t = ms / 1000, k = Math.max(0, (t - 0.25) / 2.5);
+      if (k >= 1) return;
+      var bw = 46, bh = 30, x = -70 + (W + 140) * k, y = H / 2 + 100 + Math.sin(t * 14) * 2, leg = Math.sin(t * 18), oc = colors.claude;
+      ctx.save(); ctx.translate(x, y); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(0, bh / 2 + 8, bw / 2 + 8, 5, 0, 0, Math.PI * 2); ctx.fill();   // shadow
+      ctx.strokeStyle = oc; ctx.lineWidth = 3.5;
+      for (var i = 0; i < 3; i++) {   // legs
+        var ph = leg * (i % 2 ? 5 : -5), ly = -8 + i * 8;
+        ctx.beginPath(); ctx.moveTo(-bw / 2 + 3, ly); ctx.lineTo(-bw / 2 - 9, ly + 5 + ph); ctx.lineTo(-bw / 2 - 13, ly + 15 + ph); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(bw / 2 - 3, ly); ctx.lineTo(bw / 2 + 9, ly + 5 - ph); ctx.lineTo(bw / 2 + 13, ly + 15 - ph); ctx.stroke();
+      }
+      var open = 0.3 + 0.35 * Math.abs(Math.sin(t * 5));
+      [-1, 1].forEach(function (s) {   // claws, up and snapping, opening up and outward
+        var cx = s * (bw / 2 + 10), cy = -bh / 2 - 8, a = s > 0 ? -Math.PI / 4 : -3 * Math.PI / 4;
+        ctx.lineWidth = 4.5; ctx.beginPath(); ctx.moveTo(s * (bw / 2 - 8), -bh / 2 + 6); ctx.lineTo(cx, cy + 4); ctx.stroke();
+        ctx.fillStyle = oc; ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(11,12,20,0.92)'; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, 9.5, a - open, a + open); ctx.closePath(); ctx.fill();
+      });
+      ctx.fillStyle = oc; rr(ctx, -bw / 2, -bh / 2, bw, bh, 11); ctx.fill();   // body
+      [-9, 9].forEach(function (ex) { circle(ex, -5, 5.5, '#fff'); circle(ex + 1.5, -5, 2.6, '#0b0c14'); });   // eyes
+      ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 5, 6, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();   // a grin
+      ctx.restore();
     }
 
     // Safari runs requestAnimationFrame at 30fps inside a cross-origin iframe (the claude.ai preview) until the frame
@@ -1630,7 +1658,7 @@
       }
       if (game) {
         gamePhysics(dt, now);
-        if (game.over && now - game.over.t > 2400) {   // back to the bubbles, or back to the Games tab for a replay
+        if (game.over && now - game.over.t > (game.over.winner === 'cpu' ? 3200 : 2400)) {   // back to the bubbles, or back to the Games tab for a replay (Claude's goal gets a beat longer, for Clawd's walk)
           if (opts.replay) { game = null; setPlaying(false); running = false; opts.onExit(); return; }
           running = false; renderRoster(); return;
         }
@@ -1717,6 +1745,7 @@
     }
     function finishPick() { opts.onPick(pendingPick); }
     box.__golf = function () { return golf; };
+    box.__hockeyGoal = function (winner) { if (game && !game.over) endGame(winner); };   // tests: call the game
     box.__hockey = function () { return game ? { me: { x: game.me.x, y: game.me.y, vx: game.me.vx, vy: game.me.vy, r: game.me.r }, puck: { x: game.puck.x, y: game.puck.y, vx: game.puck.vx, vy: game.puck.vy, r: game.puck.r }, held: held === game.me, pid: game.pid, hits: game.humanHits, over: game.over, W: W, H: H } : null; };
     var golfPaused = false;   // tests drive golfPhysics themselves through __golfStep
     box.__golfPause = function (v) { golfPaused = !!v; };
