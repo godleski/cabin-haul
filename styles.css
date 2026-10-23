@@ -724,20 +724,6 @@
   #page-cabin .key-card .unlock input { background: #fff; color: #18181d; border-color: #fff; }
   #page-cabin .key-card .unlock-msg { color: #ffb380; }
   #page-cabin .note-card { background: var(--ember-soft); }
-  /* the dinner tally: a quiet strip that sits in the dark rather than a white card */
-  #page-cabin .info-card.dinner-card { margin-top: 18px; padding: 10px 14px 12px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: none; color: var(--cw); }
-  #page-cabin .dinner-card .info-icon { font-size: 1rem; }
-  #page-cabin .dinner-card .info-title { font-size: 0.9rem; color: var(--cw); }
-  #page-cabin .dinner-card .info-sub { font-size: 0.76rem; color: var(--cmuted); }
-  .dt-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; font: 700 0.88rem var(--display); color: var(--cw); }
-  .dt-row .dt-side b { font-size: 1.1rem; margin: 0 2px; font-variant-numeric: tabular-nums; }
-  .dt-row .dt-side.lead { color: #ffb380; }
-  .dt-bar { display: flex; height: 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); overflow: hidden; margin-top: 6px; }
-  .dt-bar i { display: block; height: 100%; transition: width 400ms cubic-bezier(0.2, 0.9, 0.3, 1); }
-  .dt-bar .p { background: #ffd166; } .dt-bar .t { background: var(--fire); }
-  .dt-who { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; margin-top: 8px; font-size: 0.74rem; line-height: 1.4; color: var(--cmuted); overflow-wrap: anywhere; }
-  .dt-who .right { text-align: right; }
-  .dt-who b { color: var(--cw); font-weight: 700; }
 
   /* ---- Predictions: a mock sportsbook app. Black board, lime green odds, bet slip in the header. ---- */
   #page-home {
@@ -831,20 +817,6 @@
   }
   #predict .dk-slipbtn.static { cursor: default; box-shadow: none; }
   #predict .intro { padding-top: 0; }
-  /* the dinner question: two big cards, themed by whichever predictions look the person gets */
-  #predict.dinner-open .dk-head { display: none; }   /* no sportsbook header: it's a vote on dinner, not a bet */
-  #predict .dinner { padding-top: 14vh; }
-  #predict .dinner .eyebrow { color: rgba(255, 255, 255, 0.8); }
-  #predict .dinner h1 { font-size: 2.4rem; margin-top: 8px; }
-  #predict .dinner .lede { max-width: 32ch; }
-  .dinner-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
-  .dinner-opt { display: grid; justify-items: center; gap: 10px; padding: 28px 10px 22px; border-radius: 18px; background: #fff; border: 2px solid #fff; color: #141414; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35); font: 800 1.3rem var(--display); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 120ms; }
-  .dinner-opt .em { font-size: 3rem; line-height: 1; }
-  .dinner-opt:active { transform: scale(0.96); }
-  .dinner-opt[aria-pressed="true"] { background: var(--pine); border-color: var(--pine); color: var(--pine-ink); }
-  body.plain-picks #predict .dinner .eyebrow { color: var(--gold); }
-  body.plain-picks #predict .dinner-opt { border-color: var(--surface); box-shadow: 0 8px 20px rgba(20, 8, 60, 0.3); }
-  body.plain-picks #predict .dinner-opt[aria-pressed="true"] { background: var(--vio); border-color: var(--vio); color: #fff; }
   #predict .intro .dk-promo { margin-top: 14px; }
   #predict .intro .eyebrow { margin-top: 20px; color: var(--dkg); }
   #predict h1 { color: #fff; font-size: 1.7rem; margin-top: 6px; }

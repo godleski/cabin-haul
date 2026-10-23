@@ -1795,8 +1795,7 @@
     if (picking) { renderRoster(); window.scrollTo(0, 0); return; }
     if (!booted) boot();
     if (me !== renderedFor) refreshForUser();
-    if (shouldAsk()) { askedThisVisit = true; qAuto = true; openQuestionnaire(firstUnanswered()); return; }   // predictions first
-    if (shouldAskDinner()) { askedDinnerThisVisit = true; openDinner(); return; }                              // then the dinner vote, which lands on the FAQ
+    if (shouldAsk()) { askedThisVisit = true; qAuto = true; openQuestionnaire(firstUnanswered()); return; }   // the predictions, once
     $('me').innerHTML = 'Hey <b>' + esc(me) + '</b>';
     showTab(tab);
     render();
@@ -1807,13 +1806,13 @@
   var renderedFor = null;
   function refreshForUser() {
     renderedFor = me;
-    askedDinnerThisVisit = false; askedThisVisit = false; qAuto = false; qSingle = false;   // a new name on this phone gets its own prompts
+    askedThisVisit = false; qAuto = false; qSingle = false;   // a new name on this phone gets its own prompts
     ['new-name', 'need-name', 'wall-input', 'exp-title'].forEach(function (id) { var el = $(id); if (el) el.value = ''; });   // no typed drafts carry over
     document.body.classList.toggle('plain-picks', plainPicks());
     mafiaDraft = null; teamsDraft = null; teamsEdit = false; expanded = null; pickerFor = null; modReveal = false;
     renderPredictions(); renderSheet(); renderWall(); updateChatBadge();
     renderMafia(); renderTeams(); renderLiv(); renderSmash();
-    renderHockeyBoard(); renderGolfBoard(); renderArcadeCues(); smashResetPair(); hibDraft = null; renderHibachi(); renderDinnerTally(); updatePredBadge();
+    renderHockeyBoard(); renderGolfBoard(); renderArcadeCues(); smashResetPair(); hibDraft = null; renderHibachi(); updatePredBadge();
   }
 
   // ---- Bottom dock ----
@@ -3270,49 +3269,7 @@
   function firstUnanswered() { var m = myVotes(); for (var i = 0; i < QUESTIONS.length; i++) if (!m[QUESTIONS[i].id]) return i; return 0; }
   // Only ever prompt someone who has made no picks at all, and only once their votes have actually loaded.
   // Anyone with picks (even partial) changes them from the Predictions tab instead.
-  // Saturday dinner: one tap per person, asked before the predictions. The vote is keyed by the name on the phone (like
-  // the predictions), so Safari and the home-screen icon count as the same person, and the tally on the FAQ shows who
-  // picked what. The first version keyed it by a random id per browser instead, which is how 13 people cast 15 votes;
-  // those old rows (voter "dev-...") are ignored rather than counted.
-  var DINNER_Q = 'dinner', askedDinnerThisVisit = false, dinnerBusy = false;
-  function dinnerVoter() { return me; }
-  function dinnerVotes() { return votes.filter(function (v) { return v.question_id === DINNER_Q && NAMES.indexOf(v.voter) >= 0; }); }
-  function myDinner() { var id = dinnerVoter(), v = dinnerVotes().filter(function (x) { return x.voter === id; })[0]; return v ? v.pick : null; }
-  function shouldAskDinner() { return !!(me && store && store.predictions && predLoaded && !askedDinnerThisVisit && !myDinner()); }
-  function openDinner() {
-    closeChat();
-    $('main').hidden = true; $('nav').hidden = true; $('chat-fab').hidden = true; $('pick').hidden = true; $('predict').hidden = false;
-    document.body.classList.add('picking');
-    window.scrollTo(0, 0);
-    $('q-intro').hidden = true; $('q-wrap').hidden = true; $('dinner').hidden = false; $('predict').classList.add('dinner-open');
-    Array.prototype.forEach.call(document.querySelectorAll('.dinner-opt'), function (b) { b.setAttribute('aria-pressed', 'false'); });
-  }
-  function renderDinnerTally() {
-    var el = $('dinner-tally'); if (!el) return;
-    var who = { pasta: [], tacos: [] };
-    dinnerVotes().forEach(function (v) { if (who[v.pick]) who[v.pick].push(v.voter); });
-    var p = who.pasta.length, t = who.tacos.length, total = p + t;
-    var names = function (list) { list = list.sort(); if (list.indexOf(me) > 0) list.splice(0, 0, list.splice(list.indexOf(me), 1)[0]); return list.map(function (n) { return n === me ? '<b>you</b>' : esc(n); }).join(', '); };   // you first, then A to Z
-    $('dt-pasta').querySelector('b').textContent = p; $('dt-tacos').querySelector('b').textContent = t;
-    $('dt-pasta').classList.toggle('lead', p > t); $('dt-tacos').classList.toggle('lead', t > p);
-    $('dt-bar-p').style.width = total ? (100 * p / total) + '%' : '0'; $('dt-bar-t').style.width = total ? (100 * t / total) + '%' : '0';
-    $('dt-who-p').innerHTML = names(who.pasta); $('dt-who-t').innerHTML = names(who.tacos);
-    $('dt-who').hidden = !total;
-    $('dt-sub').textContent = total ? total + ' of ' + NAMES.length + ' have voted \u00b7 ' + (p === t ? 'dead heat' : p > t ? 'pasta leads' : 'tacos lead') : 'Everyone gets asked once.';
-  }
-  $('dinner').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-dinner]'); if (!b || dinnerBusy) return;
-    dinnerBusy = true;
-    var pick = b.getAttribute('data-dinner'), id = dinnerVoter();
-    Array.prototype.forEach.call(document.querySelectorAll('.dinner-opt'), function (x) { x.setAttribute('aria-pressed', String(x === b)); });
-    buzz([8, 30, 8]);
-    votes = votes.filter(function (v) { return !(v.question_id === DINNER_Q && v.voter === id); });
-    votes.push({ question_id: DINNER_Q, voter: id, pick: pick, updated_at: new Date().toISOString() });
-    store.vote(DINNER_Q, id, pick).catch(function (err) { toast('That didn\'t save: ' + ((err && err.message) || err)); });
-    renderDinnerTally();
-    toast(pick === 'pasta' ? 'Pasta. Counted.' : 'Tacos. Counted.');
-    setTimeout(function () { dinnerBusy = false; $('dinner').hidden = true; $('predict').classList.remove('dinner-open'); tab = 'cabin'; showScreen(); }, 480);   // the vote always lands on the FAQ
-  });
+  // (The Saturday dinner vote that used to follow the picks is gone; its old rows under question_id "dinner" are ignored.)
   var predLoaded = false, askedThisVisit = false, qAuto = false, qSingle = false;   // qSingle: opened from a card's sheet for one question only   // qAuto: the questionnaire opened itself on first visit, so finishing it lands on the FAQ
   function shouldAsk() {
     if (!me || !store || !store.predictions || !predLoaded || askedThisVisit) return false;
@@ -3325,9 +3282,8 @@
     store.predictions(function (rows) {
       votes = rows.slice();
       var first = !predLoaded; predLoaded = true;
-      renderPredictions(); renderHibachi(); renderDinnerTally();
+      renderPredictions(); renderHibachi();
       if (first && !$('main').hidden && shouldAsk()) { askedThisVisit = true; qAuto = true; openQuestionnaire(0); }
-      else if (first && !$('main').hidden && shouldAskDinner()) { askedDinnerThisVisit = true; openDinner(); }
     });
     if (store.comments) store.comments(function (rows) {
       comments = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? -1 : 1; });
@@ -3341,7 +3297,7 @@
   function openQuestionnaire(index, skipIntro) {
     qIndex = Math.max(0, Math.min(QUESTIONS.length - 1, index || 0));
     closeChat();
-    $('main').hidden = true; $('nav').hidden = true; $('chat-fab').hidden = true; $('pick').hidden = true; $('predict').hidden = false; $('dinner').hidden = true; $('predict').classList.remove('dinner-open');
+    $('main').hidden = true; $('nav').hidden = true; $('chat-fab').hidden = true; $('pick').hidden = true; $('predict').hidden = false;
     document.body.classList.add('picking');
     window.scrollTo(0, 0);
     if (skipIntro) { $('q-intro').hidden = true; $('q-wrap').hidden = false; showQuestion(false); return; }
@@ -4015,7 +3971,7 @@
     lines.push('Style: one to three short sentences unless someone asks for more. Plain text only: no markdown, no headers, no bullet lists, no bold. At most one emoji, usually none. Do not start with your name. Match the language and tone of the message you are answering.');
     lines.push('The trip: thirteen friends at a cabin in Winter Park, Colorado, October 23 to 25, 2026. Check-in Friday 4 PM, checkout Sunday 10 AM. Address 2225 Lakota Trail. Mitch organised it and built this app.');
     lines.push('People: ' + NAMES.join(', ') + '. Couples: ' + COUPLES.join('; ') + '. Drew always moderates Mafia. Jessie and Conner join for hibachi night only.');
-    lines.push('The app has tabs: FAQ (cabin details, the Saturday dinner vote), Predictions (a sportsbook-style board where everyone bets on things like who passes out first), Bringing (who brings what), Games, and Hibachi (everyone’s order for the hibachi dinner; Mitch’s plate is split between everyone else). Games: air hockey against you (Claude), nine-hole mini golf, the Mitch vs Luke Smash tally, a team picker, Liv’s Eyes Only, Mafia, Spyfall, Fishbowl, and an Off Topic expansion pack. The wall is the one group chat; each prediction has its own trash-talk thread.');
+    lines.push('The app has tabs: FAQ (cabin details), Predictions (a sportsbook-style board where everyone bets on things like who passes out first), Bringing (who brings what), Games, and Hibachi (everyone’s order for the hibachi dinner; Mitch’s plate is split between everyone else). Games: air hockey against you (Claude), nine-hole mini golf, the Mitch vs Luke Smash tally, a team picker, Liv’s Eyes Only, Mafia, Spyfall, Fishbowl, and an Off Topic expansion pack. The wall is the one group chat; each prediction has its own trash-talk thread.');
     try {
       var sc = scores || {}, h = sc.humans || 0, c = sc.cpu || 0, by = sc.by || {};
       var recs = Object.keys(by).map(function (n) { return n + ' ' + (by[n].w || 0) + '-' + (by[n].l || 0); });
@@ -4037,8 +3993,6 @@
       Object.keys(tp).forEach(function (n) { var t = tp[n], timed = Math.max(t.timed, Math.min(t.rounds, Math.round(t.secs / avg))); t.total = t.secs + Math.max(0, t.rounds - timed) * avg; });
       var gt = Object.keys(tp).filter(function (n) { return tp[n].total > 0; }).sort(function (a, b) { return tp[b].total - tp[a].total; });
       if (gt.length) lines.push('Time on the mini golf courses, all courses together (rounds played before the clock went in are counted at the average of about ' + golfMins(avg) + ' a round): ' + gt.map(function (n) { return n + ' ' + golfMins(tp[n].total) + ' over ' + tp[n].rounds + (tp[n].rounds === 1 ? ' round' : ' rounds'); }).join(', ') + '. Fair game for a roast.');
-      var dv = dinnerVotes(), pasta = dv.filter(function (v) { return v.pick === 'pasta'; }).map(function (v) { return v.voter; }), tacos = dv.filter(function (v) { return v.pick === 'tacos'; }).map(function (v) { return v.voter; });
-      lines.push('Saturday dinner vote: pasta ' + pasta.length + ' (' + (pasta.join(', ') || 'nobody') + '), tacos ' + tacos.length + ' (' + (tacos.join(', ') || 'nobody') + ').');
       var preds = QUESTIONS.map(function (q) { var t = tallyFor(q); return q.text + ' → ' + (t.rows.length ? t.rows.slice(0, 2).map(function (r) { return r.pick + ' (' + r.n + ')'; }).join(', ') : 'no bets yet'); });
       lines.push('Predictions, leading picks: ' + preds.join(' | '));
       var orders = hibOrders(), ordered = Object.keys(orders);
