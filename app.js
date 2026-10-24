@@ -2808,6 +2808,7 @@
     html += '<div class="mafia-actions">' + (revealed
       ? '<button type="button" class="big-btn" id="spy-again">🔍 Deal another</button><button type="button" class="btn" id="spy-end">Done</button>'
       : (isSpy ? '<button type="button" class="btn" id="spy-reveal">I’m the spy: reveal me</button>' : '') + '<button type="button" class="btn" id="spy-again">Re-deal</button>') + '</div>';
+    if (!revealed) html += '<div class="mafia-actions"><button type="button" class="linkbtn" id="spy-end">End the game</button></div>';
     html += '<div class="cheat">Dealt by ' + esc(g.by === me ? 'you' : g.by) + ' ' + esc(agoText(g.dealt_at)) + '. Go round the room asking questions about the place. Accuse whoever sounds lost before the clock runs out: when it does, every phone shows the place and the spy. Only the spy can reveal early, to call the place and claim the win.</div>';
     body.innerHTML = html; spyDealAnim = false;
   }
@@ -2851,6 +2852,7 @@
       return;
     }
     if (e.target.closest('#spy-end') && spy) {
+      if (!spy.revealed && spyLeft(spy) > 0 && !window.confirm('End the round for everyone?')) return;   // mid-round, make sure
       var ended = Object.assign({}, spy, { status: 'ended', ended_at: new Date().toISOString() });
       store.setGame('spyfall', ended).then(function () { spy = ended; spyDraft = null; renderSpyfall(); }).catch(function (err) { toast('Couldn’t end it: ' + ((err && err.message) || err)); });
     }
