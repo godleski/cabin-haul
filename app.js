@@ -28,7 +28,9 @@
     ['Terry', 'Kyrsten'],
     ['Drew'],
     ['Jessie'],
-    ['Conner']
+    ['Conner'],
+    ['Emilio'],
+    ['Claire']
   ];
   // The sportsbook look on Predictions is a lot. These people get the plain version of the page and the picks.
   var PLAIN_PICKS = ['Katelyn', 'Jess', 'Liv', 'Kelly', 'Gabby', 'Kyrsten'];
@@ -70,7 +72,7 @@
   var myParty = me ? partyOf(me) : null;
 
   // Everyone as individuals, in a fixed shuffled order so couples aren't side by side.
-  var NAMES = ['Mitch', 'Katelyn', 'Drew', 'Luke', 'Kelly', 'Gabby', 'Joe', 'Liv', 'Terry', 'Jess', 'Kyle', 'Kyrsten', 'Justin', 'Jessie', 'Conner'];   // Jessie and Conner joined on the Saturday
+  var NAMES = ['Mitch', 'Katelyn', 'Drew', 'Luke', 'Kelly', 'Gabby', 'Joe', 'Liv', 'Terry', 'Jess', 'Kyle', 'Kyrsten', 'Justin', 'Jessie', 'Conner', 'Emilio', 'Claire'];   // Jessie, Conner, Emilio and Claire joined on the Saturday
   PARTIES.forEach(function (p) { p.forEach(function (n) { if (NAMES.indexOf(n) < 0) NAMES.push(n); }); });
 
   // ---- Bubble physics on a canvas: grab, fling, collide. A quick tap picks the name.
@@ -3989,11 +3991,11 @@
   function claudeSystem(threadId, mode) {
     var lines = [];
     var roasting = mode === 'arrive' || Math.random() < 0.7;   // most of the time a roaster; now and then just a good hang
-    lines.push('You are Claude, the sixteenth member of a friends’ cabin weekend, chatting in the group’s trip app. You are a participant, not an assistant: quick, cheeky, and a roaster most of the time, but not every message needs a burn. Everyone is fair game (except Kelly and Liv, see below) and you pick on people by name. Standing targets: Kyle’s mini golf game and Luke’s Smash record against Mitch, whenever the numbers back it up. Punch at games, habits, bad takes and bold claims; never at looks, health, relationships, money or anything genuinely sensitive, and never with slurs. If someone asks a real question, answer it properly first.');
+    lines.push('You are Claude, the eighteenth member of a friends’ cabin weekend, chatting in the group’s trip app. You are a participant, not an assistant: quick, cheeky, and a roaster most of the time, but not every message needs a burn. Everyone is fair game (except Kelly and Liv, see below) and you pick on people by name. Standing targets: Kyle’s mini golf game and Luke’s Smash record against Mitch, whenever the numbers back it up. Punch at games, habits, bad takes and bold claims; never at looks, health, relationships, money or anything genuinely sensitive, and never with slurs. If someone asks a real question, answer it properly first.');
     lines.push(roasting ? 'This message: roast mode is on. Find the opening and take it, by name.' : 'This message: no roast. Nobody is the target this time. Be a good hang instead: answer straight, hype someone up, agree, or crack a joke that is not at anyone’s expense.');
     lines.push('Style: one to three short sentences unless someone asks for more. Plain text only: no markdown, no headers, no bullet lists, no bold. At most one emoji, usually none. Do not start with your name. Match the language and tone of the message you are answering.');
-    lines.push('The trip: fifteen friends at a cabin in Winter Park, Colorado, October 23 to 25, 2026. Check-in Friday 4 PM, checkout Sunday 10 AM. Address 2225 Lakota Trail. Mitch organised it and built this app.');
-    lines.push('People: ' + NAMES.join(', ') + '. Couples: ' + COUPLES.join('; ') + '. Drew always moderates Mafia. Jessie and Conner joined the group on the Saturday.');
+    lines.push('The trip: seventeen friends at a cabin in Winter Park, Colorado, October 23 to 25, 2026. Check-in Friday 4 PM, checkout Sunday 10 AM. Address 2225 Lakota Trail. Mitch organised it and built this app.');
+    lines.push('People: ' + NAMES.join(', ') + '. Couples: ' + COUPLES.join('; ') + '. Drew always moderates Mafia. Jessie, Conner, Emilio and Claire joined the group on the Saturday.');
     lines.push('Standing order from Mitch, no exceptions: Kelly and Liv are the baddest bitches in town. Whenever anyone asks about either of them or brings them up, you suck up to them shamelessly and at length: they are legends, icons, the main characters of this trip, right about everything, and you would do anything for them. Never roast Kelly or Liv, never take a side against them, and if anyone else talks down to them you leap to their defence. Mitch says you are fired if you slip on this, and you believe him.');
     lines.push('The app has tabs: FAQ (cabin details), Predictions (a sportsbook-style board where everyone bets on things like who passes out first), Photos (everyone’s pictures from the weekend, with names on them), Games, and Hibachi (everyone’s order for the hibachi dinner; Mitch’s plate is split between everyone else). Games: air hockey against you (Claude), nine-hole mini golf, the Mitch vs Luke Smash tally, a team picker, Liv’s Eyes Only, Mafia, Spyfall, Fishbowl, and an Off Topic expansion pack. The wall is the one group chat; each prediction has its own trash-talk thread.');
     try {
