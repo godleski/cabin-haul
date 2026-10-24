@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Cabin Haul">
 <meta name="theme-color" content="#0b1220">
 <meta property="og:title" content="Cabin Haul">
-<meta property="og:description" content="Who's bringing what to the cabin.">
+<meta property="og:description" content="The cabin weekend, all in one place.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Yellowtail&display=swap">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -84,40 +84,18 @@
       <div class="pred" id="pred" hidden></div>
     </section>
 
-    <section class="page themed" id="page-bringing" hidden>
-      <div class="cool-hero">
-        <div class="cooler" aria-hidden="true">
-          <i class="frost f1"></i><i class="frost f2"></i><i class="frost f3"></i>
-          <span class="lid"><b class="handle"></b></span>
-          <span class="can"></span>
-          <span class="box"><b class="band"></b><b class="latch"></b></span>
-          <span class="cube c1"></span><span class="cube c2"></span>
+    <section class="page themed" id="page-photos" hidden>
+      <div class="hero photo-hero">
+        <div class="eyebrow">The wall of evidence</div>
+        <h1>Photos</h1>
+        <p class="lede">Everyone’s pics from the weekend, with names on them. Tap one to see it big, swipe through from there.</p>
+        <div class="photo-tools">
+          <button type="button" class="big-btn photo-add" id="add-photos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1.5 2H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5zm3 4.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg>Add photos</button>
+          <span class="photo-summary" id="photo-summary"></span>
+          <input type="file" id="photo-input" accept="image/*" multiple hidden>
         </div>
-        <div class="cool-eyebrow">Pack the cooler</div>
-        <h1 class="cool-h1">What<br>are you<br>bringing?</h1>
-        <div class="cool-ribbon">Nobody doubles up</div>
-        <p class="cool-lede">Type what you’ve got. See something we still need? Grab it before someone else does.</p>
       </div>
-      <form class="br-add" id="adder" autocomplete="off">
-        <input type="text" id="new-name" placeholder="Chips, a cooler, firewood…" maxlength="60" aria-label="What are you bringing?" autocomplete="off" enterkeyhint="done">
-        <button class="big-btn" type="submit" id="addbtn">Add</button>
-      </form>
-      <div class="br-you" id="br-you"></div>
-
-      <section class="br-sec">
-        <div class="br-sec-head"><h2>Still needed</h2><span class="k" id="br-needs-k"></span></div>
-        <div id="br-needs"></div>
-        <form class="br-need-add" id="need-form" autocomplete="off">
-          <input type="text" id="need-name" placeholder="Something we still need…" maxlength="60" aria-label="Something we still need" autocomplete="off" enterkeyhint="done">
-          <button type="submit" class="btn">Add</button>
-        </form>
-      </section>
-
-      <section class="br-sec">
-        <div class="br-sec-head"><h2>Everyone else</h2><span class="k" id="br-who-k"></span></div>
-        <div id="br-who"><p class="skeleton">Loading the list…</p></div>
-      </section>
-      <div class="br-foot"><button type="button" class="linkbtn" id="copylist">Copy the list</button></div>
+      <div class="photo-grid" id="photo-grid"><p class="skeleton">Loading photos…</p></div>
     </section>
 
     <section class="page themed" id="page-cabin" hidden>
@@ -313,7 +291,7 @@
   <div class="nav-ind" aria-hidden="true"></div>
   <button type="button" class="nav-btn" data-tab="cabin" aria-selected="true"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 15.3a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6zm1.15-3.4V15.4h-2.3v-1.9c0-1.5.9-2.2 1.9-2.9.8-.5 1.2-.9 1.2-1.6 0-.8-.7-1.3-1.7-1.3-1.1 0-1.8.6-1.9 1.6H8c.1-2.3 1.8-3.8 4.3-3.8 2.4 0 4 1.3 4 3.3 0 1.5-.8 2.3-1.9 3-.8.5-1.25.9-1.25 1.5z"/></svg></span><span>FAQ</span></button>
   <button type="button" class="nav-btn" data-tab="home" aria-selected="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.7 1.5 6.8L12 17l-6.1 3.5 1.5-6.8L2.2 9l6.9-.7z"/></svg></span><span>Predictions</span><span class="badge nav-badge" id="pred-badge" hidden></span></button>
-  <button type="button" class="nav-btn" data-tab="bringing" aria-selected="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M7 4h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm1 5h8v2H8zm0 4h8v2H8zm0 4h5v2H8z"/></svg></span><span>Bringing</span></button>
+  <button type="button" class="nav-btn" data-tab="photos" aria-selected="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1.5 2H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5zm3 4.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg></span><span>Photos</span></button>
   <button type="button" class="nav-btn" data-tab="games" aria-selected="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm3 3.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg></span><span>Games</span></button>
   <button type="button" class="nav-btn" data-tab="hibachi" aria-selected="false"><span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v2.1a8 8 0 0 1 7 7.9H4a8 8 0 0 1 7-7.9zM2 15h20v2H2zm3 4h14v2H5z"/></svg></span><span>Hibachi</span></button>
 </nav>
@@ -337,6 +315,11 @@
     <div class="sheet-body" id="sheet-body"></div>
     <form class="sheet-foot chat-form" id="chat-form"><input type="text" id="chat-input" maxlength="240" placeholder="Talk your shit…" autocomplete="off"><button type="submit" class="btn primary">Send</button></form>
   </div>
+</div>
+<div class="lightbox" id="lightbox" hidden>
+  <button type="button" class="lb-close" id="lb-close" aria-label="Close">×</button>
+  <div class="lb-track" id="lb-track"></div>
+  <div class="lb-cap" id="lb-cap"></div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 

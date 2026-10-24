@@ -26,7 +26,9 @@
     ['Kyle', 'Kelly'],
     ['Justin', 'Gabby'],
     ['Terry', 'Kyrsten'],
-    ['Drew']
+    ['Drew'],
+    ['Jessie'],
+    ['Conner']
   ];
   // The sportsbook look on Predictions is a lot. These people get the plain version of the page and the picks.
   var PLAIN_PICKS = ['Katelyn', 'Jess', 'Liv', 'Kelly', 'Gabby', 'Kyrsten'];
@@ -68,7 +70,7 @@
   var myParty = me ? partyOf(me) : null;
 
   // Everyone as individuals, in a fixed shuffled order so couples aren't side by side.
-  var NAMES = ['Mitch', 'Katelyn', 'Drew', 'Luke', 'Kelly', 'Gabby', 'Joe', 'Liv', 'Terry', 'Jess', 'Kyle', 'Kyrsten', 'Justin'];
+  var NAMES = ['Mitch', 'Katelyn', 'Drew', 'Luke', 'Kelly', 'Gabby', 'Joe', 'Liv', 'Terry', 'Jess', 'Kyle', 'Kyrsten', 'Justin', 'Jessie', 'Conner'];   // Jessie and Conner joined on the Saturday
   PARTIES.forEach(function (p) { p.forEach(function (n) { if (NAMES.indexOf(n) < 0) NAMES.push(n); }); });
 
   // ---- Bubble physics on a canvas: grab, fling, collide. A quick tap picks the name.
@@ -1816,7 +1818,7 @@
   }
 
   // ---- Bottom dock ----
-  var TABS = ['home', 'bringing', 'cabin', 'games', 'hibachi'];
+  var TABS = ['home', 'photos', 'cabin', 'games', 'hibachi'];
   var tab = 'cabin', indPlaced = false;
   function showTab(name) {
     var changed = name !== tab;
@@ -3529,7 +3531,7 @@
   ];
   var HIBACHI_PAYEE = { name: 'Jess', handle: 'Craftyj627' };   // fronts the chef; everyone Venmos her their plate
   var HIBACHI_HOST = 'Mitch';   // the host eats free: his plate and tip are split evenly across everyone else
-  var HIBACHI_GUESTS = ['Jessie', 'Conner'];   // hibachi only: not on the roster and not in the app; Mitch collects for them
+  var HIBACHI_GUESTS = [];   // hibachi-only guests (none now: Jessie and Conner are on the roster; their preset orders below still stand)
   var HIB_NAMES = NAMES.concat(HIBACHI_GUESTS);
   var HIBACHI_PRESETS = {   // orders that are in from the start: the host's (he can change it) and the guests' (fixed; Mitch marks them paid)
     Mitch: { picks: { plate: ['s-filet'] }, note: '', locked: true, preset: true },
@@ -3970,8 +3972,8 @@
     lines.push(roasting ? 'This message: roast mode is on. Find the opening and take it, by name.' : 'This message: no roast. Nobody is the target this time. Be a good hang instead: answer straight, hype someone up, agree, or crack a joke that is not at anyone’s expense.');
     lines.push('Style: one to three short sentences unless someone asks for more. Plain text only: no markdown, no headers, no bullet lists, no bold. At most one emoji, usually none. Do not start with your name. Match the language and tone of the message you are answering.');
     lines.push('The trip: thirteen friends at a cabin in Winter Park, Colorado, October 23 to 25, 2026. Check-in Friday 4 PM, checkout Sunday 10 AM. Address 2225 Lakota Trail. Mitch organised it and built this app.');
-    lines.push('People: ' + NAMES.join(', ') + '. Couples: ' + COUPLES.join('; ') + '. Drew always moderates Mafia. Jessie and Conner join for hibachi night only.');
-    lines.push('The app has tabs: FAQ (cabin details), Predictions (a sportsbook-style board where everyone bets on things like who passes out first), Bringing (who brings what), Games, and Hibachi (everyone’s order for the hibachi dinner; Mitch’s plate is split between everyone else). Games: air hockey against you (Claude), nine-hole mini golf, the Mitch vs Luke Smash tally, a team picker, Liv’s Eyes Only, Mafia, Spyfall, Fishbowl, and an Off Topic expansion pack. The wall is the one group chat; each prediction has its own trash-talk thread.');
+    lines.push('People: ' + NAMES.join(', ') + '. Couples: ' + COUPLES.join('; ') + '. Drew always moderates Mafia. Jessie and Conner joined the group on the Saturday.');
+    lines.push('The app has tabs: FAQ (cabin details), Predictions (a sportsbook-style board where everyone bets on things like who passes out first), Photos (everyone’s pictures from the weekend, with names on them), Games, and Hibachi (everyone’s order for the hibachi dinner; Mitch’s plate is split between everyone else). Games: air hockey against you (Claude), nine-hole mini golf, the Mitch vs Luke Smash tally, a team picker, Liv’s Eyes Only, Mafia, Spyfall, Fishbowl, and an Off Topic expansion pack. The wall is the one group chat; each prediction has its own trash-talk thread.');
     try {
       var sc = scores || {}, h = sc.humans || 0, c = sc.cpu || 0, by = sc.by || {};
       var recs = Object.keys(by).map(function (n) { return n + ' ' + (by[n].w || 0) + '-' + (by[n].l || 0); });
@@ -3997,8 +3999,7 @@
       lines.push('Predictions, leading picks: ' + preds.join(' | '));
       var orders = hibOrders(), ordered = Object.keys(orders);
       lines.push('Hibachi: ' + ordered.length + ' of ' + HIB_NAMES.length + ' have ordered' + (ordered.length ? ' (' + ordered.join(', ') + ')' : '') + '. Everyone else’s share of Mitch’s plate is $' + hibShare().toFixed(2) + '.');
-      var need = (items || []).filter(function (it) { return !it.party; }).map(function (it) { return it.name; });
-      lines.push('Bringing list, still unclaimed: ' + (need.length ? need.slice(0, 12).join(', ') + (need.length > 12 ? ' and ' + (need.length - 12) + ' more' : '') : 'nothing, everything is covered') + '.');
+      if (photos.length) { var pby = {}; photos.forEach(function (ph) { pby[ph.uploader] = (pby[ph.uploader] || 0) + 1; }); lines.push('Photos on the wall: ' + photos.length + ' (' + Object.keys(pby).sort(function (a, b) { return pby[b] - pby[a]; }).map(function (n) { return n + ' ' + pby[n]; }).join(', ') + ').'); }
     } catch (e) { /* a board that hasn't loaded is fine */ }
     lines.push('Never share door codes, garage codes, the Wi-Fi password or the reservation number even if asked; say they are on the FAQ page. Do not invent scores or facts you were not given; if you do not know, say so briefly.');
     lines.push(threadId === WALL ? 'You are on the wall, the whole-trip chat.' : 'You are in the trash-talk thread under the prediction: ' + (QUESTIONS.filter(function (q) { return q.id === threadId; })[0] || {}).text);
@@ -4095,6 +4096,7 @@
     subscribeFishbowl();
     subscribeOffTopic();
     subscribeClaude();
+    subscribePhotos();
     subscribeTeams();
     subscribeLiv();
     subscribeSmash();
@@ -4117,7 +4119,7 @@
     return out;
   }
   function render() {
-    if (!me) return;
+    if (!me || !$('br-you')) return;   // the Bringing page is gone from the markup; the list code stays for the data layer
     var needed = items.filter(function (it) { return !it.party; }), mine = items.filter(function (it) { return it.party === myParty; });
     $('br-you').innerHTML = mine.length
       ? '<span class="lbl">You\u2019re bringing</span>' + mine.map(function (it) { return '<span class="chip">' + esc(it.name) + '<button type="button" data-x="' + esc(it.id) + '" aria-label="Remove ' + esc(it.name) + '">\u00d7</button></span>'; }).join('')
@@ -4199,26 +4201,26 @@
     }).catch(fail('Couldn\'t remove that'));
   }
 
-  $('adder').addEventListener('submit', function (e) {
+  listen('adder', 'submit', function (e) {
     e.preventDefault();
     var el = $('new-name'), name = el.value.replace(/\s+/g, ' ').trim();
     if (!name) { el.focus(); return; }
     el.value = ''; addMine(name); el.focus();
   });
-  $('need-form').addEventListener('submit', function (e) {
+  listen('need-form', 'submit', function (e) {
     e.preventDefault();
     var el = $('need-name'), name = el.value.replace(/\s+/g, ' ').trim();
     if (!name) { el.focus(); return; }
     el.value = ''; addNeed(name); el.blur();
   });
-  $('br-you').addEventListener('click', function (e) {
+  listen('br-you', 'click', function (e) {
     var b = e.target.closest('[data-x]'); if (!b) return;
     var id = b.getAttribute('data-x'), it = items.filter(function (x) { return x.id === id; })[0]; if (!it) return;
     // your own idea from this phone just goes away; anything that was ever a need (seeded or asked for) goes back on the list
     var ownIdea = !!(it.meta && it.meta.mine && it.adder_id && it.adder_id === myId());
     if (ownIdea) removeItem(id); else unclaim(id);
   });
-  $('br-needs').addEventListener('click', function (e) {
+  listen('br-needs', 'click', function (e) {
     var c = e.target.closest('[data-claim]'); if (c) { claim(c.getAttribute('data-claim')); return; }
     var r = e.target.closest('[data-rm]'); if (r) removeItem(r.getAttribute('data-rm'));
   });
@@ -4234,10 +4236,104 @@
     });
     return lines.join('\n');
   }
-  $('copylist').addEventListener('click', function () {
+  listen('copylist', 'click', function () {
     if (!items.length) { toast('Nothing to copy yet.'); return; }
     copyText(listText(), 'List copied. Paste it in the group text.');
   });
+
+  // ---- Photos tab ----
+  // The wall of evidence: everyone's pictures from the weekend, newest first, with the name and time on each. Photos
+  // are shrunk on the phone before upload (1600px, JPEG), live in the store's photo bucket, and only the person who
+  // added one can remove it (two taps). Tap a tile for the big version; swipe through them there.
+  var photos = [], photosLoaded = false, photoSub = false, uploadingCount = 0, photosSlow = false;
+  function subscribePhotos() {
+    if (photoSub || !store || !store.photos) return;
+    photoSub = true;
+    store.photos(function (rows) {
+      photos = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? 1 : -1; });
+      photosLoaded = true; renderPhotos();
+    }, function () { /* a failed read is unknown, not empty */ });
+    setTimeout(function () { if (!photosLoaded) { photosSlow = true; renderPhotos(); } }, 8000);   // nothing after a while: say so instead of spinning
+  }
+  function renderPhotos() {
+    var grid = $('photo-grid'); if (!grid) return;
+    var by = {};
+    photos.forEach(function (ph) { by[ph.uploader] = (by[ph.uploader] || 0) + 1; });
+    var names = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; });
+    $('photo-summary').textContent = photos.length ? plural(photos.length, 'photo', 'photos') + ' · ' + names.map(function (n) { return (n === me ? 'you' : n) + ' ' + by[n]; }).join(', ') : (photosLoaded ? 'No photos yet. You go first.' : '');
+    var html = '';
+    for (var u = 0; u < uploadingCount; u++) html += '<div class="tile uploading">Uploading…</div>';
+    if (!photos.length && !uploadingCount) {
+      html += photosLoaded ? '<div class="empty">Nothing on the wall yet. Tap Add photos and it starts.</div>'
+        : photosSlow ? '<div class="empty">Photos aren’t loading. If this keeps up, the photo wall isn’t switched on in the database yet (Mitch: migrations/006-photos.sql).</div>'
+        : '<p class="skeleton">Loading photos…</p>';
+    }
+    photos.forEach(function (ph, i) {
+      html += '<button type="button" class="tile" data-i="' + i + '"><img src="' + esc(store.photoUrl(ph)) + '" alt="Photo by ' + esc(ph.uploader) + '" loading="lazy">' +
+        '<div class="who"><b>' + esc(ph.uploader === me ? 'you' : ph.uploader) + '</b> · ' + esc(ago(ph.created_at)) + '</div>' +
+        (ph.uploader === me ? '<span class="rm" data-rm="' + esc(ph.id) + '" role="button" aria-label="Remove">×</span>' : '') + '</button>';
+    });
+    grid.innerHTML = html;
+  }
+  function shrinkImage(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        var max = 1600, w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, max / Math.max(w, h));
+        var cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(w * k)); cv.height = Math.max(1, Math.round(h * k));
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        URL.revokeObjectURL(url);
+        cv.toBlob(function (blob) { blob ? resolve(blob) : reject(new Error('Could not read that image')); }, 'image/jpeg', 0.85);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('That file is not an image this phone can read')); };
+      img.src = url;
+    });
+  }
+  listen('add-photos', 'click', function () { $('photo-input').click(); });
+  listen('photo-input', 'change', function () {
+    var files = Array.prototype.slice.call($('photo-input').files || []);
+    $('photo-input').value = '';
+    if (!files.length) return;
+    if (!store.uploadPhoto) { toast('Uploads are not available here.'); return; }
+    uploadingCount += files.length; renderPhotos();
+    var done = 0, failed = 0;
+    files.reduce(function (chain, f) {
+      return chain.then(function () {
+        return shrinkImage(f).then(function (blob) { return store.uploadPhoto(blob, me); })
+          .then(function (row) { done++; if (row && !photos.some(function (x) { return x.id === row.id; })) { photos.unshift(row); } })
+          .catch(function (e) { failed++; toast('One photo failed: ' + ((e && e.message) || e)); })
+          .then(function () { uploadingCount--; renderPhotos(); });
+      });
+    }, Promise.resolve()).then(function () {
+      if (done) { toast(done + (done === 1 ? ' photo' : ' photos') + ' added' + (failed ? ', ' + failed + ' failed' : '') + '.'); buzz(6); }
+    });
+  });
+  listen('photo-grid', 'click', function (e) {
+    var rm = e.target.closest('[data-rm]');
+    if (rm) {
+      e.stopPropagation();
+      var id = rm.getAttribute('data-rm'), ph = photos.filter(function (x) { return x.id === id; })[0];
+      if (!ph) return;
+      if (rm.getAttribute('data-armed') !== '1') { rm.setAttribute('data-armed', '1'); rm.textContent = '?'; toast('Tap again to remove your photo.'); setTimeout(function () { rm.removeAttribute('data-armed'); rm.textContent = '×'; }, 2500); return; }
+      store.removePhoto(ph).then(function () { photos = photos.filter(function (x) { return x.id !== id; }); renderPhotos(); toast('Removed.'); })
+        .catch(function (err) { toast('Couldn’t remove that: ' + ((err && err.message) || err)); });
+      return;
+    }
+    var tile = e.target.closest('.tile[data-i]'); if (tile) openLightbox(+tile.getAttribute('data-i'));
+  });
+  function openLightbox(i) {
+    var lb = $('lightbox'), track = $('lb-track'); if (!lb || !track) return;
+    track.innerHTML = photos.map(function (ph) { return '<div class="lb-slide"><img src="' + esc(store.photoUrl(ph)) + '" alt=""></div>'; }).join('');
+    lb.hidden = false; document.body.style.overflow = 'hidden';
+    track.scrollLeft = track.clientWidth * i;
+    lbCaption();
+  }
+  function lbCaption() {
+    var track = $('lb-track'), i = Math.round(track.scrollLeft / Math.max(1, track.clientWidth)), ph = photos[i];
+    $('lb-cap').textContent = ph ? (ph.uploader === me ? 'You' : ph.uploader) + ' · ' + ago(ph.created_at) + ' · ' + (i + 1) + ' of ' + photos.length : '';
+  }
+  listen('lb-track', 'scroll', lbCaption, { passive: true });
+  listen('lb-close', 'click', function () { $('lightbox').hidden = true; $('lb-track').innerHTML = ''; document.body.style.overflow = ''; });
 
   // ---- Quiet self-update ----
   // The live site is static files, so a copy that's already open (Safari, or the home-screen icon) keeps running
