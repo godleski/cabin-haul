@@ -3114,11 +3114,49 @@
   ];
   var OT_LETTERS = 'ABCDEFGHIJKLMNOPRSTW', OT_SECS = 120;
   var ot = null, otLoaded = false, otSub = false, otBuzzed = null, otOpts = null;
+  // Answers go in on each phone: one document per person (game-ot-<name>) holding the eight lines for the card out now
+  // (keyed by the deal and the letter, so a re-roll starts clean). When pencils are down, or someone taps Show answers,
+  // every phone lays the answers out under each line, matches crossed out, uniques counted.
+  var otAnswers = {}, otAnswersLoaded = false, otSaveT = null, otForce = false;
   function subscribeOffTopic() {
     if (otSub || !store || !store.game) return;
     otSub = true;
     store.game('offtopic', function (doc) { var same = otLoaded && sameDoc(doc, ot); ot = doc; otLoaded = true; if (!same) renderOffTopic(); });
+    if (!store.games) { otAnswersLoaded = true; return; }
+    store.games('ot-', function (rows) {
+      var next = {}; rows.forEach(function (r) { if (r.doc && r.doc.by) next[r.doc.by] = r.doc; });
+      var same = otAnswersLoaded && sameDoc(next, otAnswers); otAnswers = next; otAnswersLoaded = true; if (!same) renderOffTopic();
+    });
   }
+  function otRound(g) { return g.dealt_at + '|' + (g.letter || ''); }
+  function otRevealed(g) { return !!g.revealed || !!(g.started_at && otLeft(g) <= 0); }
+  function otSheet(g, who) { var d = otAnswers[who]; return d && d.round === otRound(g) ? d : null; }
+  function otIn(g) { return NAMES.filter(function (n) { return !!otSheet(g, n); }); }   // who has a sheet for this card
+  function otNorm(t) { return String(t || '').toLowerCase().replace(/^(the|a|an)\s+/, '').replace(/[^a-z0-9]+/g, ' ').trim(); }
+  function otLetterOk(g, t) { return !g.letter || otNorm(t).charAt(0) === g.letter.toLowerCase() || String(t || '').trim().charAt(0).toLowerCase() === g.letter.toLowerCase(); }
+  function otResults(g) {   // per line: everyone's answer, flagged; per person: points for answers nobody else had
+    var who = otIn(g), lines = [], score = {};
+    who.forEach(function (n) { score[n] = 0; });
+    for (var i = 0; i < 8; i++) {
+      var counts = {}, row = [];
+      who.forEach(function (n) { var t = ((otSheet(g, n).a || [])[i] || '').trim(); if (t) counts[otNorm(t)] = (counts[otNorm(t)] || 0) + 1; });
+      who.forEach(function (n) {
+        var t = ((otSheet(g, n).a || [])[i] || '').trim(), k = t ? (counts[otNorm(t)] > 1 ? 'match' : otLetterOk(g, t) ? 'uniq' : 'letter') : 'blank';
+        if (k === 'uniq') score[n]++;
+        row.push({ n: n, t: t, k: k });
+      });
+      lines.push(row);
+    }
+    return { who: who, lines: lines, score: score };
+  }
+  function otDoneLine(g) { var who = otIn(g), done = who.filter(function (n) { return otSheet(g, n).done; }); return who.length ? done.length + ' of ' + who.length + ' done' + (done.length ? ' (' + done.map(function (n) { return n === me ? 'you' : n; }).join(', ') + ')' : '') : 'Nobody has written anything yet.'; }
+  function otSaveMine(g, a, done) {
+    var doc = { by: me, round: otRound(g), a: a, done: !!done, at: new Date().toISOString() };
+    otAnswers = Object.assign({}, otAnswers); otAnswers[me] = doc;
+    var line = $('ot-done-line'); if (line) line.textContent = otDoneLine(g);
+    store.setGame('ot-' + me, doc).catch(function (e) { toast('Couldn’t save your answers: ' + ((e && e.message) || e)); });
+  }
+  function otReadForm() { return Array.prototype.map.call(document.querySelectorAll('#ot-form .ot-in'), function (el) { return el.value.replace(/\s+/g, ' ').trim().slice(0, 40); }); }
   function otOptions() { if (!otOpts) otOpts = Object.assign({ letter: true, clock: true }, (ot && ot.opts) || {}); return otOpts; }
   function otLeft(g) { return g.started_at ? Math.max(0, new Date(g.started_at).getTime() + OT_SECS * 1000 - Date.now()) : 0; }
   function otLetter(not) { var pool = OT_LETTERS.split('').filter(function (l) { return l !== not; }); return pool[Math.floor(Math.random() * pool.length)]; }
@@ -3136,7 +3174,7 @@
     if (!g) {
       var o = otOptions();
       status.textContent = 'No card out';
-      html += '<p class="info-sub">' + OT_CARDS.length + ' new cards to go with the box, with the thirteen of us worked in. Deal one and every phone shows the same card. Pads and pencils as usual: one answer per line, starting with the letter. Matches cross out, unique answers score.</p>';
+      html += '<p class="info-sub">' + OT_CARDS.length + ' new cards to go with the box, with the thirteen of us worked in. Deal one and every phone shows the same card. Type your eight answers on your own phone, one per line, starting with the letter. When the clock runs out, every phone shows everyone’s answers: matches cross out, the rest score.';
       html += '<div class="mafia-opts">' +
         '<div class="opt-row"><span>Roll a letter <span class="info-sub">(off if you’re using the die)</span></span><button type="button" class="toggle" data-ot-opt="letter" aria-pressed="' + !!o.letter + '" aria-label="Roll a letter"></button></div>' +
         '<div class="opt-row"><span>Run the two-minute clock <span class="info-sub">(off if you’re using the timer)</span></span><button type="button" class="toggle" data-ot-opt="clock" aria-pressed="' + !!o.clock + '" aria-label="Run the clock"></button></div></div>';
@@ -3144,14 +3182,36 @@
       html += '<div class="deal-sum">' + used.length + ' of ' + OT_CARDS.length + ' cards used' + (used.length ? ' · <button type="button" class="linkbtn" id="ot-shuffle">Shuffle them back in</button>' : '') + '</div>';
       body.innerHTML = html; return;
     }
-    var left = otLeft(g), card = OT_CARDS[g.card] || OT_CARDS[0], num = 101 + g.card;
+    var left = otLeft(g), card = OT_CARDS[g.card] || OT_CARDS[0], num = 101 + g.card, round = otRound(g), revealed = otRevealed(g);
     status.textContent = otChip(g);
+    var liveForm = $('ot-form');
+    if (liveForm && liveForm.getAttribute('data-round') === round && !revealed && !otForce) {   // someone's answers came in while this phone is still writing: don't touch the inputs
+      var dl = $('ot-done-line'); if (dl) dl.textContent = otDoneLine(g);
+      return;
+    }
+    otForce = false;
     if (g.letter || g.started_at) {
       html += '<div class="ot-top">' + (g.letter ? '<div class="ot-letter" id="ot-letter-badge">' + g.letter + '</div>' : '<div class="ot-note">Roll the die</div>') +
         (g.started_at ? '<div class="ot-clock' + (left > 0 && left <= 10000 ? ' low' : '') + '" id="ot-clock">' + (left > 0 ? '<span data-ot-clock>' + mmss(left) + '</span>' : '<span class="pd">Pencils down</span>') + '</div>' : '<div class="ot-note right">Flip the timer</div>') + '</div>';
     }
-    html += '<div class="ot-card"><div class="ot-num">' + num + '</div><ol>' + card.map(function (c, i) { return '<li><span class="n">' + (i + 1) + '.</span><span>' + esc(c) + '</span></li>'; }).join('') + '</ol>' +
-      '<div class="ot-logo"><span class="big">Off Topic</span><small>Expansion pack</small></div></div>';
+    var mine = otSheet(g, me), a = (mine && mine.a) || [], mineDone = !!(mine && mine.done);
+    if (revealed) {
+      var r = otResults(g), order = r.who.slice().sort(function (x, y) { return r.score[y] - r.score[x]; });
+      html += '<div class="ot-card revealed"><div class="ot-num">' + num + '</div>' +
+        (order.length ? '<div class="ot-scores">' + order.map(function (n) { return '<span><b>' + r.score[n] + '</b>' + esc(n === me ? 'you' : n) + '</span>'; }).join('') + '</div>' : '<div class="ot-nobody">Nobody typed anything for this card.</div>') +
+        '<ol>' + card.map(function (c, i) {
+          return '<li><span class="n">' + (i + 1) + '.</span><div class="ot-q"><span>' + esc(c) + '</span>' + (r.who.length ? '<div class="ot-ans">' + r.lines[i].map(function (x) { return '<span class="' + x.k + '"><i>' + esc(x.n === me ? 'you' : x.n) + '</i>' + (x.t ? esc(x.t) : '—') + '</span>'; }).join('') + '</div>' : '') + '</div></li>';
+        }).join('') + '</ol>' +
+        '<div class="ot-key"><span class="uniq">✓ only you had it</span><span class="match">matched someone, no point</span>' + (g.letter ? '<span class="letter">not on the letter</span>' : '') + '</div>' +
+        '<div class="ot-logo"><span class="big">Off Topic</span><small>Expansion pack</small></div></div>';
+    } else {
+      html += '<div class="ot-card"><div class="ot-num">' + num + '</div><div id="ot-form" data-round="' + esc(round) + '"><ol>' + card.map(function (c, i) {
+        return '<li><span class="n">' + (i + 1) + '.</span><div class="ot-q"><span>' + esc(c) + '</span><input class="ot-in" data-ot-i="' + i + '" value="' + esc(a[i] || '') + '" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="words" enterkeyhint="next" placeholder="' + (g.letter ? esc(g.letter) + '…' : '…') + '"' + (mineDone ? ' disabled' : '') + '></div></li>';
+      }).join('') + '</ol></div>' +
+        '<div class="ot-formfoot"><button type="button" class="btn" id="ot-done">' + (mineDone ? 'Change my answers' : '✓ I’m done') + '</button><span class="info-sub" id="ot-done-line">' + esc(otDoneLine(g)) + '</span></div>' +
+        '<div class="ot-logo"><span class="big">Off Topic</span><small>Expansion pack</small></div></div>';
+      html += '<div class="mafia-actions"><button type="button" class="btn" id="ot-show">Everyone’s done: show the answers</button></div>';
+    }
     html += '<div class="mafia-actions"><button type="button" class="big-btn" id="ot-next">📝 Next card</button>' +
       (g.letter ? '<button type="button" class="btn" id="ot-reroll">Roll the letter again</button>' : '') +
       (g.started_at ? '<button type="button" class="btn" id="ot-restart">Restart the clock</button>' : '') +
@@ -3168,7 +3228,7 @@
     var idx = fresh[Math.floor(Math.random() * fresh.length)];
     used.push(idx);
     var now = new Date().toISOString();
-    var doc = { status: 'card', card: idx, letter: o.letter ? otLetter(ot && ot.letter) : null, started_at: o.clock ? now : null, opts: { letter: !!o.letter, clock: !!o.clock }, used: used, by: me, dealt_at: now };
+    var doc = { status: 'card', card: idx, letter: o.letter ? otLetter(ot && ot.letter) : null, started_at: o.clock ? now : null, opts: { letter: !!o.letter, clock: !!o.clock }, used: used, by: me, dealt_at: now, revealed: false };
     otBuzzed = null; buzz([15, 40, 15]); otWrite(doc, 'Couldn’t deal');
   }
   function otTick() {
@@ -3176,7 +3236,7 @@
     var left = otLeft(g), el = document.querySelector('[data-ot-clock]'), st = $('offtopic-status'), clock = $('ot-clock');
     if (left > 0) { if (el) el.textContent = mmss(left); if (clock) clock.classList.toggle('low', left <= 10000); if (st) st.textContent = otChip(g); return; }
     if (otBuzzed === g.started_at) return;
-    otBuzzed = g.started_at; renderOffTopic();
+    otBuzzed = g.started_at; clearTimeout(otSaveT); if ($('ot-form')) otSaveMine(g, otReadForm(), true); otForce = true; renderOffTopic();
     if (!$('offtopic-body').hidden) { buzz([80, 40, 80, 40, 160]); toast('Off Topic: pencils down!'); }
   }
   listen('offtopic-body', 'click', function (e) {
@@ -3184,9 +3244,24 @@
     if (e.target.closest('#ot-deal') || e.target.closest('#ot-next')) { otDeal(); return; }
     if (!ot) return;
     if (e.target.closest('#ot-shuffle')) { otWrite(Object.assign({}, ot, { used: [] })); return; }
-    if (e.target.closest('#ot-reroll')) { otBuzzed = null; buzz(8); otWrite(Object.assign({}, ot, { letter: otLetter(ot.letter) }, ot.started_at ? { started_at: new Date().toISOString() } : {})); return; }
-    if (e.target.closest('#ot-restart')) { otBuzzed = null; buzz(8); otWrite(Object.assign({}, ot, { started_at: new Date().toISOString() })); return; }
+    if (e.target.closest('#ot-reroll')) { otBuzzed = null; buzz(8); otWrite(Object.assign({}, ot, { letter: otLetter(ot.letter), revealed: false }, ot.started_at ? { started_at: new Date().toISOString() } : {})); return; }
+    if (e.target.closest('#ot-restart')) { otBuzzed = null; buzz(8); otWrite(Object.assign({}, ot, { started_at: new Date().toISOString(), revealed: false })); return; }
+    if (e.target.closest('#ot-done') && ot.status === 'card') { otForce = true; otSaveMine(ot, otReadForm(), !(otSheet(ot, me) || {}).done); buzz(8); renderOffTopic(); return; }
+    if (e.target.closest('#ot-show') && ot.status === 'card') { if (otIn(ot).length && !window.confirm('Show everyone’s answers on every phone?')) return; clearTimeout(otSaveT); if ($('ot-form')) otSaveMine(ot, otReadForm(), true); otWrite(Object.assign({}, ot, { revealed: true, revealed_at: new Date().toISOString() }), 'Couldn’t show them'); return; }
     if (e.target.closest('#ot-away')) { otOpts = Object.assign({ letter: true, clock: true }, ot.opts || {}); otWrite(Object.assign({}, ot, { status: 'ended', ended_at: new Date().toISOString() }), 'Couldn’t put it away'); }
+  });
+
+  listen('offtopic-body', 'input', function (e) {
+    if (!e.target.closest('.ot-in') || !ot || ot.status !== 'card') return;
+    clearTimeout(otSaveT); otSaveT = setTimeout(function () { if ($('ot-form') && ot && ot.status === 'card') otSaveMine(ot, otReadForm(), false); }, 700);
+  });
+  listen('offtopic-body', 'focusout', function (e) {
+    if (!e.target.closest('.ot-in') || !ot || ot.status !== 'card' || !$('ot-form')) return;
+    clearTimeout(otSaveT); otSaveMine(ot, otReadForm(), !!(otSheet(ot, me) || {}).done);
+  });
+  listen('offtopic-body', 'keydown', function (e) {   // Next on the keyboard hops to the next line
+    if (e.key !== 'Enter' || !e.target.closest('.ot-in')) return;
+    e.preventDefault(); var all = document.querySelectorAll('#ot-form .ot-in'), i = +e.target.getAttribute('data-ot-i'); if (all[i + 1]) all[i + 1].focus(); else e.target.blur();
   });
 
   // ---- Cabin tab ----
