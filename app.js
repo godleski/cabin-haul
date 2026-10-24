@@ -2168,19 +2168,16 @@
     [3, 'What would your ex say is the real reason it ended, and are they right?'],
     [3, 'What’s the biggest thing you’ve never told anyone, and are you going to tell us tonight?']
   ];
-  // The rest live in liv-questions.js (a hundred more in the same three heats, and heat 5 = wholesome), appended after
-  // the first hundred so the indexes in a saved "seen" list keep pointing at the same questions. LIV_STACK marks which
-  // stack the extras belong to: a saved list from an older stack only keeps its first-hundred entries.
-  var LIV_STACK = 3, LIV_BASE = LIV_Q.length;
+  // The other thousand live in liv-questions.js (heat 0 = funny, 4 = unhinged), appended so the indexes in a saved
+  // "seen" list keep pointing at the same questions.
   LIV_Q = LIV_Q.concat(window.LIV_MORE || []);
   var liv = null, livLoaded = false, livSub = false, livAnim = null;
-  var HEAT = { 1: 'Deep', 2: 'Uncomfortable', 3: 'No mercy', 5: 'Wholesome' };
-  // Liv picks a mood; the draw only comes from that pile. 'deep' is the three original heats, 'wholesome' the soft ones.
-  var LIV_MOODS = [['all', 'Everything'], ['deep', 'Deep'], ['wholesome', 'Wholesome']];
+  var HEAT = { 0: 'Funny', 1: 'Deep', 2: 'Uncomfortable', 3: 'No mercy', 4: 'Unhinged' };
+  // Liv picks a mood; the draw only comes from that pile. 'deep' is the original three heats.
+  var LIV_MOODS = [['all', 'Everything'], ['funny', 'Funny'], ['deep', 'Deep'], ['unhinged', 'Unhinged']];
   function livMood() { var m = liv && liv.mood; return LIV_MOODS.some(function (x) { return x[0] === m; }) ? m : 'all'; }
-  function livInMood(heat, mood) { return mood === 'all' || (mood === 'wholesome' ? heat === 5 : heat >= 1 && heat <= 3); }
+  function livInMood(heat, mood) { return mood === 'all' || (mood === 'funny' ? heat === 0 : mood === 'unhinged' ? heat === 4 : heat >= 1 && heat <= 3); }
   function livPool(mood) { return LIV_Q.map(function (_, i) { return i; }).filter(function (i) { return livInMood(LIV_Q[i][0], mood); }); }
-  function livSeen() { var s = (liv && liv.seen) || [], cur = liv && liv.v === LIV_STACK; return s.filter(function (i) { return i < LIV_BASE || cur; }); }
   var LIV_KEEPERS = ['Liv', 'Mitch'];
   function livAllowed() { return LIV_KEEPERS.indexOf(me) >= 0; }
   function subscribeLiv() {
@@ -2194,20 +2191,20 @@
   }
   function livNext(keepVictim) {
     if (!livAllowed()) return;
-    var seen = livSeen(), mood = livMood(), pool = livPool(mood);
+    var seen = (liv && liv.seen) || [], mood = livMood(), pool = livPool(mood);
     if (!pool.length) { toast('That pile is empty.'); return; }
     var left = pool.filter(function (i) { return seen.indexOf(i) < 0; });
     if (!left.length) { seen = seen.filter(function (i) { return pool.indexOf(i) < 0; }); left = pool; toast('That pile’s been through once. Going round again.'); }   // only this pile starts over
     var idx = left[Math.floor(Math.random() * left.length)];
-    var doc = { q: idx, v: LIV_STACK, mood: mood, victim: keepVictim && liv ? liv.victim : livPickVictim(liv && liv.victim), by: me, seen: seen.concat([idx]), at: new Date().toISOString() };
+    var doc = { q: idx, mood: mood, victim: keepVictim && liv ? liv.victim : livPickVictim(liv && liv.victim), by: me, seen: seen.concat([idx]), at: new Date().toISOString() };
     liv = doc; livAnim = { flip: true, spin: true }; renderLiv(); buzz(25);
     store.setGame('liv', doc).catch(function (e) { toast('Couldn’t draw one: ' + ((e && e.message) || e)); });
   }
   function renderLiv() {
     var body = $('liv-body'), status = $('liv-status'); if (!body) return;
     if (!livLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
-    var seen = livSeen(), mood = livMood(), pool = livPool(mood);
-    var cur = liv && typeof liv.q === 'number' && (liv.q < LIV_BASE || liv.v === LIV_STACK) ? LIV_Q[liv.q] : null;   // a card from a retired stack is not shown
+    var seen = (liv && liv.seen) || [], mood = livMood(), pool = livPool(mood);
+    var cur = liv && typeof liv.q === 'number' ? LIV_Q[liv.q] : null;
     var asked = seen.filter(function (i) { return pool.indexOf(i) >= 0; }).length;
     status.textContent = asked ? asked + ' of ' + pool.length + ' asked' : LIV_Q.length.toLocaleString() + ' questions';
     if (!livAllowed()) {
@@ -2216,9 +2213,9 @@
     }
     var total = LIV_Q.length.toLocaleString();
     var html = me === 'Liv'
-      ? '<p class="info-sub"><b>Hey Liv.</b> Mitch made this for you: ' + total + ' questions to ask people, deep and uncomfortable, with a wholesome pile for when the room needs it. One at a time, no repeats. Only you and Mitch can see them. Pick a mood, then draw.</p>'
-      : '<p class="info-sub">Liv\u2019s stash of ' + total + ' questions: deep, uncomfortable, and a wholesome pile. One at a time, no repeats, nowhere to hide. Only Liv and Mitch can read these; the rest just get asked.</p>';
-    html += '<div class="legend"><span class="h1"><i></i>Deep · gets you thinking</span><span class="h2"><i></i>Uncomfortable · gets you sweating</span><span class="h3"><i></i>No mercy · gets you divorced</span><span class="h5"><i></i>Wholesome · gets you hugging</span></div>';
+      ? '<p class="info-sub"><b>Hey Liv.</b> Mitch made this for you: ' + total + ' questions to ask people, from silly to deep to completely unhinged, one at a time, no repeats. Only you and Mitch can see them. Pick a mood, then draw.</p>'
+      : '<p class="info-sub">Liv\u2019s stash of ' + total + ' questions, silly to deep to unhinged. One at a time, no repeats, nowhere to hide. Only Liv and Mitch can read these; the rest just get asked.</p>';
+    html += '<div class="legend"><span class="h0"><i></i>Funny · gets you laughing</span><span class="h1"><i></i>Deep · gets you thinking</span><span class="h2"><i></i>Uncomfortable · gets you sweating</span><span class="h3"><i></i>No mercy · gets you divorced</span><span class="h4"><i></i>Unhinged · gets you banned</span></div>';
     html += '<div class="liv-moods" role="group" aria-label="Mood">' + LIV_MOODS.map(function (m) { return '<button type="button" data-mood="' + m[0] + '" aria-pressed="' + (m[0] === mood) + '">' + m[1] + '</button>'; }).join('') + '</div>';
     if (cur) {
       var an = livAnim || {}; livAnim = null;
@@ -2238,7 +2235,7 @@
     if (moodBtn) {
       var newMood = moodBtn.getAttribute('data-mood');
       if (newMood === livMood()) return;
-      var moodDoc = Object.assign({}, liv || {}, { mood: newMood, seen: livSeen(), v: LIV_STACK, by: me, at: new Date().toISOString() });
+      var moodDoc = Object.assign({ seen: [] }, liv || {}, { mood: newMood, by: me, at: new Date().toISOString() });
       liv = moodDoc; renderLiv(); buzz(8);
       store.setGame('liv', moodDoc).catch(function (err) { toast('Couldn’t switch: ' + ((err && err.message) || err)); });
       return;
@@ -2250,7 +2247,7 @@
       return;
     }
     if (e.target.closest('#liv-reset')) {
-      var cleared = { seen: [], v: LIV_STACK, mood: livMood(), by: me, at: new Date().toISOString() };
+      var cleared = { seen: [], by: me, at: new Date().toISOString() };
       store.setGame('liv', cleared).then(function () { liv = cleared; renderLiv(); }).catch(function (err) { toast('Couldn’t reset: ' + ((err && err.message) || err)); });
     }
   });
