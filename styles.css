@@ -620,6 +620,7 @@
   .fb-mine { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; } .fb-mine .rl-head { width: 100%; font: 700 0.95rem var(--display); } .fb-mine .rl-head .info-sub { font-weight: 500; }
   .fb-pool { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; } .fb-pool .guest b { font-variant-numeric: tabular-nums; } .fb-pool .guest.full { background: var(--pine); color: var(--pine-ink); }
   .fb-score { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .fb-score.three { grid-template-columns: repeat(3, 1fr); gap: 6px; } .fb-score.three .fb-team { padding: 10px 4px; } .fb-score.three .fb-team .n { font-size: 1.8rem; } .fb-score.three .fb-team small { font-size: 0.74rem; } .fb-score.three .fb-team .names { font-size: 0.62rem; }
   .fb-team { border-radius: 12px; padding: 10px 8px; text-align: center; background: var(--bg); border: 2px solid transparent; min-width: 0; } .fb-team.up { border-color: var(--tc); } .fb-team.won { background: var(--tc); color: #fff; }
   .fb-team .n { display: block; font: 800 2.2rem var(--display); line-height: 1; color: var(--tc); font-variant-numeric: tabular-nums; } .fb-team.won .n { color: #fff; }
   .fb-team small { display: block; margin-top: 4px; font-weight: 700; } .fb-team .names { display: block; margin-top: 3px; font-size: 0.7rem; color: var(--muted); line-height: 1.3; } .fb-team.won .names { color: rgba(255, 255, 255, 0.85); }

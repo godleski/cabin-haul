@@ -2852,16 +2852,16 @@
   listen('spyfall-body', 'contextmenu', function (e) { if (e.target.closest('.role-card')) e.preventDefault(); });
 
   // ---- Fishbowl ----
-  // Everyone drops three things in the bowl from their own phone. Two teams, three rounds on the same words: describe
-  // it, one word, act it out. Turns are a minute. The phone that starts a turn runs it: it shows the card and takes
-  // Got it or Skip; every other phone shows the score and the clock. Words live in one document per person
+  // Everyone drops three things in the bowl from their own phone. Two or three teams, three rounds on the same words:
+  // describe it, one word, act it out. Turns are a minute. Only the giver's own phone can start their turn, and that
+  // phone runs it: it shows the card and takes Got it or Skip; every other phone shows the score and the clock. Words live in one document per person
   // (game-fb-<name>), so thirteen people typing at once never overwrite each other; the game itself is one document.
   var FB_WORDS = 3, FB_TURN = 60, FB_ROUNDS = [
     { name: 'Describe it', rule: 'Say anything except the words on the card. No rhymes-with, no spelling it out.' },
     { name: 'One word', rule: 'One word, then silence. Choose it well.' },
     { name: 'Act it out', rule: 'No words, no sounds. Charades.' }
   ];
-  var fb = null, fbLoaded = false, fbSub = false, fbWords = {}, fbWordsLoaded = false, fbPreview = null, fbExpiredFor = null;
+  var fb = null, fbLoaded = false, fbSub = false, fbWords = {}, fbWordsLoaded = false, fbPreview = null, fbExpiredFor = null, fbTeamCount = 2;
   function subscribeFishbowl() {
     if (fbSub || !store || !store.game) return;
     fbSub = true;
@@ -2883,8 +2883,12 @@
     return out;
   }
   function fbTeamName(g, i) { return TEAM_EMOJI[g.ti[i]] + ' ' + TEAM_NAMES[g.ti[i]]; }
-  function fbWinner(g) { return g.score[0] === g.score[1] ? -1 : g.score[0] > g.score[1] ? 0 : 1; }
-  function fbWinnerText(g) { var w = fbWinner(g); return w < 0 ? 'A tie, ' + g.score[0] + ' all.' : fbTeamName(g, w) + ' won ' + g.score[w] + '–' + g.score[1 - w] + '.'; }
+  function fbWinner(g) {   // the top scorer, or -1 when two or more share the top
+    var best = Math.max.apply(null, g.score);
+    return g.score.filter(function (x) { return x === best; }).length > 1 ? -1 : g.score.indexOf(best);
+  }
+  function fbScoreLine(g) { return g.score.join('\u2013'); }
+  function fbWinnerText(g) { var w = fbWinner(g); return w < 0 ? 'A tie, ' + fbScoreLine(g) + '.' : fbTeamName(g, w) + ' won ' + fbScoreLine(g) + '.'; }
   function fbLeft(g) { return Math.max(0, new Date(g.turn.started_at).getTime() + FB_TURN * 1000 - Date.now()); }
   function teamHtml(members, ti) {
     return '<div class="team" style="--tc:' + TEAM_COLORS[ti] + '"><div class="tname"><span class="mascot">' + TEAM_EMOJI[ti] + '</span>Team ' + TEAM_NAMES[ti] + '<small>' + members.length + '</small></div><div class="tmem">' +
@@ -2895,33 +2899,34 @@
     if (!fbLoaded || !fbWordsLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
     var g = fb && (fb.status === 'play' || fb.status === 'over') ? fb : null, html = '';
     if (!g) {   // filling the bowl
-      var pool = fbPool(), mine = fbMine(), can = pool.people.length >= 4;
+      var pool = fbPool(), mine = fbMine(), want = fbTeamCount, need = want * 2, can = pool.people.length >= need;
       status.textContent = pool.words.length ? pool.words.length + ' in the bowl' : 'Bowl’s empty';
-      html += '<p class="info-sub">Everyone drops ' + FB_WORDS + ' things in the bowl from their own phone: people, places, movies, inside jokes. Two teams, three rounds on the same words: describe it, one word, act it out. A minute a turn.</p>';
+      html += '<p class="info-sub">Everyone drops ' + FB_WORDS + ' things in the bowl from their own phone: people, places, movies, inside jokes. Two or three teams, three rounds on the same words: describe it, one word, act it out. A minute a turn. You start your own turns from your own phone.</p>';
       html += '<div class="fb-mine"><div class="rl-head">Your ' + FB_WORDS + ' <span class="info-sub">(' + mine.length + ' in)</span></div>' +
         mine.map(function (w, i) { return '<span class="guest">' + esc(w) + '<button type="button" data-fb-drop="' + i + '" aria-label="Take out ' + esc(w) + '">×</button></span>'; }).join('') +
         (mine.length < FB_WORDS ? '<form class="guest-add" id="fb-add"><input type="text" maxlength="40" placeholder="Something to guess" autocomplete="off" autocapitalize="words"><button type="submit" class="btn">Drop in</button></form>' : '<span class="info-sub">You’re in. Sit tight.</span>') + '</div>';
       html += '<div class="fb-pool">' + (pool.people.length ? pool.people.map(function (n) { var c = fbWords[n].words.length; return '<span class="guest' + (c >= FB_WORDS ? ' full' : '') + '">' + esc(n === me ? 'You' : n) + ' <b>' + c + '</b></span>'; }).join('') : '<span class="info-sub">Nobody’s dropped anything in yet.</span>') + '</div>';
       if (fbPreview && !sameDoc(fbPreview.people, pool.people)) fbPreview = null;   // someone joined or left: roll again
+      html += '<div class="mafia-opts"><div class="opt-row"><span>Teams <span class="info-sub">(' + pool.people.length + ' in the bowl)</span></span><span class="stepper"><button type="button" data-fb-teamn="-1"' + (want <= 2 ? ' disabled' : '') + '>−</button><b>' + want + '</b><button type="button" data-fb-teamn="1"' + (want >= 3 ? ' disabled' : '') + '>+</button></span></div></div>';
       if (fbPreview) {
         html += '<div class="team-list">' + fbPreview.teams.map(function (members, i) { return teamHtml(members, fbPreview.ti[i]); }).join('') + '</div>';
         html += '<div class="mafia-actions"><button type="button" class="big-btn" id="fb-start">🐟 Start the game</button><button type="button" class="btn" id="fb-teams">Roll again</button></div>';
       } else {
         html += '<div class="mafia-actions"><button type="button" class="big-btn" id="fb-teams"' + (can ? '' : ' disabled') + '>🎲 Make the teams</button></div>';
-        if (!can) html += '<div class="deal-sum">Needs four people with something in the bowl.</div>';
+        if (!can) html += '<div class="deal-sum">Needs ' + need + ' people with something in the bowl for ' + want + ' teams.</div>';
       }
       if (fb && fb.status === 'over') html += '<p class="info-sub" style="margin-top:10px">Last game: ' + esc(fbWinnerText(fb)) + '</p>';
       if (pool.words.length) html += '<div class="mafia-actions"><button type="button" class="linkbtn" id="fb-new">Empty the bowl</button></div>';
       body.innerHTML = html; return;
     }
     var t = g.turn, running = !!t.started_at, left = running ? fbLeft(g) : 0, meRunner = running && t.runner === myId(), over = g.status === 'over';
-    status.textContent = over ? (fbWinner(g) < 0 ? 'Tie, ' + g.score[0] + ' all' : TEAM_NAMES[g.ti[fbWinner(g)]] + ' won ' + g.score[fbWinner(g)] + '\u2013' + g.score[1 - fbWinner(g)]) : 'Round ' + g.round + ' \u00b7 ' + g.score[0] + '\u2013' + g.score[1];
-    html += '<div class="fb-score">' + [0, 1].map(function (i) {
+    status.textContent = over ? (fbWinner(g) < 0 ? 'Tie, ' + fbScoreLine(g) : TEAM_NAMES[g.ti[fbWinner(g)]] + ' won ' + fbScoreLine(g)) : 'Round ' + g.round + ' \u00b7 ' + fbScoreLine(g);
+    html += '<div class="fb-score' + (g.teams.length > 2 ? ' three' : '') + '">' + g.teams.map(function (_, i) {
       return '<div class="fb-team' + (!over && t.team === i ? ' up' : '') + (over && fbWinner(g) === i ? ' won' : '') + '" style="--tc:' + TEAM_COLORS[g.ti[i]] + '"><span class="n">' + g.score[i] + '</span><small>' + fbTeamName(g, i) + '</small><span class="names">' + esc(g.teams[i].join(', ')) + '</span></div>';
     }).join('') + '</div>';
     if (over) {
       html += '<div class="fb-round"><b>Game over.</b> ' + esc(fbWinnerText(g)) + '</div>';
-      html += '<div class="fb-rounds">' + FB_ROUNDS.map(function (rr, i) { return '<span>' + esc(rr.name) + ' <b>' + g.rounds[i][0] + '–' + g.rounds[i][1] + '</b></span>'; }).join('') + '</div>';
+      html += '<div class="fb-rounds">' + FB_ROUNDS.map(function (rr, i) { return '<span>' + esc(rr.name) + ' <b>' + g.rounds[i].join('–') + '</b></span>'; }).join('') + '</div>';
       html += '<div class="mafia-actions"><button type="button" class="big-btn" id="fb-again">🐟 Same words, play again</button><button type="button" class="btn" id="fb-new">New bowl</button></div>';
       body.innerHTML = html; return;
     }
@@ -2929,7 +2934,8 @@
     html += '<div class="fb-round"><b>Round ' + g.round + ' of 3: ' + esc(r.name) + '.</b> ' + esc(r.rule) + ' <span class="info-sub">' + g.left.length + ' of ' + g.entries.length + ' left in the bowl.</span></div>';
     if (!running) {
       html += '<div class="fb-up"><span class="sub">Up next for ' + teamName + '</span><span class="who">' + esc(t.giver === me ? 'You' : t.giver) + '</span></div>';
-      html += '<div class="mafia-actions"><button type="button" class="big-btn" id="fb-go">▶ ' + (t.giver === me ? 'Start my turn' : 'Start ' + esc(t.giver) + '’s turn on this phone') + '</button><button type="button" class="btn" id="fb-pass">Skip to the next person</button></div>';
+      if (t.giver === me) html += '<div class="mafia-actions"><button type="button" class="big-btn" id="fb-go">▶ Start my turn</button><button type="button" class="btn" id="fb-pass">Skip me</button></div>';
+      else html += '<div class="info-sub" style="margin-top:8px;text-align:center">' + esc(t.giver) + ' starts the turn from their own phone.</div><div class="mafia-actions"><button type="button" class="btn" id="fb-pass">' + esc(t.giver) + ' isn’t around: skip to the next person</button></div>';
     } else if (meRunner) {
       var cur = g.entries.filter(function (e) { return e.id === t.cur; })[0];
       html += '<div class="fb-clock' + (left <= 10000 ? ' low' : '') + '" id="fb-clock"><span data-fb-clock>' + mmss(left) + '</span></div>';
@@ -2954,18 +2960,24 @@
   }
   function fbNextGiver(g, team) { var list = g.teams[team], i = g.next[team] % list.length; g.next[team] = i + 1; return list[i]; }
   function fbPick(g, not) { var ids = g.left.filter(function (id) { return id !== not; }); if (!ids.length) ids = g.left; return ids[Math.floor(Math.random() * ids.length)] || null; }
-  function fbEndTurn(g) { var team = 1 - g.turn.team; g.turn = { team: team, giver: fbNextGiver(g, team), started_at: null, runner: null, cur: null, got: 0 }; return g; }
+  function fbEndTurn(g) { var team = (g.turn.team + 1) % g.teams.length; g.turn = { team: team, giver: fbNextGiver(g, team), started_at: null, runner: null, cur: null, got: 0 }; return g; }
   function fbFresh(base) {   // a new game on the same teams and words
-    var g = Object.assign({}, base, { status: 'play', at: new Date().toISOString(), round: 1, left: base.entries.map(function (e) { return e.id; }), score: [0, 0], rounds: [[0, 0], [0, 0], [0, 0]], next: [0, 0], turn: { team: Math.random() < 0.5 ? 0 : 1, giver: null, started_at: null, runner: null, cur: null, got: 0 } });
+    var zeros = function () { return base.teams.map(function () { return 0; }); };
+    var g = Object.assign({}, base, { status: 'play', at: new Date().toISOString(), round: 1, left: base.entries.map(function (e) { return e.id; }), score: zeros(), rounds: [zeros(), zeros(), zeros()], next: zeros(), turn: { team: Math.floor(Math.random() * base.teams.length), giver: null, started_at: null, runner: null, cur: null, got: 0 } });
     delete g.over_at; g.turn.giver = fbNextGiver(g, g.turn.team); return g;
   }
+  function fbRoll() {   // deal the people in the bowl into fbTeamCount teams, couples apart
+    var pool = fbPool(), n = fbTeamCount;
+    if (pool.people.length < n * 2) { fbPreview = null; renderFishbowl(); return; }
+    fbPreview = { people: pool.people.slice(), teams: makeTeams(pool.people, n, true), ti: shuffled([0, 1, 2, 3, 4, 5]).slice(0, n) }; buzz([15, 60, 15]); renderFishbowl();
+  }
   function fbStart() {
-    var pool = fbPool(); if (!fbPreview || pool.people.length < 4) return;
+    var pool = fbPool(); if (!fbPreview || pool.people.length < fbPreview.teams.length * 2) return;
     var doc = fbFresh({ session: fbSession(), by: me, teams: fbPreview.teams, ti: fbPreview.ti, entries: shuffled(pool.words) });
     fbPreview = null; buzz([20, 50, 20]); fbWrite(doc, 'Couldn’t start');
   }
   function fbGo() {
-    var g = JSON.parse(JSON.stringify(fb)); if (g.turn.started_at) return;
+    var g = JSON.parse(JSON.stringify(fb)); if (g.turn.started_at || g.turn.giver !== me) return;   // only the giver's own phone starts a turn
     g.turn.started_at = new Date().toISOString(); g.turn.runner = myId(); g.turn.cur = fbPick(g, null); g.turn.got = 0;
     buzz([15, 40, 15]); fbWrite(g, 'Couldn’t start the turn');
   }
@@ -3004,11 +3016,13 @@
   });
   listen('fishbowl-body', 'click', function (e) {
     var dr = e.target.closest('[data-fb-drop]'); if (dr) { var i = +dr.getAttribute('data-fb-drop'); fbSaveMine(fbMine().filter(function (x, k) { return k !== i; })); return; }
-    if (e.target.closest('#fb-teams')) {
-      var pool = fbPool(); if (pool.people.length < 4) return;
-      var ti = shuffled([0, 1, 2, 3, 4, 5]).slice(0, 2);
-      fbPreview = { people: pool.people.slice(), teams: makeTeams(pool.people, 2, true), ti: ti }; buzz([15, 60, 15]); renderFishbowl(); return;
+    var tn = e.target.closest('[data-fb-teamn]');
+    if (tn) {
+      fbTeamCount = Math.max(2, Math.min(3, fbTeamCount + (+tn.getAttribute('data-fb-teamn'))));
+      if (fbPreview) fbRoll(); else renderFishbowl();   // a preview on screen re-rolls at the new size
+      return;
     }
+    if (e.target.closest('#fb-teams')) { fbRoll(); return; }
     if (e.target.closest('#fb-start')) { fbStart(); return; }
     if (!fb) return;
     if (e.target.closest('#fb-go')) { fbGo(); return; }
