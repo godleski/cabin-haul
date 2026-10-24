@@ -2734,26 +2734,34 @@
   // questions. Any phone deals; each player holds their own card to see it, like Mafia. A countdown runs from the
   // deal. When it's up, the table votes, then someone taps Reveal. Never the same place twice running.
   var SPY_PLACES = [
-    { k: 'hottub', name: 'The hot tub', icon: '🛁', roles: ['Towel runner', 'Temperature critic', 'Cannonballer', 'The one who won’t get in', 'Drink holder', 'Jet hog'] },
-    { k: 'lift', name: 'The ski lift', icon: '🚡', roles: ['Lift operator', 'Snowboarder with one strap', 'Safety-bar enforcer', 'Dropped a pole', 'First-timer', 'Line cutter'] },
-    { k: 'hibachi', name: 'The hibachi grill', icon: '🍤', roles: ['Chef', 'Onion-volcano fan', 'Shrimp catcher', 'Sake bomber', 'Birthday liar', 'Bill splitter'] },
-    { k: 'liquor', name: 'The liquor store run', icon: '🍾', roles: ['Driver', 'Cart pusher', 'ID checker', 'Forgot the mixers', 'Budget keeper', 'Box-wine advocate'] },
-    { k: 'i70', name: 'The drive up I-70', icon: '🚗', roles: ['Driver', 'DJ', 'Snack dispenser', 'Asleep in the back', 'Navigator', 'Carsick one'] },
-    { k: 'deck', name: 'The deck at sunrise', icon: '☕', roles: ['Coffee maker', 'Blanket thief', 'Photographer', 'Hungover', 'Bird spotter', 'Up way too early'] },
-    { k: 'sled', name: 'The sledding hill', icon: '🛷', roles: ['Tube pilot', 'Hill climber', 'Crash victim', 'Starter', 'Judge', 'Cocoa runner'] },
-    { k: 'bunk', name: 'The bunk room', icon: '🛏️', roles: ['Top bunk', 'Snorer', 'Phone-light reader', 'Blanket hog', 'Earplug dealer', 'Night talker'] },
-    { k: 'fire', name: 'The fire pit', icon: '🔥', roles: ['Fire starter', 'Marshmallow burner', 'Storyteller', 'Smoke dodger', 'Log hauler', 'Guitar guy'] },
-    { k: 'kitchen', name: 'The kitchen at breakfast', icon: '🍳', roles: ['Pancake flipper', 'Bacon guard', 'Dish avoider', 'Coffee refiller', 'Orange-juice police', 'Taste tester'] },
-    { k: 'rental', name: 'The ski rental shop', icon: '🎿', roles: ['Boot fitter', 'Lied about their height', 'Helmet refuser', 'Waiver signer', 'Line waiter', 'Wrong-size skis'] },
-    { k: 'brewery', name: 'The brewery in town', icon: '🍺', roles: ['Flight sharer', 'Designated driver', 'Pretzel orderer', 'Trivia captain', 'Bartender', 'IPA snob'] },
-    { k: 'gondola', name: 'The gondola', icon: '🚠', roles: ['Window fogger', 'Hates heights', 'Selfie taker', 'Door holder', 'Tourist', 'Operator'] },
-    { k: 'mafia', name: 'Mafia night', icon: '🕵️', roles: ['Moderator', 'Dead on night one', 'Loud accuser', 'Quiet mafia', 'Medic who saves themselves', 'Rules lawyer'] },
-    { k: 'grocery', name: 'The grocery run', icon: '🛒', roles: ['List keeper', 'Cart driver', 'Impulse buyer', 'Coupon finder', 'Bag carrier', 'Snack-aisle lurker'] },
-    { k: 'checkin', name: 'Check-in at the house', icon: '🔑', roles: ['Door-code enterer', 'Room claimer', 'Bag hauler', 'Thermostat setter', 'Wi-Fi finder', 'Tour guide'] },
-    { k: 'trail', name: 'The trailhead', icon: '🥾', roles: ['Pace setter', 'Water carrier', 'Bear-bell wearer', 'Photo stopper', 'Shortcut suggester', 'Dog walker'] },
-    { k: 'pong', name: 'The beer pong table', icon: '🏓', roles: ['Rack straightener', 'Bounce-shot artist', 'Elbow referee', 'Cup refiller', 'Heckler', 'Rookie'] },
-    { k: 'springs', name: 'The hot springs', icon: '♨️', roles: ['Towel guard', 'Pool hopper', 'Sulfur complainer', 'Lifeguard', 'Lost the locker key', 'Floater'] },
-    { k: 'movie', name: 'Movie night on the couch', icon: '🍿', roles: ['Remote holder', 'Plot explainer', 'Popcorn maker', 'Asleep by the credits', 'Phone scroller', 'Volume adjuster'] }
+    { k: 'gate', name: 'The airport gate', icon: '✈️', roles: ['Gate agent', 'Overpacker', 'Boarding-group liar', 'Neck-pillow wearer', 'Delayed and furious', 'At the bar at 9 a.m.'] },
+    { k: 'wedding', name: 'A wedding reception', icon: '💒', roles: ['Best man mid-speech', 'Bouquet catcher', 'Open-bar regular', 'Cake guard', 'Plus-one nobody knows', 'DJ taking no requests'] },
+    { k: 'dentist', name: 'The dentist’s chair', icon: '🦷', roles: ['Dentist', 'Hygienist', 'Flossing liar', 'Gagging on the x-ray', 'Nitrous enjoyer', 'Parent in the waiting room'] },
+    { k: 'casino', name: 'The casino floor', icon: '🎰', roles: ['Blackjack dealer', 'Slot-machine lifer', 'Cocktail server', 'Card counter', 'Down bad at craps', 'Pit boss'] },
+    { k: 'ikea', name: 'IKEA on a Saturday', icon: '🪑', roles: ['Cart navigator', 'Meatball enthusiast', 'Lost in Marketplace', 'Pencil hoarder', 'Arguing over a couch', 'Showroom napper'] },
+    { k: 'gym', name: 'The gym at 6 a.m.', icon: '🏋️', roles: ['Personal trainer', 'Mirror flexer', 'Treadmill walker', 'Squat-rack hog', 'Towel forgetter', 'Locker-room talker'] },
+    { k: 'costco', name: 'The Costco sample lap', icon: '🧀', roles: ['Sample lady', 'Pizza-slice buyer', 'Bulk-buy justifier', 'Membership checker', 'Cart blocker', 'TV-aisle lingerer'] },
+    { k: 'dmv', name: 'The DMV', icon: '🪪', roles: ['Number caller', 'Wrong-form holder', 'Photo retaker', 'Asleep in the chair', 'Line cutter', 'Eye-chart cheater'] },
+    { k: 'cruise', name: 'A cruise ship buffet', icon: '🛳️', roles: ['Buffet lifer', 'Towel-animal maker', 'Seasick one', 'Shore-excursion booker', 'Pool-chair claimer', 'Cruise director'] },
+    { k: 'zoo', name: 'The zoo', icon: '🦒', roles: ['Zookeeper', 'Monkey-house complainer', 'Lost kid', 'Gift-shop maxer', 'Penguin superfan', 'Pretzel buyer'] },
+    { k: 'court', name: 'A courtroom', icon: '⚖️', roles: ['Judge', 'Nervous witness', 'Defense attorney', 'Juror number six', 'Court sketch artist', 'Bailiff'] },
+    { k: 'er', name: 'The ER waiting room', icon: '🏥', roles: ['Triage nurse', 'Mystery rash', 'Fell off a ladder', 'Asleep on three chairs', 'Vending-machine raider', 'Paperwork filler'] },
+    { k: 'haunted', name: 'A haunted house', icon: '👻', roles: ['Chainsaw guy', 'Screamer', 'Scared the actors', 'Clutching a stranger', 'Sprinting for the exit', 'Ticket taker'] },
+    { k: 'karaoke', name: 'Karaoke night', icon: '🎤', roles: ['Hogging the mic', 'Power-ballad specialist', 'Duet partner', 'Scrolling the songbook', 'Tambourine', 'Holding the bar tab'] },
+    { k: 'iss', name: 'The space station', icon: '🚀', roles: ['Commander', 'Lost a sock in zero g', 'Running the experiments', 'Space-toilet expert', 'Homesick', 'Out on a spacewalk'] },
+    { k: 'sub', name: 'A submarine', icon: '🌊', roles: ['Captain', 'Sonar listener', 'Periscope hog', 'Claustrophobic', 'Torpedo loader', 'Cook'] },
+    { k: 'subway', name: 'A packed subway car', icon: '🚇', roles: ['Pole leaner', 'Backpack blocker', 'Headphones blasting', 'Showtime dancer', 'Lost tourist', 'Asleep standing up'] },
+    { k: 'farm', name: 'A dairy farm', icon: '🐄', roles: ['Milker', 'Tractor driver', 'Chasing a loose goat', 'Farmhand on day one', 'Egg collector', 'City cousin visiting'] },
+    { k: 'beach', name: 'A crowded beach', icon: '🏖️', roles: ['Lifeguard', 'Sunburn in progress', 'Umbrella wrestler', 'Sandcastle engineer', 'Sunscreen applier', 'Seagull victim'] },
+    { k: 'library', name: 'The public library', icon: '📚', roles: ['Librarian', 'Shusher', 'Printer wrestler', 'Study-group talker', 'Napping in the stacks', 'Owes a fine'] },
+    { k: 'rally', name: 'A campaign rally', icon: '🎪', roles: ['Candidate', 'Sign holder', 'Heckler', 'Speechwriter', 'Baby being kissed', 'Press pool'] },
+    { k: 'pirate', name: 'A pirate ship', icon: '🏴‍☠️', roles: ['Captain', 'Lookout in the crow’s nest', 'Deck swabber', 'Parrot handler', 'Map reader', 'Walking the plank'] },
+    { k: 'bakery', name: 'A bakery at opening', icon: '🥐', roles: ['Baker', 'First in line', 'Croissant critic', 'Announcing it’s sold out', 'Coffee spiller', 'Free-sample grabber'] },
+    { k: 'nails', name: 'The nail salon', icon: '💅', roles: ['Technician', 'Can’t pick a color', 'Gossip source', 'On speakerphone', 'First-timer boyfriend', 'Smudged it on the way out'] },
+    { k: 'safari', name: 'A safari jeep', icon: '🦁', roles: ['Guide', 'Binocular hog', 'Lion spotter', 'Napping in the back', 'Wrong-shoes tourist', 'Snack smuggler'] },
+    { k: 'lobby', name: 'A hotel lobby at 2 a.m.', icon: '🏨', roles: ['Night clerk', 'Lost key card', 'Ice-machine wanderer', 'Bachelorette party', 'Noise complainer', 'Bellhop'] },
+    { k: 'tailgate', name: 'A tailgate', icon: '🏈', roles: ['Grill master', 'Cornhole champ', 'Face painter', 'Parking-lot wanderer', 'Cooler guard', 'Lost the tickets'] },
+    { k: 'salon', name: 'The barber shop', icon: '💈', roles: ['Barber', 'Asked for a trim, got a buzz', 'Waiting for his guy', 'Phone photo of a haircut', 'Hot-towel enjoyer', 'Sweeping up'] }
   ];
   var spy = null, spyLoaded = false, spySub = false, spyDraft = null, spyBuzzed = null, spyDealAnim = false;
   function subscribeSpyfall() {
@@ -2797,7 +2805,6 @@
           : '<div class="role-face front town"><div class="icon">' + place.icon + '</div><div class="sub">You’re at</div><div class="role">' + esc(place.name) + '</div><div class="desc">Your job: <b>' + esc(g.roles[me]) + '</b>. Answer like you’re there, but don’t make it easy for the spy.</div></div>') +
         '</div></div>';
     } else html += '<p class="info-sub">You’re not in this round. ' + esc(g.by === me ? 'You' : g.by) + ' dealt it.</p>';
-    html += '<details class="spy-places"><summary>All ' + SPY_PLACES.length + ' places</summary><div class="spy-grid">' + SPY_PLACES.map(function (p) { return '<span' + (revealed && p.k === g.place ? ' class="hit"' : '') + '>' + p.icon + ' ' + esc(p.name) + '</span>'; }).join('') + '</div></details>';
     html += '<div class="mafia-actions">' + (revealed
       ? '<button type="button" class="big-btn" id="spy-again">🔍 Deal another</button><button type="button" class="btn" id="spy-end">Done</button>'
       : (isSpy ? '<button type="button" class="btn" id="spy-reveal">I’m the spy: reveal me</button>' : '') + '<button type="button" class="btn" id="spy-again">Re-deal</button>') + '</div>';
