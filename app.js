@@ -4105,11 +4105,11 @@
     store.init({
       onItems: function (rows) { items = rows.slice(); itemsLoaded = true; render(); },
       onLive: function (on) { live = on; updateStatus(); },
-      onError: function (msg) { $('br-who').innerHTML = '<p class="skeleton">' + esc(msg) + '</p>'; },
+      onError: function (msg) { console.warn(msg); if (!live) toast(msg); },   // the Bringing list used to show this inline; that page is gone
       onSetup: showSetup
     });
   }
-  function showSetup(html) { $('setup').hidden = false; $('setup').innerHTML = html; $('br-who').innerHTML = ''; }
+  function showSetup(html) { $('setup').hidden = false; $('setup').innerHTML = html; }
 
   // ---- Render ----
   // Three things on the page: what you're bringing, what nobody has grabbed yet, and what everyone else has.
