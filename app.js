@@ -3216,8 +3216,8 @@
   // Blackjack and craps, played against the house on your own phone, banked in Terry coin. Everyone starts with 1,000.
   // One document per person (game-casino-<name>): balance, hands, biggest win, loans taken when broke. The hand itself
   // lives on the phone; the bet leaves the bank when the hand starts and the payout lands when it ends.
-  var TC_START = 1000, TC_LOAN = 500, TC_CHIPS = [10, 25, 50, 100, 250, 500];
-  var casino = {}, casinoLoaded = false, casinoSub = false, casGame = 'blackjack', casBet = 25, bj = null, craps = null, casAnim = null;
+  var TC_START = 100, TC_LOAN = 50, TC_CHIPS = [5, 10, 25, 50, 100, 250];
+  var casino = {}, casinoLoaded = false, casinoSub = false, casGame = 'blackjack', casBet = 10, bj = null, craps = null, casAnim = null;
   function subscribeCasino() {
     if (casinoSub || !store || !store.games) { casinoLoaded = true; return; }
     casinoSub = true;
