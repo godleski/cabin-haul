@@ -3250,18 +3250,45 @@
   function casInHand() { return (casGame === 'blackjack' && bj && !bj.done) || (casGame === 'craps' && craps && !craps.done) || (casGame === 'holdem' && holdem && !holdem.done) || (casGame === 'slots' && slots && !slots.done) || (casGame === 'wheel' && wheel && !wheel.done) || (casGame === 'horses' && race && !race.done); }
   // Churchill Downs: six horses, a fun coat and mane each, fixed odds. Win pays the odds, place (top two) half the odds,
   // show (top three) a third. The race itself is run on this phone, fair and random, the favourites a touch quicker.
-  var HORSES = [
+  // The stable: every race draws six at random, so the names keep coming. Odds and pace go together.
+  var STABLE = [
     { name: 'Hot Tub Time Machine', coat: '#c0392b', mane: '#ffd60a', silks: '#ffd60a', odds: 2, pace: 1.06 },
-    { name: 'Mitch’s Plate', coat: '#2c3e50', mane: '#ff6b6b', silks: '#ff6b6b', odds: 3, pace: 1.03 },
+    { name: 'Mitch’s Plate (Split Six Ways)', coat: '#2c3e50', mane: '#ff6b6b', silks: '#ff6b6b', odds: 3, pace: 1.03 },
     { name: 'Kyle’s Mini Golf Game', coat: '#8e44ad', mane: '#53d337', silks: '#53d337', odds: 4, pace: 1.0 },
     { name: 'Seven Out', coat: '#1f6fb2', mane: '#ff9f43', silks: '#ff9f43', odds: 6, pace: 0.98 },
     { name: 'Kyrkat', coat: '#111', mane: '#ff69b4', silks: '#ff69b4', odds: 8, pace: 0.96 },
-    { name: 'Terry’s Loan', coat: '#2d6a4f', mane: '#30d5c8', silks: '#30d5c8', odds: 12, pace: 0.93 }
+    { name: 'Terry’s Loan', coat: '#2d6a4f', mane: '#30d5c8', silks: '#30d5c8', odds: 12, pace: 0.93 },
+    { name: 'Joe Would Do It For A Free Beer', coat: '#b7950b', mane: '#fff', silks: '#fff3b0', odds: 3, pace: 1.03 },
+    { name: 'Joe’s Nickname (Pending)', coat: '#6d4c41', mane: '#ff4757', silks: '#ff4757', odds: 5, pace: 0.99 },
+    { name: 'Joe Just Said Hi', coat: '#e67e22', mane: '#2c3e50', silks: '#f5f5f5', odds: 7, pace: 0.97 },
+    { name: 'Average Joe (Allegedly)', coat: '#95a5a6', mane: '#111', silks: '#ffd60a', odds: 4, pace: 1.0 },
+    { name: 'Joe Said Five Minutes', coat: '#16a085', mane: '#ff9f43', silks: '#ff9f43', odds: 9, pace: 0.95 },
+    { name: 'Not A Bed', coat: '#7f8c8d', mane: '#ffd60a', silks: '#c0392b', odds: 2, pace: 1.06 },
+    { name: 'I-70 Traffic', coat: '#c0392b', mane: '#fff', silks: '#111', odds: 15, pace: 0.9 },
+    { name: 'Starts The Shots', coat: '#f39c12', mane: '#c0392b', silks: '#c0392b', odds: 3, pace: 1.03 },
+    { name: 'Best Cocktail This Weekend', coat: '#d35400', mane: '#30d5c8', silks: '#30d5c8', odds: 6, pace: 0.98 },
+    { name: 'Most F’d Up', coat: '#2c3e50', mane: '#53d337', silks: '#8e44ad', odds: 2, pace: 1.06 },
+    { name: 'Luke’s Smash Record', coat: '#d63a1f', mane: '#ffd60a', silks: '#fff', odds: 5, pace: 0.99 },
+    { name: 'Drew Is Moderating', coat: '#3f7cae', mane: '#fff', silks: '#ffd60a', odds: 4, pace: 1.0 },
+    { name: 'Katelyn Is Always Right', coat: '#8e44ad', mane: '#ffd60a', silks: '#ff69b4', odds: 2, pace: 1.07 },
+    { name: 'Kelly’s Walk-Up Song', coat: '#ff69b4', mane: '#111', silks: '#111', odds: 3, pace: 1.03 },
+    { name: 'Gabby’s Next Tattoo', coat: '#111', mane: '#30d5c8', silks: '#30d5c8', odds: 6, pace: 0.98 },
+    { name: 'Baddest In Town', coat: '#e8c547', mane: '#111', silks: '#111', odds: 2, pace: 1.07 },
+    { name: 'Showed Up Saturday', coat: '#27ae60', mane: '#fff', silks: '#ff6b6b', odds: 8, pace: 0.96 },
+    { name: 'Claude At Air Hockey', coat: '#d97757', mane: '#111', silks: '#111', odds: 20, pace: 0.88 },
+    { name: 'Door Code (Do Not Share)', coat: '#34495e', mane: '#e8c547', silks: '#e8c547', odds: 10, pace: 0.94 },
+    { name: 'Pencils Down', coat: '#ffd60a', mane: '#111', silks: '#111', odds: 7, pace: 0.97 }
   ];
+  var field = null;
+  function raceField() {   // six from the stable, no two in the same coat
+    if (!field) { var coats = {}; field = shuffled(STABLE.map(function (_, i) { return i; })).filter(function (i) { var c = STABLE[i].coat; if (coats[c]) return false; coats[c] = true; return true; }).slice(0, 6); }
+    return field.map(function (i) { return STABLE[i]; });
+  }
   var race = null, racePick = 0, raceKind = 'win', raceTimer = null;
   function raceStart() {
     if (!stake(casBet)) return;
-    race = { horse: racePick, kind: raceKind, bet: casBet, pos: HORSES.map(function () { return 0; }), order: [], done: false, result: null, t0: null };
+    var H = raceField();
+    race = { horse: racePick, kind: raceKind, bet: casBet, pos: H.map(function () { return 0; }), order: [], done: false, result: null, t0: null };
     buzz([10, 30, 10]); renderCasino();
     var last = null;
     function frame(ts) {
@@ -3270,12 +3297,12 @@
       var dt = Math.min(50, ts - last) / 1000; last = ts;
       race.pos.forEach(function (p, i) {
         if (race.order.indexOf(i) >= 0) return;
-        var h = HORSES[i], surge = Math.random() < 0.08 ? 1.6 : 1, v = (14 + Math.random() * 10) * h.pace * surge;   // % per second
+        var h = raceField()[i], surge = Math.random() < 0.08 ? 1.6 : 1, v = (14 + Math.random() * 10) * h.pace * surge;   // % per second
         race.pos[i] = Math.min(100, p + v * dt);
         if (race.pos[i] >= 100) race.order.push(i);
       });
       Array.prototype.forEach.call(document.querySelectorAll('.track .horse'), function (el) { var i = +el.getAttribute('data-i'); el.style.left = 'calc(' + race.pos[i] + '% - ' + (race.pos[i] * 0.56) + 'px)'; });
-      var lead = $('race-lead'); if (lead) { var li = race.order.length ? race.order[0] : race.pos.indexOf(Math.max.apply(null, race.pos)); lead.textContent = (race.order.length ? 'Winner: ' : 'Leading: ') + HORSES[li].name; }
+      var lead = $('race-lead'); if (lead) { var li = race.order.length ? race.order[0] : race.pos.indexOf(Math.max.apply(null, race.pos)); lead.textContent = (race.order.length ? 'Winner: ' : 'Leading: ') + raceField()[li].name; }
       if (race.order.length >= 3 && ts - race.t0 > 3000) { raceFinish(); return; }
       if (ts - race.t0 > 12000) { race.pos.forEach(function (p, i) { if (race.order.indexOf(i) < 0) race.order.push(i); }); raceFinish(); return; }
       raceTimer = requestAnimationFrame(frame);
@@ -3283,10 +3310,10 @@
     raceTimer = requestAnimationFrame(frame);
   }
   function raceFinish() {
-    var h = HORSES[race.horse], place = race.order.indexOf(race.horse), win = 0, r;
+    var h = raceField()[race.horse], place = race.order.indexOf(race.horse), win = 0, r;
     var k = race.kind === 'win' ? (place === 0 ? h.odds : 0) : race.kind === 'place' ? (place >= 0 && place <= 1 ? h.odds / 2 : 0) : (place >= 0 && place <= 2 ? h.odds / 3 : 0);
     if (k) { win = Math.round(race.bet * (k + 1)); r = h.name + (place === 0 ? ' wins it!' : place === 1 ? ' runs second.' : ' shows third.') + ' Your ' + race.kind + ' bet pays.'; }
-    else r = HORSES[race.order[0]].name + ' wins. ' + h.name + (place < 0 ? ' never got there.' : place === 1 ? ' second.' : place === 2 ? ' third.' : ' finished ' + (place + 1) + 'th.') + ' Tear up the ticket.';
+    else r = raceField()[race.order[0]].name + ' wins. ' + h.name + (place < 0 ? ' never got there.' : place === 1 ? ' second.' : place === 2 ? ' third.' : ' finished ' + (place + 1) + 'th.') + ' Tear up the ticket.';
     race.done = true; race.result = r; race.win = win; settle(race.bet, win); renderCasino();
   }
   function horseSvg(h) {
@@ -3493,13 +3520,13 @@
       html += '<div class="cas-rules">Win pays the odds · place (top two) half · show (top three) a third</div>';
       var running = race && !race.done;
       html += '<div class="downs"><div class="sky"><div class="stand"><i class="spire"></i><i class="spire"></i><span class="roof"></span><span class="sign">Churchill Downs</span></div></div>' +
-        '<div class="track">' + HORSES.map(function (h, i) { var p = race ? race.pos[i] : 0; return '<div class="lane"><span class="num" style="background:' + h.silks + '">' + (i + 1) + '</span><div class="horse' + (running ? ' run' : '') + (race && race.done && race.order[0] === i ? ' won' : '') + '" data-i="' + i + '" style="left:calc(' + p + '% - ' + (p * 0.56) + 'px)">' + horseSvg(h) + '</div></div>'; }).join('') + '<div class="wire"></div></div>' +
-        '<div class="race-line" id="race-lead">' + (race ? (race.done ? 'Winner: ' + HORSES[race.order[0]].name : 'They’re off!') : 'Pick a horse and a bet') + '</div>' +
-        (race && race.done ? '<div class="race-order">' + race.order.slice(0, 3).map(function (i, k) { return '<span><b>' + (k + 1) + '</b>' + esc(HORSES[i].name) + '</span>'; }).join('') + '</div>' + resultHtml(race.result, race.win, race.bet) : '') + '</div>';
+        '<div class="track">' + raceField().map(function (h, i) { var p = race ? race.pos[i] : 0; return '<div class="lane"><span class="num" style="background:' + h.silks + '">' + (i + 1) + '</span><div class="horse' + (running ? ' run' : '') + (race && race.done && race.order[0] === i ? ' won' : '') + '" data-i="' + i + '" style="left:calc(' + p + '% - ' + (p * 0.56) + 'px)">' + horseSvg(h) + '</div></div>'; }).join('') + '<div class="wire"></div></div>' +
+        '<div class="race-line" id="race-lead">' + (race ? (race.done ? 'Winner: ' + raceField()[race.order[0]].name : 'They’re off!') : 'Pick a horse and a bet') + '</div>' +
+        (race && race.done ? '<div class="race-order">' + race.order.slice(0, 3).map(function (i, k) { return '<span><b>' + (k + 1) + '</b>' + esc(raceField()[i].name) + '</span>'; }).join('') + '</div>' + resultHtml(race.result, race.win, race.bet) : '') + '</div>';
       if (!running) {
-        html += '<div class="horse-list">' + HORSES.map(function (h, i) { return '<button type="button" data-horse="' + i + '" aria-pressed="' + (racePick === i) + '"><span class="num" style="background:' + h.silks + '">' + (i + 1) + '</span><span class="nm">' + esc(h.name) + '</span><span class="odds">' + h.odds + '-1</span></button>'; }).join('') + '</div>';
+        html += '<div class="horse-list">' + raceField().map(function (h, i) { return '<button type="button" data-horse="' + i + '" aria-pressed="' + (racePick === i) + '"><span class="num" style="background:' + h.silks + '">' + (i + 1) + '</span><span class="nm">' + esc(h.name) + '</span><span class="odds">' + h.odds + '-1</span></button>'; }).join('') + '</div>';
         html += '<div class="cas-tabs small">' + [['win', 'Win'], ['place', 'Place'], ['show', 'Show']].map(function (k) { return '<button type="button" data-race-kind="' + k[0] + '" aria-pressed="' + (raceKind === k[0]) + '">' + k[1] + '</button>'; }).join('') + '</div>';
-        html += '<div class="mafia-actions"><button type="button" class="big-btn" id="race-go"' + (b.bal < casBet ? ' disabled' : '') + '>🏇 ' + (race ? 'Run it again' : 'And they’re off') + ' · ' + tc(casBet) + '</button></div>';
+        html += '<div class="mafia-actions"><button type="button" class="big-btn" id="race-go"' + (b.bal < casBet ? ' disabled' : '') + '>🏇 ' + (race ? 'Run it again' : 'And they’re off') + ' · ' + tc(casBet) + '</button><button type="button" class="btn" id="race-field">New field</button></div>';
       }
     } else {
       html += '<div class="cas-rules">Kyrkat’s wheel · evens pay 1 to 1, a dozen 2 to 1, a number 35 to 1 · zero is Kyrkat</div>';
@@ -3537,6 +3564,7 @@
     var hp = e.target.closest('[data-horse]'); if (hp) { racePick = +hp.getAttribute('data-horse'); buzz(6); renderCasino(); return; }
     var rk = e.target.closest('[data-race-kind]'); if (rk) { raceKind = rk.getAttribute('data-race-kind'); buzz(6); renderCasino(); return; }
     if (e.target.closest('#race-go')) { raceStart(); return; }
+    if (e.target.closest('#race-field')) { field = null; race = null; racePick = 0; buzz(6); renderCasino(); return; }
   });
 
   // ---- Cabin tab ----
