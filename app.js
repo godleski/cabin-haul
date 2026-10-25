@@ -3233,7 +3233,7 @@
   function loanTag(n) { var d = casino[n] || {}; if (!d.loans) return ''; var c = debtCollected(n), later = (d.loans - loansDue(n)) * TC_LOAN; return c ? ' <small class="paid">paid ' + tc(c) + (later ? ' · owes ' + tc(later) : '') + '</small>' : ' <small>owes ' + tc(d.loans * TC_LOAN) + '</small>'; }
   function houseTake() { var t = 0; Object.keys(casino).forEach(function (n) { if (n !== HOUSE) t += (casino[n].house || 0) + debtCollected(n); }); return t; }
   function effBal(n) { var d = casino[n]; return (d ? d.bal : TC_START) - debtCollected(n) + stimIssued() + dividendsIssued() + grantsFor(n) + (n === HOUSE ? houseTake() : 0) + markPositions(d && d.pos) + sbNetFor(n) + pmNetFor(n); }
-  var CAS_GAMES = [['smash', '🎮 Smash book'], ['fights', '🥊 Prize fights'], ['dond', '💼 Deal or No Deal'], ['wof', '🎡 Wheel of Fortune'], ['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs'], ['market', '📈 Derivatives'], ['shop', '🛍️ Gift shop']];
+  var CAS_GAMES = [['smash', '🎮 Smash book'], ['fights', '🥊 Prize fights'], ['dond', '💼 Deal or No Deal'], ['wof', '🎡 Wheel of Fortune'], ['fg', '🏈 Football corner'], ['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs'], ['market', '📈 Derivatives'], ['shop', '🛍️ Gift shop']];
   var CAS_BOSSES = ['Terry', 'Mitch'], casClosed = null;
   // Who sees the Reserve's books (grants, escrow, seizures): the chairman's circle. Everyone else sees the public face.
   var RESERVE_INSIDERS = ['Mitch', 'Terry', 'Joe'];
@@ -3247,7 +3247,7 @@
   var RESERVE_ASSETS = [['\uD83C\uDF7A', '24 Coors Banquet', 240], ['\uD83D\uDEC1', 'One hot tub, heated', 500], ['\uD83C\uDF64', 'Mitch’s hibachi plate', 65], ['\uD83D\uDC08\u200D\u2B1B', 'One Kyrkat (priceless, booked at)', 1000], ['\uD83D\uDD11', 'The door code', 300]];
   var reserve = null, TC_STIM = 25, resOpen = false, resWho = null, resAmt = '100';   // the panel's picks survive a re-render   // the Reserve stays open across re-renders once you open it
   // Standing grants by order of the chairman, counted in the bank of the person named (the Reserve document can add more).
-  var RESERVE_GRANTS = {};   // 2026-10-25: 500 to Joe by Mitch, then taken back the same night
+  var RESERVE_GRANTS = { Luke: 500, Drew: 250, Kyle: 250 };   // 2026-10-25: 500 to Joe by Mitch, taken back the same night; then 500 to Luke and 250 each to Drew and Kyle to play with
   // Standing dividends to every player, by order of the chairman; the latest note goes up on the sign.
   var DIVIDENDS = [{ n: 100, note: 'It’s nice here.', by: 'Mitch', at: '2026-10-25T04:00:00Z' }];
   function dividendsIssued() { return DIVIDENDS.reduce(function (t, d) { return t + d.n; }, 0) + ((reserve && reserve.dividends) || 0); }
@@ -3297,7 +3297,7 @@
     buzz(win > bet ? [20, 40, 20, 40, 60] : win ? 15 : 60);
   }
   function stake(bet) { var b = myBank(); if (bet > myBal()) { toast('You don’t have ' + tcText(bet) + '.'); return false; } bankWrite({ bal: b.bal - bet }); return true; }
-  function casInHand() { return (casGame === 'blackjack' && bj && !bj.done) || (casGame === 'craps' && craps && !craps.done) || (casGame === 'holdem' && holdem && !holdem.done) || (casGame === 'slots' && slots && !slots.done) || (casGame === 'wheel' && wheel && !wheel.done) || (casGame === 'horses' && race && !race.done) || (casGame === 'fights' && fight && !fight.done) || (casGame === 'dond' && dond && !dond.done) || (casGame === 'wof' && wof && !wof.done); }
+  function casInHand() { return (casGame === 'blackjack' && bj && !bj.done) || (casGame === 'craps' && craps && !craps.done) || (casGame === 'holdem' && holdem && !holdem.done) || (casGame === 'slots' && slots && !slots.done) || (casGame === 'wheel' && wheel && !wheel.done) || (casGame === 'horses' && race && !race.done) || (casGame === 'fights' && fight && !fight.done) || (casGame === 'dond' && dond && !dond.done) || (casGame === 'wof' && wof && !wof.done) || (casGame === 'fg' && fg && !fg.done); }
   // Churchill Downs: six horses, a fun coat and mane each, fixed odds. Win pays the odds, place (top two) half the odds,
   // show (top three) a third. The race itself is run on this phone, fair and random, the favourites a touch quicker.
   // The stable: every race draws six at random, so the names keep coming. Odds and pace go together.
@@ -3977,6 +3977,35 @@
     if (!(wof && !wof.done)) html += '<div class="mafia-actions"><button type="button" class="big-btn" id="wof-spin"' + (b.bal < casBet ? ' disabled' : '') + '>🎡 Spin · ' + tc(casBet) + '</button></div>';
     return html;
   }
+  // ---- Terry’s Football Corner: field goals ----
+  // Pick a spot, bet Good or No good, and the kicker lines it up. Each spot has its own chance of splitting the uprights;
+  // the odds carry the house edge. The kick is drawn up front and the ball flies with CSS transforms: through, wide, or short.
+  var FG_SPOTS = [[25, 'Chip shot', 0.88], [38, 'Makeable', 0.72], [48, 'Long', 0.55], [58, 'Bomb', 0.32], [67, 'Prayer', 0.12]];
+  var FG_EDGE = 0.93, fg = null, fgSpot = 1, fgSide = 'good';
+  function fgOdds(s) { return { good: Math.round(FG_EDGE / s[2] * 100) / 100, miss: Math.round(FG_EDGE / (1 - s[2]) * 100) / 100 }; }
+  function fgKick() {
+    if (!stake(casBet)) return;
+    var s = FG_SPOTS[fgSpot], good = Math.random() < s[2], kind = good ? 'good' : ['left', 'right', 'short'][Math.floor(Math.random() * (s[0] >= 55 ? 3 : 2))];
+    var o = fgOdds(s), won = (fgSide === 'good') === good, win = won ? Math.round(casBet * (fgSide === 'good' ? o.good : o.miss)) : 0;
+    fg = { spot: s, side: fgSide, bet: casBet, good: good, kind: kind, done: false, win: win, result: (good ? 'GOOD from ' + s[0] + '! Right down the middle.' : kind === 'left' ? 'Wide left from ' + s[0] + '. Terry blames the wind.' : kind === 'right' ? 'Wide right from ' + s[0] + '. Hooked it.' : 'Short from ' + s[0] + '. Not even close.') + (won ? ' Your call pays ' + (fgSide === 'good' ? o.good : o.miss).toFixed(2) + '×.' : ' Wrong call.') };
+    casAnim = 'kick'; buzz(8); renderCasino();
+    setTimeout(function () { if (!fg || fg.done) return; fg.done = true; settle(fg.bet, fg.win); renderCasino(); }, 2400);
+  }
+  function fgHtml(b, an) {
+    var s = fg ? fg.spot : FG_SPOTS[fgSpot], o = fgOdds(FG_SPOTS[fgSpot]), live = fg && !fg.done, over = fg && fg.done;
+    var html = '<div class="cas-rules">Terry’s Football Corner · pick a spot, call it Good or No good · fixed odds · the kicker is a volunteer</div>';
+    html += '<div class="fg"><div class="fg-field"><div class="fg-posts"><i class="up l"></i><i class="bar"></i><i class="up r"></i><i class="post"></i></div><div class="fg-yards"><span>' + s[0] + '</span></div>' +
+      '<div class="fg-kicker' + (an === 'kick' ? ' kick' : '') + '"><i class="head"></i><i class="body"></i><i class="arm"></i><i class="leg"></i></div>' +
+      '<div class="fg-ball' + (fg ? (an === 'kick' ? ' fly ' : ' landed ') + fg.kind : '') + '"><span>🏈</span></div>' +
+      (over ? '<div class="fg-call ' + (fg.good ? 'good' : 'miss') + '">' + (fg.good ? 'GOOD!' : 'NO GOOD') + '</div>' : '') + '</div>' +
+      (over ? resultHtml(fg.result, fg.win, fg.bet) : '<div class="slot-hint">' + (fg ? 'The snap is down…' : 'From the ' + s[0] + ', ' + s[1].toLowerCase() + '. Make the call.') + '</div>') + '</div>';
+    if (!live) {
+      html += '<div class="cas-tabs small">' + FG_SPOTS.map(function (x, i) { return '<button type="button" data-fg-spot="' + i + '" aria-pressed="' + (fgSpot === i) + '">' + x[0] + ' yd · ' + esc(x[1]) + '</button>'; }).join('') + '</div>';
+      html += '<div class="sb-sides"><button type="button" data-fg-side="good" aria-pressed="' + (fgSide === 'good') + '"><span class="nm">Good</span><small>' + Math.round(FG_SPOTS[fgSpot][2] * 100) + '% from here</small><b>pays ' + o.good.toFixed(2) + '×</b></button><button type="button" data-fg-side="miss" aria-pressed="' + (fgSide === 'miss') + '"><span class="nm">No good</span><small>' + Math.round((1 - FG_SPOTS[fgSpot][2]) * 100) + '% from here</small><b>pays ' + o.miss.toFixed(2) + '×</b></button></div>';
+      html += '<div class="mafia-actions"><button type="button" class="big-btn" id="fg-go"' + (b.bal < casBet ? ' disabled' : '') + '>🏈 ' + (fg ? 'Kick again' : 'Snap it') + ' · ' + tc(casBet) + '</button></div>';
+    }
+    return html;
+  }
   function renderCasino() {
     var body = $('casino-body'), status = $('casino-status'); if (!body) return;
     if (!casinoLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
@@ -4035,6 +4064,8 @@
       html += dondHtml(b);
     } else if (casGame === 'wof') {
       html += wofHtml(b, an);
+    } else if (casGame === 'fg') {
+      html += fgHtml(b, an);
     } else if (casGame === 'blackjack') {
       html += '<div class="cas-rules">Dealer stands on 17 · blackjack pays 3 to 2 · double on any two</div>';
       if (bj) {
@@ -4167,6 +4198,9 @@
     var dc = e.target.closest('[data-dond-case]'); if (dc && !dc.disabled) { dondTap(+dc.getAttribute('data-dond-case')); return; }
     if (e.target.closest('#dond-go')) { dondStart(); return; }
     if (e.target.closest('#wof-spin')) { wofSpin(); return; }
+    var fsp = e.target.closest('[data-fg-spot]'); if (fsp) { fgSpot = +fsp.getAttribute('data-fg-spot'); buzz(6); renderCasino(); return; }
+    var fsd = e.target.closest('[data-fg-side]'); if (fsd) { fgSide = fsd.getAttribute('data-fg-side'); buzz(6); renderCasino(); return; }
+    if (e.target.closest('#fg-go')) { fgKick(); return; }
     if (e.target.closest('#dond-deal')) { dondDeal(); return; }
     if (e.target.closest('#dond-nodeal')) { dondNoDeal(); return; }
     if (e.target.closest('#dond-keep')) { dondFinal(false); return; }
