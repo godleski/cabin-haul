@@ -3222,7 +3222,7 @@
   // the same document), and Terry's bank is his own balance plus the sum of those.
   function houseTake() { var t = 0; Object.keys(casino).forEach(function (n) { if (n !== HOUSE) t += (casino[n].house || 0); }); return t; }
   function effBal(n) { var d = casino[n]; return (d ? d.bal : TC_START) + stimIssued() + dividendsIssued() + grantsFor(n) + (n === HOUSE ? houseTake() : 0) + markPositions(d && d.pos) + sbNetFor(n) + pmNetFor(n); }
-  var CAS_GAMES = [['smash', '🎮 Smash book'], ['fights', '🥊 Prize fights'], ['dond', '💼 Deal or No Deal'], ['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs'], ['market', '📈 Derivatives'], ['shop', '🛍️ Gift shop']];
+  var CAS_GAMES = [['smash', '🎮 Smash book'], ['fights', '🥊 Prize fights'], ['dond', '💼 Deal or No Deal'], ['wof', '🎡 Wheel of Fortune'], ['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs'], ['market', '📈 Derivatives'], ['shop', '🛍️ Gift shop']];
   var CAS_BOSSES = ['Terry', 'Mitch'], casClosed = null;
   // Who sees the Reserve's books (grants, escrow, seizures): the chairman's circle. Everyone else sees the public face.
   var RESERVE_INSIDERS = ['Mitch', 'Terry', 'Joe'];
@@ -3286,7 +3286,7 @@
     buzz(win > bet ? [20, 40, 20, 40, 60] : win ? 15 : 60);
   }
   function stake(bet) { var b = myBank(); if (bet > myBal()) { toast('You don’t have ' + tcText(bet) + '.'); return false; } bankWrite({ bal: b.bal - bet }); return true; }
-  function casInHand() { return (casGame === 'blackjack' && bj && !bj.done) || (casGame === 'craps' && craps && !craps.done) || (casGame === 'holdem' && holdem && !holdem.done) || (casGame === 'slots' && slots && !slots.done) || (casGame === 'wheel' && wheel && !wheel.done) || (casGame === 'horses' && race && !race.done) || (casGame === 'fights' && fight && !fight.done) || (casGame === 'dond' && dond && !dond.done); }
+  function casInHand() { return (casGame === 'blackjack' && bj && !bj.done) || (casGame === 'craps' && craps && !craps.done) || (casGame === 'holdem' && holdem && !holdem.done) || (casGame === 'slots' && slots && !slots.done) || (casGame === 'wheel' && wheel && !wheel.done) || (casGame === 'horses' && race && !race.done) || (casGame === 'fights' && fight && !fight.done) || (casGame === 'dond' && dond && !dond.done) || (casGame === 'wof' && wof && !wof.done); }
   // Churchill Downs: six horses, a fun coat and mane each, fixed odds. Win pays the odds, place (top two) half the odds,
   // show (top three) a third. The race itself is run on this phone, fair and random, the favourites a touch quicker.
   // The stable: every race draws six at random, so the names keep coming. Odds and pace go together.
@@ -3923,6 +3923,31 @@
     if (g && g.offers.length && !g.done) html += '<div class="deal-sum">Offers so far: ' + g.offers.map(function (o) { return tcText(o); }).join(' · ') + '</div>';
     return html + '</div>';
   }
+  // ---- Wheel of Fortune: spin it, win what it says ----
+  // Twenty-four wedges in wheel order. The number is what comes back for every coin bet (stake included), so 1 is a push,
+  // ½ gives half back, 8 is the jackpot and BANKRUPT is Terry's. The wedges average a shade under 1, the house's edge.
+  var WOF = [[8, '8×', '#e8c547', '#111'], [0, 'BANKRUPT', '#111', '#fff'], [1, '1×', '#1fa37a', '#fff'], [0.5, '½', '#6f42c1', '#fff'], [0, 'BANKRUPT', '#111', '#fff'], [2, '2×', '#f26b1d', '#fff'],
+    [0.5, '½', '#6f42c1', '#fff'], [0, 'BANKRUPT', '#111', '#fff'], [1, '1×', '#1fa37a', '#fff'], [0, 'BANKRUPT', '#111', '#fff'], [0.5, '½', '#6f42c1', '#fff'], [1, '1×', '#1fa37a', '#fff'],
+    [0, 'BANKRUPT', '#111', '#fff'], [3, '3×', '#e5398d', '#fff'], [0.5, '½', '#6f42c1', '#fff'], [0, 'BANKRUPT', '#111', '#fff'], [1, '1×', '#1fa37a', '#fff'], [0, 'BANKRUPT', '#111', '#fff'],
+    [0.5, '½', '#6f42c1', '#fff'], [2, '2×', '#f26b1d', '#fff'], [0, 'BANKRUPT', '#111', '#fff'], [1, '1×', '#1fa37a', '#fff'], [0.5, '½', '#6f42c1', '#fff'], [0, 'BANKRUPT', '#111', '#fff']];
+  var WOF_LINES = { 0: 'BANKRUPT. Terry thanks you.', 0.5: 'Half back. Could be worse.', 1: 'Push. Spin it again.', 2: 'Double. Nice.', 3: 'Triple!', 8: 'JACKPOT! Eight times your money!' };
+  var wof = null;
+  function wofSpin() {
+    if (!stake(casBet)) return;
+    var i = Math.floor(Math.random() * WOF.length), w = WOF[i];
+    wof = { bet: casBet, i: i, turns: 4 + Math.floor(Math.random() * 3), done: false, win: Math.round(casBet * w[0]), result: WOF_LINES[w[0]] };
+    casAnim = 'spin'; buzz(8); renderCasino();
+    setTimeout(function () { if (!wof || wof.done) return; wof.done = true; settle(wof.bet, wof.win); renderCasino(); }, 2600);
+  }
+  function wofHtml(b, an) {
+    var seg = 360 / WOF.length, finalDeg = wof ? -(wof.i * seg) - (wof.turns * 360) : 0;
+    var html = '<div class="cas-rules">Spin it, win what it says · the wedge is what comes back per coin bet · ½ to 8 times · BANKRUPT is Terry’s</div>';
+    html += '<div class="wheel-wrap wof"><div class="wheel-pin">▼</div><div class="wheel wof' + (an === 'spin' ? ' spin' : '') + '" style="--deg:' + finalDeg.toFixed(1) + 'deg; background: conic-gradient(' + WOF.map(function (w, i) { return w[2] + ' ' + (i * seg - seg / 2).toFixed(2) + 'deg ' + ((i + 1) * seg - seg / 2).toFixed(2) + 'deg'; }).join(', ') + ')">' +
+      WOF.map(function (w, i) { return '<span class="pocket" style="--a:' + (i * seg).toFixed(2) + 'deg; color:' + w[3] + '"><b' + (w[0] === 0 ? ' class="bk"' : '') + '>' + w[1] + '</b></span>'; }).join('') + '<div class="hub">💰</div></div>' +
+      (wof && wof.done ? resultHtml(wof.result, wof.win, wof.bet) : '<div class="slot-hint">' + (wof ? 'Round and round…' : 'Pick a chip and spin') + '</div>') + '</div>';
+    if (!(wof && !wof.done)) html += '<div class="mafia-actions"><button type="button" class="big-btn" id="wof-spin"' + (b.bal < casBet ? ' disabled' : '') + '>🎡 Spin · ' + tc(casBet) + '</button></div>';
+    return html;
+  }
   function renderCasino() {
     var body = $('casino-body'), status = $('casino-status'); if (!body) return;
     if (!casinoLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
@@ -3977,6 +4002,8 @@
       html += shopHtml(b);
     } else if (casGame === 'dond') {
       html += dondHtml(b);
+    } else if (casGame === 'wof') {
+      html += wofHtml(b, an);
     } else if (casGame === 'blackjack') {
       html += '<div class="cas-rules">Dealer stands on 17 · blackjack pays 3 to 2 · double on any two</div>';
       if (bj) {
@@ -4106,6 +4133,7 @@
     if (e.target.closest('#fight-go')) { fightStart(); return; }
     var dc = e.target.closest('[data-dond-case]'); if (dc && !dc.disabled) { dondTap(+dc.getAttribute('data-dond-case')); return; }
     if (e.target.closest('#dond-go')) { dondStart(); return; }
+    if (e.target.closest('#wof-spin')) { wofSpin(); return; }
     if (e.target.closest('#dond-deal')) { dondDeal(); return; }
     if (e.target.closest('#dond-nodeal')) { dondNoDeal(); return; }
     if (e.target.closest('#dond-keep')) { dondFinal(false); return; }
