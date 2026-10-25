@@ -3216,7 +3216,12 @@
   // Blackjack, bubble craps, hold ’em, mountain slots and Kyrkat’s wheel, played against the house on your own phone,
   // banked in Terry coin. One document per person (game-casino-<name>): balance, hands, net, best win, loans taken when
   // broke. The hand itself lives on the phone; the bet leaves the bank when it starts and the payout lands when it ends.
-  var TC_START = 100, TC_LOAN = 50, TC_CHIPS = [5, 10, 25, 50, 100, 250];
+  var TC_START = 100, TC_LOAN = 50, TC_CHIPS = [5, 10, 25, 50, 100, 250], HOUSE = 'Terry';
+  // The house is Terry: every coin the tables win off anyone else lands in Terry's bank, and every coin they pay out
+  // comes out of it. Each player's own document carries the house's running take from them (no two phones ever write
+  // the same document), and Terry's bank is his own balance plus the sum of those.
+  function houseTake() { var t = 0; Object.keys(casino).forEach(function (n) { if (n !== HOUSE) t += (casino[n].house || 0); }); return t; }
+  function effBal(n) { var d = casino[n]; return (d ? d.bal : TC_START) + (n === HOUSE ? houseTake() : 0); }
   var CAS_GAMES = [['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel']];
   var casino = {}, casinoLoaded = false, casinoSub = false, casGame = 'blackjack', casBet = 10, bj = null, craps = null, holdem = null, slots = null, wheel = null, casAnim = null, fieldOn = false, wheelBet = { kind: 'red', n: 17 };
   function subscribeCasino() {
@@ -3228,7 +3233,8 @@
     });
   }
   function tc(n) { return '🪙 ' + Math.round(n).toLocaleString(); }
-  function myBank() { return casino[me] || { by: me, bal: TC_START, hands: 0, net: 0, best: 0, loans: 0 }; }
+  function myBank() { return casino[me] || { by: me, bal: TC_START, hands: 0, net: 0, best: 0, loans: 0, house: 0 }; }
+  function myBal() { return effBal(me); }
   function bankWrite(patch) {
     var doc = Object.assign({}, myBank(), patch, { by: me, at: new Date().toISOString() });
     casino = Object.assign({}, casino); casino[me] = doc;
@@ -3237,10 +3243,10 @@
   }
   function settle(bet, win) {   // win: coins back including the stake (0 = lost it all)
     var b = myBank(), delta = win - bet;
-    bankWrite({ bal: b.bal + win, hands: (b.hands || 0) + 1, net: (b.net || 0) + delta, best: Math.max(b.best || 0, delta) });
+    bankWrite({ bal: b.bal + win, hands: (b.hands || 0) + 1, net: (b.net || 0) + delta, best: Math.max(b.best || 0, delta), house: (b.house || 0) + (me === HOUSE ? 0 : bet - win) });
     buzz(win > bet ? [20, 40, 20, 40, 60] : win ? 15 : 60);
   }
-  function stake(bet) { var b = myBank(); if (bet > b.bal) { toast('You don’t have ' + tc(bet) + '.'); return false; } bankWrite({ bal: b.bal - bet }); return true; }
+  function stake(bet) { var b = myBank(); if (bet > myBal()) { toast('You don’t have ' + tc(bet) + '.'); return false; } bankWrite({ bal: b.bal - bet }); return true; }
   function casInHand() { return (casGame === 'blackjack' && bj && !bj.done) || (casGame === 'craps' && craps && !craps.done) || (casGame === 'holdem' && holdem && !holdem.done) || (casGame === 'slots' && slots && !slots.done) || (casGame === 'wheel' && wheel && !wheel.done); }
   // cards: a six-deck shoe shared by the card games
   var SUITS = ['♠', '♥', '♦', '♣'], RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
@@ -3387,11 +3393,11 @@
   function renderCasino() {
     var body = $('casino-body'), status = $('casino-status'); if (!body) return;
     if (!casinoLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
-    var b = myBank(), html = '', an = casAnim || ''; casAnim = null;
+    var b = Object.assign({}, myBank(), { bal: myBal() }), html = '', an = casAnim || '', take = houseTake(); casAnim = null;
     status.textContent = tc(b.bal);
-    html += '<div class="cas-welcome"><div class="lights" aria-hidden="true"></div><div class="wtitle">Welcome to Terry’s Casino</div><div class="wsub">Terry’s house, Terry’s rules, Terry coin. Everyone starts with ' + tc(TC_START) + '. Go broke and Terry lends you ' + tc(TC_LOAN) + ', and everyone sees the loan.</div></div>';
+    html += '<div class="cas-welcome"><div class="lights" aria-hidden="true"></div><div class="wtitle">Welcome to Terry’s Casino</div><div class="wsub">Terry’s house, Terry’s rules, Terry coin. Everyone starts with ' + tc(TC_START) + '. Go broke and Terry lends you ' + tc(TC_LOAN) + ', and everyone sees the loan. The house is Terry: whatever the tables win goes straight into his bank, and whatever they pay out comes out of it.</div></div>';
     html += '<div class="cas-warn"><b>Please gamble responsibly.</b> Terry coin is worth nothing and the house always wins. If gambling is a problem for you or someone you know, call or text the National Problem Gambling Helpline, <a href="tel:18004262537">1-800-GAMBLER</a>, 24 hours a day, free and confidential.</div>';
-    html += '<div class="cas-bank"><div><span class="lbl">Your bank</span><b>' + tc(b.bal) + '</b></div><div><span class="lbl">Net</span><b class="' + (b.net > 0 ? 'up' : b.net < 0 ? 'down' : '') + '">' + (b.net > 0 ? '+' : '') + Math.round(b.net || 0).toLocaleString() + '</b></div><div><span class="lbl">Hands</span><b>' + (b.hands || 0) + '</b></div>' + (b.loans ? '<div><span class="lbl">Loans</span><b class="down">' + b.loans + '</b></div>' : '') + '</div>';
+    html += '<div class="cas-bank"><div><span class="lbl">Your bank</span><b>' + tc(b.bal) + '</b></div>' + (me === HOUSE ? '<div><span class="lbl">House take</span><b class="' + (take > 0 ? 'up' : take < 0 ? 'down' : '') + '">' + (take > 0 ? '+' : '') + Math.round(take).toLocaleString() + '</b></div>' : '') + '<div><span class="lbl">Net</span><b class="' + (b.net > 0 ? 'up' : b.net < 0 ? 'down' : '') + '">' + (b.net > 0 ? '+' : '') + Math.round(b.net || 0).toLocaleString() + '</b></div><div><span class="lbl">Hands</span><b>' + (b.hands || 0) + '</b></div>' + (b.loans ? '<div><span class="lbl">Loans</span><b class="down">' + b.loans + '</b></div>' : '') + '</div>';
     var inHand = casInHand();
     html += '<div class="cas-tabs" role="tablist">' + CAS_GAMES.map(function (g) { return '<button type="button" data-cas-game="' + g[0] + '" aria-pressed="' + (casGame === g[0]) + '"' + (inHand ? ' disabled' : '') + '>' + g[1] + '</button>'; }).join('') + '</div>';
     if (!inHand) {
@@ -3447,8 +3453,8 @@
         html += '<div class="mafia-actions"><button type="button" class="big-btn" id="wheel-spin"' + (b.bal < casBet ? ' disabled' : '') + '>🐈‍⬛ Spin · ' + tc(casBet) + '</button></div>';
       }
     }
-    var board = NAMES.map(function (n) { return casino[n] || null; }).filter(Boolean).sort(function (x, y) { return y.bal - x.bal; });
-    html += '<div class="cas-board"><div class="rl-head">The floor</div>' + (board.length ? board.map(function (r, i) { return '<div class="row' + (r.by === me ? ' me' : '') + '"><span class="pos">' + (i + 1) + '</span><span class="nm">' + esc(r.by === me ? 'You' : r.by) + (r.loans ? ' <small>' + r.loans + ' loan' + (r.loans === 1 ? '' : 's') + '</small>' : '') + '</span><span class="bal">' + tc(r.bal) + '</span></div>'; }).join('') : '<div class="info-sub">Nobody has sat down yet.</div>') + '</div>';
+    var board = NAMES.filter(function (n) { return casino[n] || (n === HOUSE && take); }).map(function (n) { return { by: n, bal: effBal(n), loans: (casino[n] || {}).loans || 0 }; }).sort(function (x, y) { return y.bal - x.bal; });
+    html += '<div class="cas-board"><div class="rl-head">The floor <span class="info-sub">· the house is ' + (take > 0 ? 'up ' : take < 0 ? 'down ' : 'even') + (take ? Math.abs(Math.round(take)).toLocaleString() : '') + '</span></div>' + (board.length ? board.map(function (r, i) { return '<div class="row' + (r.by === me ? ' me' : '') + '"><span class="pos">' + (i + 1) + '</span><span class="nm">' + esc(r.by === me ? 'You' : r.by) + (r.by === HOUSE ? ' <em>the house</em>' : '') + (r.loans ? ' <small>' + r.loans + ' loan' + (r.loans === 1 ? '' : 's') + '</small>' : '') + '</span><span class="bal">' + tc(r.bal) + '</span></div>'; }).join('') : '<div class="info-sub">Nobody has sat down yet.</div>') + '</div>';
     body.innerHTML = html;
   }
   listen('casino-body', 'click', function (e) {
