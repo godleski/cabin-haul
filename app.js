@@ -3236,7 +3236,7 @@
   var RESERVE_ASSETS = [['\uD83C\uDF7A', '24 Coors Banquet', 240], ['\uD83D\uDEC1', 'One hot tub, heated', 500], ['\uD83C\uDF64', 'Mitch’s hibachi plate', 65], ['\uD83D\uDC08\u200D\u2B1B', 'One Kyrkat (priceless, booked at)', 1000], ['\uD83D\uDD11', 'The door code', 300]];
   var reserve = null, TC_STIM = 25, resOpen = false, resWho = null, resAmt = '100';   // the panel's picks survive a re-render   // the Reserve stays open across re-renders once you open it
   // Standing grants by order of the chairman, counted in the bank of the person named (the Reserve document can add more).
-  var RESERVE_GRANTS = { Joe: 500 };   // 2026-10-25: 500 to Joe, by Mitch
+  var RESERVE_GRANTS = {};   // 2026-10-25: 500 to Joe by Mitch, then taken back the same night
   // Standing dividends to every player, by order of the chairman; the latest note goes up on the sign.
   var DIVIDENDS = [{ n: 100, note: 'It’s nice here.', by: 'Mitch', at: '2026-10-25T04:00:00Z' }];
   function dividendsIssued() { return DIVIDENDS.reduce(function (t, d) { return t + d.n; }, 0) + ((reserve && reserve.dividends) || 0); }
