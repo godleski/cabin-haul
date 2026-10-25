@@ -761,6 +761,7 @@
   @keyframes pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   .fg .cas-result { margin: 8px 10px 10px; } .fg .slot-hint { padding: 0 10px 10px; }
   @media (prefers-reduced-motion: reduce) { .fg-ball.fly, .fg-ball.fly span, .fg-kicker.kick .leg, .fg-kicker.kick .arm { animation-duration: 1ms; } }
+  .cas-welcome .sponsor { margin-top: 8px; font-size: 0.8rem; opacity: 0.9; } .cas-welcome .sponsor b { color: #e8c547; } .shop-you .perks { flex-basis: 100%; font-size: 0.72rem; color: var(--muted); } .dond-offer .say i { font-style: italic; color: #e8c547; }
   .horse-list { display: grid; gap: 6px; margin-top: 12px; } .horse-list button { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); color: var(--fg); font: 600 0.9rem var(--body); cursor: pointer; text-align: left; }
   .horse-list button .num { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 800 0.7rem var(--mono); color: #111; flex: none; } .horse-list button .nm { flex: 1; } .horse-list button .odds { font: 700 0.8rem var(--mono); color: var(--muted); } .horse-list button[aria-pressed="true"] { border-color: #e8c547; background: var(--ac-soft); } .horse-list button[aria-pressed="true"] .odds { color: #e8c547; }
   .cas-tabs.small button { flex: 1; }

@@ -3331,14 +3331,16 @@
   ];
   var field = null;
   function raceField() {   // six from the stable, no two in the same coat
-    if (!field) { var coats = {}; field = shuffled(STABLE.map(function (_, i) { return i; })).filter(function (i) { var c = STABLE[i].coat; if (coats[c]) return false; coats[c] = true; return true; }).slice(0, 6); }
-    return field.map(function (i) { return STABLE[i]; });
+    var st = STABLE.concat(shopHorses());
+    if (!field) { var coats = {}; field = shuffled(st.map(function (_, i) { return i; })).filter(function (i) { var c = st[i].coat; if (coats[c]) return false; coats[c] = true; return true; }).slice(0, 6); }
+    return field.map(function (i) { return st[i] || STABLE[i % STABLE.length]; });
   }
   var race = null, racePick = 0, raceKind = 'win', raceTimer = null;
   function raceStart() {
     if (!stake(casBet)) return;
     var H = raceField();
-    race = { horse: racePick, kind: raceKind, bet: casBet, pos: H.map(function () { return 0; }), order: [], done: false, result: null, t0: null };
+    var shoe = !!(myBank().perks || {}).shoe; if (shoe) usePerk('shoe');
+    race = { shoe: shoe, horse: racePick, kind: raceKind, bet: casBet, pos: H.map(function () { return 0; }), order: [], done: false, result: null, t0: null };
     buzz([10, 30, 10]); renderCasino();
     var last = null;
     function frame(ts) {
@@ -3347,7 +3349,7 @@
       var dt = Math.min(50, ts - last) / 1000; last = ts;
       race.pos.forEach(function (p, i) {
         if (race.order.indexOf(i) >= 0) return;
-        var h = raceField()[i], surge = Math.random() < 0.08 ? 1.6 : 1, v = (14 + Math.random() * 10) * h.pace * surge;   // % per second
+        var h = raceField()[i], surge = Math.random() < 0.08 ? 1.6 : 1, v = (14 + Math.random() * 10) * h.pace * surge * (race.shoe && i === race.horse ? 1.12 : 1);   // % per second
         race.pos[i] = Math.min(100, p + v * dt);
         if (race.pos[i] >= 100) race.order.push(i);
       });
@@ -3843,9 +3845,29 @@
     { id: 'round', kind: 'round', name: 'A round for the wall', price: 40, blurb: 'Posts a round of Banquets on the wall in your name.' },
     { id: 'mystery', kind: 'mystery', name: 'Mystery box', emoji: '\uD83C\uDF81', price: 60, blurb: 'Could be a crown. Could be coin. Could be a note from Terry.' },
     { id: 'tee', kind: 'merch', name: 'Terry’s Casino tee', price: 1500, soon: true, blurb: 'Real cotton. Coming soon.' },
-    { id: 'hat', kind: 'merch', name: 'Terry coin snapback', price: 1200, soon: true, blurb: 'Real hat. Coming soon.' }
+    { id: 'hat', kind: 'merch', name: 'Terry coin snapback', price: 1200, soon: true, blurb: 'Real hat. Coming soon.' },
+    { id: 'ruinedtee', kind: 'merch', name: '“Terry Coin Ruined My Life” tee', price: 1500, soon: true, blurb: 'Real cotton, real regret. Coming soon.' },
+    { id: 'hoodie', kind: 'merch', name: 'Kyrkat hoodie', price: 2500, soon: true, blurb: 'Cat on the back. Coming soon.' },
+    { id: 'peak', kind: 'flair', name: 'Local', emoji: '\uD83C\uDFD4\uFE0F', price: 45, blurb: 'Winter Park local, as of this weekend.' },
+    { id: 'cat', kind: 'flair', name: 'Kyrkat', emoji: '\uD83D\uDC08\u200D\u2B1B', price: 60, blurb: 'The wheel’s own cat.' },
+    { id: 'horsey', kind: 'flair', name: 'Horseplayer', emoji: '\uD83C\uDFC7', price: 90, blurb: 'You know a jockey.' },
+    { id: 'gloves', kind: 'flair', name: 'Prize fighter', emoji: '\uD83E\uDD4A', price: 110, blurb: 'You took Claude the distance. Allegedly.' },
+    { id: 'pigskin', kind: 'flair', name: 'Special teams', emoji: '\uD83C\uDFC8', price: 55, blurb: 'You live for the kick.' },
+    { id: 'robot', kind: 'flair', name: 'Claude’s buddy', emoji: '\uD83E\uDD16', price: 77, blurb: 'The house fighter likes you. He said so.' },
+    { id: 'pet', kind: 'title', name: 'Chairman’s Pet', price: 300, blurb: 'Terry’s favourite’s favourite.' },
+    { id: 'bankrupt', kind: 'title', name: 'Bankrupt', price: 5, blurb: 'The wheel said it first.' },
+    { id: 'wideleft', kind: 'title', name: 'Wide Left', price: 25, blurb: 'Terry blames the wind.' },
+    { id: 'mountain', kind: 'title', name: 'Mountain Man', price: 150, blurb: 'Split wood once this weekend.' },
+    { id: 'oracle', kind: 'title', name: 'The Oracle', price: 250, blurb: 'Called every market. Or one. Who’s counting.' },
+    { id: 'bribe', kind: 'perk', perk: 'banker', emoji: '\uD83D\uDCDE', name: 'Bribe the banker', price: 80, blurb: 'Terry’s first offer in your next Deal or No Deal is 20% fatter.' },
+    { id: 'shoe', kind: 'perk', perk: 'shoe', emoji: '\uD83E\uDDF2', price: 60, name: 'Lucky horseshoe', blurb: 'Your horse runs 12% quicker in your next race.' },
+    { id: 'tee2', kind: 'perk', perk: 'tee', emoji: '\u26F3', price: 40, name: 'Kicker’s tee', blurb: 'Your next field goal is 10 points more makeable.' },
+    { id: 'sponsor', kind: 'sponsor', emoji: '\uD83D\uDCA1', name: 'Sponsor the sign', price: 300, blurb: 'The welcome sign says tonight’s floor is brought to you by you. Until someone outbids the last buyer.' },
+    { id: 'horse', kind: 'horse', emoji: '\uD83D\uDC0E', name: 'A horse of your own', price: 200, blurb: 'A horse with your name on it joins the stable at Churchill Downs, for everyone’s races.' },
+    { id: 'shout', kind: 'shout', emoji: '\uD83D\uDCE3', name: 'Megaphone', price: 50, blurb: 'Shout one line to the wall. Caps are free.' },
+    { id: 'compliment', kind: 'compliment', emoji: '\uD83D\uDC90', name: 'Compliment Terry', price: 1, blurb: 'One coin tells the wall he looks great tonight.' }
   ];
-  var SHOP_KINDS = [[['flair'], 'Flair', 'Next to your name on the floor. One at a time.'], [['title'], 'Titles', 'Under your name. One at a time.'], [['repay', 'round', 'mystery'], 'Terry’s services', ''], [['merch'], 'Merch', 'The real stuff. Not yet.']];
+  var SHOP_KINDS = [[['flair'], 'Flair', 'Next to your name on the floor. One at a time.'], [['title'], 'Titles', 'Under your name. One at a time.'], [['perk'], 'Edges', 'One-time. Terry looks the other way once.'], [['repay', 'round', 'mystery', 'sponsor', 'horse', 'shout', 'compliment'], 'Terry’s services', ''], [['merch'], 'Merch', 'The real stuff. Not yet.']];
   function shopPrice(it) { return it.only && it.only.indexOf(me) < 0 ? it.othersPrice : it.price; }
   function shopLook(n) { var d = casino[n] || {}; return (d.flair ? ' <span class="flair">' + d.flair + '</span>' : '') + (d.title ? ' <em class="ttl">' + esc(d.title) + '</em>' : ''); }
   function shopBuy(id) {
@@ -3853,9 +3875,12 @@
     var b = myBank(), price = shopPrice(it);
     if (it.kind === 'repay' && !(b.loans > 0)) { toast('You don’t owe Terry anything. Yet.'); return; }
     if (price > myBal()) { toast('You don’t have ' + tcText(price) + '.'); return; }
-    if (!window.confirm((it.kind === 'repay' ? 'Repay one loan' : 'Buy ' + it.name) + ' for ' + price + ' Terry coin? It goes straight to Terry.')) return;
+    var shout = null; if (it.kind === 'shout') { shout = (window.prompt('What are you shouting? (' + price + ' Terry coin)') || '').replace(/\s+/g, ' ').trim().slice(0, 80); if (!shout) return; }
+    if (!shout && !window.confirm((it.kind === 'repay' ? 'Repay one loan' : 'Buy ' + it.name) + ' for ' + price + ' Terry coin? It goes straight to Terry.')) return;
     var patch = { bal: b.bal - price, house: (b.house || 0) + price, buys: ((b.buys || []).concat([{ id: id, n: price, at: new Date().toISOString() }])).slice(-100) };
     if (it.kind === 'flair') patch.flair = it.emoji; if (it.kind === 'title') patch.title = it.name; if (it.kind === 'repay') patch.loans = b.loans - 1;
+    if (it.kind === 'perk') { patch.perks = Object.assign({}, b.perks || {}); patch.perks[it.perk] = (patch.perks[it.perk] || 0) + 1; }
+    if (it.kind === 'sponsor') patch.sponsor = new Date().toISOString(); if (it.kind === 'horse') patch.horse = horseNameFor(me);
     var gift = null;
     if (it.kind === 'mystery') {
       var roll = Math.random(), pick = function (kind) { var pool = SHOP.filter(function (x) { return x.kind === kind && !x.only; }); return pool[Math.floor(Math.random() * pool.length)]; }, coin = 0;
@@ -3870,15 +3895,24 @@
       patch.buys[patch.buys.length - 1].gift = gift; shopGift = gift;
     }
     bankWrite(patch); buzz([20, 30, 20]); renderCasino();
-    if (it.kind === 'round' || gift === 'a round for the wall') { var line = '🍻 ' + me + ' bought a round for the whole wall. Banquets on ' + (me === 'Terry' ? 'Terry, obviously' : me) + '.'; comments.push({ question_id: WALL, author: me, text: line, created_at: new Date().toISOString() }); renderWall(); store.comment(WALL, me, line).catch(function (e) { toast('The round didn’t post: ' + ((e && e.message) || e)); }); }
-    toast(it.kind === 'mystery' ? 'Inside the box: ' + gift : it.kind === 'repay' ? 'One loan cleared. Terry nods.' : it.kind === 'round' ? 'Round’s on you. It’s on the wall.' : it.name + ': yours.');
+    var line = it.kind === 'round' || gift === 'a round for the wall' ? '\uD83C\uDF7B ' + me + ' bought a round for the whole wall. Banquets on ' + (me === 'Terry' ? 'Terry, obviously' : me) + '.' : it.kind === 'shout' ? '\uD83D\uDCE3 ' + me.toUpperCase() + ': ' + shout.toUpperCase() : it.kind === 'compliment' ? '\uD83D\uDC90 ' + me + ' paid Terry one coin to say he looks great tonight.' : null;
+    if (line) { comments.push({ question_id: WALL, author: me, text: line, created_at: new Date().toISOString() }); renderWall(); store.comment(WALL, me, line).catch(function (e) { toast('The round didn’t post: ' + ((e && e.message) || e)); }); }
+    toast(it.kind === 'mystery' ? 'Inside the box: ' + gift : it.kind === 'repay' ? 'One loan cleared. Terry nods.' : it.kind === 'round' ? 'Round’s on you. It’s on the wall.' : it.kind === 'shout' ? 'Heard. It’s on the wall.' : it.kind === 'compliment' ? 'Terry blushes. It’s on the wall.' : it.kind === 'sponsor' ? 'The sign is yours.' : it.kind === 'horse' ? patch.horse + ' joins the stable.' : it.kind === 'perk' ? it.name + ': ready for your next one.' : it.name + ': yours.');
   }
   var shopGift = null;   // what the last box on this phone held, shown till the next render of another table
+  var HORSE_SUFFIX = ['’s Revenge', ' Express', '’s Pride', ' the Magnificent', '’s Last Dollar', ' on a Horse', '’s Hot Streak', ' Can’t Lose'];
+  function horseNameFor(n) { var h = 0; for (var i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) % 9973; return n + HORSE_SUFFIX[h % HORSE_SUFFIX.length]; }
+  var HORSE_COATS = ['#8e5a2b', '#1c1c1c', '#c9a16b', '#5e3b1e', '#d9d9d9', '#a63d2f', '#3b3b6e', '#6b4e16'], HORSE_MANES = ['#ff6b6b', '#ffd60a', '#3bb2e0', '#7b3fe4', '#38c7a0', '#ff8c42', '#fff', '#111'];
+  function shopHorses() {   // everyone who bought one, in the stable for every phone
+    return Object.keys(casino).filter(function (n) { return casino[n].horse; }).sort().map(function (n, i) { var h = 0; for (var k = 0; k < n.length; k++) h = (h * 17 + n.charCodeAt(k)) % 9973; return { name: casino[n].horse, coat: HORSE_COATS[(h + i) % HORSE_COATS.length], mane: HORSE_MANES[h % HORSE_MANES.length], silks: HORSE_MANES[(h + 3) % HORSE_MANES.length], odds: 5, pace: 1, owner: n }; });
+  }
+  function usePerk(k) { var b = myBank(), p = Object.assign({}, b.perks || {}); p[k] = Math.max(0, (p[k] || 0) - 1); bankWrite({ perks: p }); }
+  function perkLine(d) { var p = d.perks || {}, held = SHOP.filter(function (it) { return it.kind === 'perk' && p[it.perk]; }); return held.length ? '<small class="perks">Edges in hand: ' + held.map(function (it) { return it.emoji + ' ' + esc(it.name) + (p[it.perk] > 1 ? ' \u00D7' + p[it.perk] : ''); }).join(' · ') + '</small>' : ''; }
   function shopOff(kind) { var patch = {}; patch[kind] = ''; bankWrite(patch); renderCasino(); }
   function shopHtml(b) {
     var d = myBank(), bal = b.bal;
     var html = '<div class="cas-rules">The gift shop · spend Terry coin on flair, titles and Terry’s services · every purchase goes straight to Terry’s bank · real merch coming soon</div>';
-    html += '<div class="shop-you"><span class="lbl">On the floor you’re</span><b>' + esc(me) + shopLook(me) + '</b>' + (d.flair ? '<button type="button" class="linkbtn" data-shop-off="flair">Drop the flair</button>' : '') + (d.title ? '<button type="button" class="linkbtn" data-shop-off="title">Drop the title</button>' : '') + '</div>';
+    html += '<div class="shop-you"><span class="lbl">On the floor you’re</span><b>' + esc(me) + shopLook(me) + '</b>' + (d.flair ? '<button type="button" class="linkbtn" data-shop-off="flair">Drop the flair</button>' : '') + (d.title ? '<button type="button" class="linkbtn" data-shop-off="title">Drop the title</button>' : '') + perkLine(d) + '</div>';
     SHOP_KINDS.forEach(function (k) {
       var items = SHOP.filter(function (it) { return k[0].indexOf(it.kind) >= 0; }); if (!items.length) return;
       if (k[1]) html += '<div class="shop-head">' + k[1] + (k[2] ? '<small>' + k[2] + '</small>' : '') + '</div>';
@@ -3903,7 +3937,9 @@
   var dond = null;
   function dondStart() {
     if (!stake(casBet)) return;
-    dond = { bet: casBet, cases: shuffled(DOND_MULT.map(function (m) { return Math.round(m * casBet); })).map(function (v) { return { v: v, open: false }; }), mine: null, round: 0, left: 0, offer: null, offers: [], phase: 'pick', done: false, win: 0, result: null };
+    var bribe = !!(myBank().perks || {}).banker;
+    dond = { bribe: bribe, bet: casBet, cases: shuffled(DOND_MULT.map(function (m) { return Math.round(m * casBet); })).map(function (v) { return { v: v, open: false }; }), mine: null, round: 0, left: 0, offer: null, offers: [], phase: 'pick', done: false, win: 0, result: null };
+    if (bribe) usePerk('banker');
     buzz([10, 30, 10]); renderCasino();
   }
   function dondLeft() { return dond.cases.filter(function (c) { return !c.open; }); }
@@ -3913,7 +3949,7 @@
     if (dond.phase === 'pick') { dond.mine = i; dond.phase = 'open'; dond.round = 0; dond.left = DOND_ROUNDS[0]; buzz(12); renderCasino(); return; }
     if (dond.phase !== 'open' || i === dond.mine) return;
     c.open = true; dond.left--; buzz(c.v >= dond.bet * 2 ? [40, 30, 60] : 10);
-    if (dond.left <= 0) { var f = DOND_FACTOR[Math.min(dond.round, DOND_FACTOR.length - 1)]; dond.offer = Math.max(1, Math.round(dondEV() * f * (0.95 + Math.random() * 0.1))); dond.offers.push(dond.offer); dond.phase = 'offer'; buzz([30, 60, 30, 60]); }
+    if (dond.left <= 0) { var f = DOND_FACTOR[Math.min(dond.round, DOND_FACTOR.length - 1)]; if (dond.bribe && dond.round === 0) f = Math.min(0.98, f + 0.2); dond.offer = Math.max(1, Math.round(dondEV() * f * (0.95 + Math.random() * 0.1))); dond.offers.push(dond.offer); dond.phase = 'offer'; buzz([30, 60, 30, 60]); }
     renderCasino();
   }
   function dondDeal() {
@@ -3946,7 +3982,7 @@
     else if (g.done) html += resultHtml(g.result, g.win, g.bet) + '<div class="mafia-actions"><button type="button" class="big-btn" id="dond-go"' + (b.bal < casBet ? ' disabled' : '') + '>💼 Play again · ' + tc(casBet) + '</button></div>';
     else if (g.phase === 'pick') html += '<div class="dond-line">Pick your case. It stays shut till the end.</div>';
     else if (g.phase === 'open') html += '<div class="dond-line">Open ' + g.left + ' more' + (g.left === 1 ? ' case' : ' cases') + '. Case ' + (g.mine + 1) + ' is yours.</div>';
-    else if (g.phase === 'offer') html += '<div class="dond-offer"><div class="who">📞 Terry’s on the phone</div><div class="amt">' + tc(g.offer) + '</div><div class="say">“' + esc(DOND_LINES[Math.min(g.round, DOND_LINES.length - 1)]) + '”</div></div><div class="cas-btns two"><button type="button" class="big-btn" id="dond-deal">Deal</button><button type="button" class="big-btn stand" id="dond-nodeal">No deal</button></div>';
+    else if (g.phase === 'offer') html += '<div class="dond-offer"><div class="who">📞 Terry’s on the phone</div><div class="amt">' + tc(g.offer) + '</div><div class="say">“' + esc(DOND_LINES[Math.min(g.round, DOND_LINES.length - 1)]) + '”' + (g.bribe && g.round === 0 ? ' <i>He took the bribe.</i>' : '') + '</div></div><div class="cas-btns two"><button type="button" class="big-btn" id="dond-deal">Deal</button><button type="button" class="big-btn stand" id="dond-nodeal">No deal</button></div>';
     else html += '<div class="dond-line">Two cases left. Keep case ' + (g.mine + 1) + ' or swap for the other one?</div><div class="cas-btns two"><button type="button" class="big-btn" id="dond-keep">Keep mine</button><button type="button" class="big-btn stand" id="dond-swap">Swap</button></div>';
     if (g && g.offers.length && !g.done) html += '<div class="deal-sum">Offers so far: ' + g.offers.map(function (o) { return tcText(o); }).join(' · ') + '</div>';
     return html + '</div>';
@@ -3985,9 +4021,10 @@
   function fgOdds(s) { return { good: Math.round(FG_EDGE / s[2] * 100) / 100, miss: Math.round(FG_EDGE / (1 - s[2]) * 100) / 100 }; }
   function fgKick() {
     if (!stake(casBet)) return;
-    var s = FG_SPOTS[fgSpot], good = Math.random() < s[2], kind = good ? 'good' : ['left', 'right', 'short'][Math.floor(Math.random() * (s[0] >= 55 ? 3 : 2))];
+    var s = FG_SPOTS[fgSpot], tee = !!(myBank().perks || {}).tee, good = Math.random() < Math.min(0.97, s[2] + (tee ? 0.1 : 0)), kind = good ? 'good' : ['left', 'right', 'short'][Math.floor(Math.random() * (s[0] >= 55 ? 3 : 2))];
     var o = fgOdds(s), won = (fgSide === 'good') === good, win = won ? Math.round(casBet * (fgSide === 'good' ? o.good : o.miss)) : 0;
     fg = { spot: s, side: fgSide, bet: casBet, good: good, kind: kind, done: false, win: win, result: (good ? 'GOOD from ' + s[0] + '! Right down the middle.' : kind === 'left' ? 'Wide left from ' + s[0] + '. Terry blames the wind.' : kind === 'right' ? 'Wide right from ' + s[0] + '. Hooked it.' : 'Short from ' + s[0] + '. Not even close.') + (won ? ' Your call pays ' + (fgSide === 'good' ? o.good : o.miss).toFixed(2) + '×.' : ' Wrong call.') };
+    if (tee) usePerk('tee');
     casAnim = 'kick'; buzz(8); renderCasino();
     setTimeout(function () { if (!fg || fg.done) return; fg.done = true; settle(fg.bet, fg.win); renderCasino(); }, 2400);
   }
@@ -4011,7 +4048,7 @@
     if (!casinoLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
     var b = Object.assign({}, myBank(), { bal: myBal() }), html = '', an = casAnim || '', take = houseTake(); casAnim = null;
     status.innerHTML = tc(b.bal);
-    html += '<div class="cas-welcome"><div class="lights" aria-hidden="true"></div><div class="coin-hero" role="img" aria-label="Terry coin: Terry’s face in gold"></div><div class="wtitle">Welcome to Terry’s Casino</div><div class="wsub">Terry’s house, Terry’s rules, Terry coin. Everyone starts with ' + tc(TC_START) + '. Go broke and Terry lends you ' + tc(TC_LOAN) + ', and everyone sees the loan. Loans come due ' + esc(dueText()) + ', with interest at the Terry rate. The house is Terry: whatever the tables win goes straight into his bank, and whatever they pay out comes out of it. The casino never closes.</div>' + (function () { var dv = latestDividend(); return dv ? '<div class="dividend">\uD83D\uDCB8 <b>Dividend: ' + tc(dv.n) + ' to every player.</b> \u201C' + esc(dv.note || '') + '\u201D \u2014 Terry coin</div>' : ''; })() + '</div>';
+    html += '<div class="cas-welcome"><div class="lights" aria-hidden="true"></div><div class="coin-hero" role="img" aria-label="Terry coin: Terry’s face in gold"></div><div class="wtitle">Welcome to Terry’s Casino</div><div class="wsub">Terry’s house, Terry’s rules, Terry coin. Everyone starts with ' + tc(TC_START) + '. Go broke and Terry lends you ' + tc(TC_LOAN) + ', and everyone sees the loan. Loans come due ' + esc(dueText()) + ', with interest at the Terry rate. The house is Terry: whatever the tables win goes straight into his bank, and whatever they pay out comes out of it. The casino never closes.</div>' + (function () { var dv = latestDividend(); return dv ? '<div class="dividend">\uD83D\uDCB8 <b>Dividend: ' + tc(dv.n) + ' to every player.</b> \u201C' + esc(dv.note || '') + '\u201D \u2014 Terry coin</div>' : ''; })() + (function () { var sp = null; Object.keys(casino).forEach(function (n) { var d = casino[n]; if (d.sponsor && (!sp || d.sponsor > sp.at)) sp = { n: n, at: d.sponsor }; }); return sp ? '<div class="sponsor">\uD83D\uDCA1 Tonight’s floor is brought to you by <b>' + esc(sp.n) + '</b></div>' : ''; })() + '</div>';
     html += '<div class="cas-warn"><b>Please gamble responsibly.</b> Terry coin is worth nothing and the house always wins. If gambling is a problem for you or someone you know, call or text the National Problem Gambling Helpline, <a href="tel:18004262537">1-800-GAMBLER</a>, 24 hours a day, free and confidential.</div>';
     var supply = moneySupply(), rv = reserveValue(), ratio = supply ? rv / supply : 0;
     html += '<details class="reserve"' + (resOpen ? ' open' : '') + '><summary><span class="seal">\uD83C\uDFDB\uFE0F</span><span><b>The Terry Reserve</b><small>Terry coin is ' + Math.round(ratio * 100) + '% backed</small></span></summary>' +
