@@ -3221,8 +3221,8 @@
   // comes out of it. Each player's own document carries the house's running take from them (no two phones ever write
   // the same document), and Terry's bank is his own balance plus the sum of those.
   function houseTake() { var t = 0; Object.keys(casino).forEach(function (n) { if (n !== HOUSE) t += (casino[n].house || 0); }); return t; }
-  function effBal(n) { var d = casino[n]; return (d ? d.bal : TC_START) + stimIssued() + (n === HOUSE ? houseTake() : 0); }
-  var CAS_GAMES = [['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs']];
+  function effBal(n) { var d = casino[n]; return (d ? d.bal : TC_START) + stimIssued() + (n === HOUSE ? houseTake() : 0) + markPositions(d && d.pos); }
+  var CAS_GAMES = [['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs'], ['market', '📈 Derivatives']];
   var CAS_BOSSES = ['Terry', 'Mitch'], casClosed = null;
   // The Terry Reserve: what backs the coin, and the printing press. Reserve assets are valued in Terry coin; the money
   // supply is every bank added up (loans and stimulus mint new coin, table play only moves it). Stimulus is one shared
@@ -3236,6 +3236,7 @@
   function subscribeCasino() {
     if (casinoSub || !store || !store.games) { casinoLoaded = true; return; }
     casinoSub = true;
+    subscribeMarket();
     store.game('casinoreserve', function (doc) { var same = sameDoc(doc, reserve); reserve = doc; if (!same) renderCasino(); });
     store.game('casinoclose', function (doc) { var same = sameDoc(doc, casClosed); casClosed = doc && doc.closed ? doc : null; if (!same) { renderCasino(); renderAwards(); } });
     store.games('casino-', function (rows) {
@@ -3326,6 +3327,85 @@
     if (k) { win = Math.round(race.bet * (k + 1)); r = h.name + (place === 0 ? ' wins it!' : place === 1 ? ' runs second.' : ' shows third.') + ' Your ' + race.kind + ' bet pays.'; }
     else r = raceField()[race.order[0]].name + ' wins. ' + h.name + (place < 0 ? ' never got there.' : place === 1 ? ' second.' : place === 2 ? ' third.' : ' finished ' + (place + 1) + 'th.') + ' Tear up the ticket.';
     race.done = true; race.result = r; race.win = win; settle(race.bet, win); renderCasino();
+  }
+  // ---- The derivatives desk ----
+  // Synthetic Collateralized Terry Coin Obligations (STCOs), three tranches cut from the Terry Coin Index: Senior (sleepy),
+  // Mezzanine (the index), Equity (four times the move). The index is a function of the clock that every phone computes
+  // the same way (smooth seeded noise), nudged by real order flow kept in one shared document, so the price is the same
+  // on every screen without a server. A hundred and fifty named bots quote the book and print the tape; they never
+  // sleep, which is what passes for liquidity here. Positions live on your bank document and are marked to market.
+  var TRANCHES = [
+    { k: 'senior', name: 'Senior STCO', tag: 'AAA (Terry’s word)', beta: 0.35, note: 'Barely moves. Pays like it.' },
+    { k: 'mezz', name: 'Mezzanine STCO', tag: 'BBB-ish', beta: 1, note: 'The index, straight.' },
+    { k: 'equity', name: 'Equity STCO', tag: 'Toxic waste', beta: 4, note: 'Four times the move, both ways.' }
+  ];
+  var BOT_FIRST = ['Hedgie', 'Chad', 'Brynn', 'Vlad', 'Quant', 'Margin', 'Yolo', 'Delta', 'Gamma', 'Theta', 'Kappa', 'Sigma', 'Lambda', 'Boomer', 'Zoomer'];
+  var BOT_LAST = ['McFund', 'Capital', 'Partners', 'Holdings', 'Overleveraged', 'Degen', 'Advisors', 'LLC', 'Family Office', 'Trust'];
+  var BOTS = []; (function () { for (var i = 0; i < 150; i++) BOTS.push(BOT_FIRST[(i * 7) % BOT_FIRST.length] + ' ' + BOT_LAST[(i * 3 + Math.floor(i / 15)) % BOT_LAST.length] + ' #' + ('00' + (i + 1)).slice(-3)); })();
+  var market = null, marketSub = false, mktTranche = 'mezz', mktQty = 1, mktTimer = null;
+  function hashNoise(n) { var x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return (x - Math.floor(x)) * 2 - 1; }   // -1..1, the same on every phone
+  function smoothNoise(t) { var i = Math.floor(t), f = t - i, u = f * f * (3 - 2 * f); return hashNoise(i) * (1 - u) + hashNoise(i + 1) * u; }
+  function indexAt(ms) {   // the Terry Coin Index: a slow swell, a faster wobble, and the crowd's order flow
+    var m = ms / 60000, flow = market ? (market.net || 0) : 0;
+    var raw = 100 * Math.exp(0.18 * smoothNoise(m / 9) + 0.07 * smoothNoise(m / 1.5 + 50) + 0.025 * smoothNoise(m * 6 + 900)) + flow * 0.35;
+    return Math.max(5, raw);
+  }
+  function tranchePrice(k, ms) {   // a note is a tenth of the tranche level, so a 100-coin bank buys a handful
+    var idx = indexAt(ms || Date.now()), t = TRANCHES.filter(function (x) { return x.k === k; })[0];
+    return Math.max(0.05, Math.round((100 + (idx - 100) * t.beta) * 10) / 100);
+  }
+  function markPositions(pos) { if (!pos) return 0; var t = 0, now = Date.now(); Object.keys(pos).forEach(function (k) { var p = pos[k]; if (p && p.qty) t += p.qty * tranchePrice(k, now); }); return Math.round(t * 100) / 100; }
+  function subscribeMarket() { if (marketSub || !store || !store.game) return; marketSub = true; store.game('casinomarket', function (doc) { var same = sameDoc(doc, market); market = doc; if (!same && casGame === 'market') renderCasino(); }); }
+  function bookFor(k, ms) {   // eight bids and eight asks from the bots, re-quoted every ten seconds
+    var p = tranchePrice(k, ms), slot = Math.floor(ms / 10000), bids = [], asks = [];
+    for (var i = 1; i <= 8; i++) {
+      var spread = p * 0.004 * i, b = BOTS[(slot * 13 + i * 7) % BOTS.length], a = BOTS[(slot * 17 + i * 11 + 75) % BOTS.length];
+      bids.push({ px: Math.max(0.5, Math.round((p - spread) * 100) / 100), qty: 1 + ((slot + i * 3) % 9), who: b });
+      asks.push({ px: Math.round((p + spread) * 100) / 100, qty: 1 + ((slot * 5 + i) % 9), who: a });
+    }
+    return { bids: bids, asks: asks };
+  }
+  function tapeFor(k, ms) {   // the last prints: bots every few seconds, plus whatever people actually traded
+    var out = [], now = ms;
+    for (var i = 0; i < 6; i++) { var t = now - i * 7000 - ((Math.floor(now / 7000) * 31) % 5000), px = tranchePrice(k, t); out.push({ t: t, px: px, qty: 1 + ((Math.floor(t / 7000) * 7 + i) % 12), who: BOTS[(Math.floor(t / 7000) * 29 + i * 13) % BOTS.length], side: hashNoise(Math.floor(t / 7000) + i) > 0 ? 'buy' : 'sell', bot: true }); }
+    ((market && market.tape) || []).filter(function (x) { return x.k === k; }).forEach(function (x) { out.push({ t: new Date(x.at).getTime(), px: x.px, qty: x.qty, who: x.by, side: x.side, bot: false }); });
+    return out.sort(function (a, b) { return b.t - a.t; }).slice(0, 8);
+  }
+  function mktTrade(side) {
+    var k = mktTranche, qty = Math.max(1, Math.min(99, Math.round(mktQty))), b = myBank(), pos = Object.assign({}, b.pos || {}), p = pos[k] ? Object.assign({}, pos[k]) : { qty: 0, avg: 0 }, now = Date.now();
+    var book = bookFor(k, now), px = side === 'buy' ? book.asks[0].px : book.bids[0].px, cost = Math.round(px * qty * 100) / 100;   // you lift the best ask, or hit the best bid: the bots are always there
+    if (side === 'buy') {
+      if (cost > b.bal + stimIssued() + (me === HOUSE ? houseTake() : 0)) { toast('You don’t have ' + tc(cost) + ' in cash. Sell something, or lose less.'); return; }
+      p.avg = p.qty + qty ? (p.avg * p.qty + px * qty) / (p.qty + qty) : px; p.qty += qty; pos[k] = p;
+      bankWrite({ bal: b.bal - cost, pos: pos, trades: (b.trades || 0) + 1 });
+    } else {
+      if (p.qty < qty) { toast('You only hold ' + p.qty + ' ' + (p.qty === 1 ? 'note' : 'notes') + ' of that.'); return; }
+      p.qty -= qty; if (!p.qty) p.avg = 0; pos[k] = p;
+      bankWrite({ bal: b.bal + cost, pos: pos, trades: (b.trades || 0) + 1, realized: (b.realized || 0) + Math.round((px - (b.pos && b.pos[k] ? b.pos[k].avg : px)) * qty * 100) / 100 });
+    }
+    var doc = { net: ((market && market.net) || 0) + (side === 'buy' ? qty : -qty) * (k === 'equity' ? 0.5 : k === 'senior' ? 0.2 : 0.35), tape: ((market && market.tape) || []).slice(-29).concat([{ k: k, px: px, qty: qty, by: me, side: side, at: new Date(now).toISOString() }]), at: new Date(now).toISOString() };
+    market = doc; buzz(side === 'buy' ? [10, 30, 10] : 12); renderCasino();
+    toast((side === 'buy' ? 'Bought ' : 'Sold ') + qty + ' ' + TRANCHES.filter(function (x) { return x.k === k; })[0].name + ' at ' + px.toFixed(2) + '. Filled by ' + (side === 'buy' ? book.asks[0].who : book.bids[0].who) + '.');
+    store.setGame('casinomarket', doc).catch(function (e) { toast('The exchange hiccuped: ' + ((e && e.message) || e)); });
+  }
+  function sparkline(k, ms) {   // the last hour, one point a minute
+    var pts = []; for (var i = 60; i >= 0; i--) pts.push(tranchePrice(k, ms - i * 60000));
+    var lo = Math.min.apply(null, pts), hi = Math.max.apply(null, pts), span = hi - lo || 1;
+    var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + (i * (300 / 60)).toFixed(1) + ' ' + (60 - (p - lo) / span * 56 - 2).toFixed(1); }).join(' ');
+    var up = pts[pts.length - 1] >= pts[0];
+    return '<svg class="spark" viewBox="0 0 300 60" preserveAspectRatio="none"><path d="' + d + '" fill="none" stroke="' + (up ? '#53d337' : '#ff4757') + '" stroke-width="2"/></svg>';
+  }
+  function marketTick() {   // every second: prices, the book and the tape, without touching the controls
+    if (casGame !== 'market' || !$('mkt-desk')) return;
+    var now = Date.now();
+    Array.prototype.forEach.call(document.querySelectorAll('[data-mkt-px]'), function (el) { var k = el.getAttribute('data-mkt-px'), p = tranchePrice(k, now), was = +el.getAttribute('data-was') || p; el.textContent = p.toFixed(2); el.classList.toggle('up', p > was); el.classList.toggle('down', p < was); el.setAttribute('data-was', p); });
+    var idx = $('mkt-index'); if (idx) idx.textContent = indexAt(now).toFixed(2);
+    var book = bookFor(mktTranche, now), bk = $('mkt-book');
+    if (bk) bk.innerHTML = book.asks.slice().reverse().map(function (o) { return '<div class="ask"><span>' + esc(o.who) + '</span><b>' + o.qty + '</b><i>' + o.px.toFixed(2) + '</i></div>'; }).join('') + '<div class="mid">' + tranchePrice(mktTranche, now).toFixed(2) + '</div>' + book.bids.map(function (o) { return '<div class="bid"><span>' + esc(o.who) + '</span><b>' + o.qty + '</b><i>' + o.px.toFixed(2) + '</i></div>'; }).join('');
+    var tp = $('mkt-tape'); if (tp) tp.innerHTML = tapeFor(mktTranche, now).map(function (x) { return '<div class="' + x.side + (x.bot ? '' : ' human') + '"><span>' + esc(x.who) + '</span><b>' + (x.side === 'buy' ? 'bought' : 'sold') + ' ' + x.qty + '</b><i>' + x.px.toFixed(2) + '</i></div>'; }).join('');
+    var pv = $('mkt-pv'); if (pv) { var mb = myBank(); pv.textContent = tc(markPositions(mb.pos)); }
+    var sp = $('mkt-spark'); if (sp && now % 60000 < 1100) sp.innerHTML = sparkline(mktTranche, now);
+    var bb = $('mkt-buy'), sb = $('mkt-sell'); if (bb) bb.textContent = 'Buy ' + mktQty + ' · ' + tc(book.asks[0].px * mktQty); if (sb) sb.textContent = 'Sell ' + mktQty + ' · ' + tc(book.bids[0].px * mktQty);
   }
   function horseSvg(h) {
     return '<svg class="hs" viewBox="0 0 64 40" aria-hidden="true"><path class="tail" d="M8 16 q-8 4 -5 14" stroke="' + h.mane + '" stroke-width="4" fill="none" stroke-linecap="round"/>' +
@@ -3561,6 +3641,18 @@
         html += '<div class="cas-tabs small">' + [['win', 'Win'], ['place', 'Place'], ['show', 'Show']].map(function (k) { return '<button type="button" data-race-kind="' + k[0] + '" aria-pressed="' + (raceKind === k[0]) + '">' + k[1] + '</button>'; }).join('') + '</div>';
         html += '<div class="mafia-actions"><button type="button" class="big-btn" id="race-go"' + (b.bal < casBet ? ' disabled' : '') + '>🏇 ' + (race ? 'Run it again' : 'And they’re off') + ' · ' + tc(casBet) + '</button><button type="button" class="btn" id="race-field">New field</button></div>';
       }
+    } else if (casGame === 'market') {
+      var now = Date.now(), mb = myBank(), tr = TRANCHES.filter(function (x) { return x.k === mktTranche; })[0], book0 = bookFor(mktTranche, now), held = (mb.pos && mb.pos[mktTranche]) || { qty: 0, avg: 0 };
+      html += '<div class="cas-rules">Synthetic Collateralized Terry Coin Obligations · three tranches off the Terry Coin Index · 150 bots make the market, so there’s always a bid</div>';
+      html += '<div id="mkt-desk" class="mkt"><div class="mkt-head"><span class="lbl">Terry Coin Index</span><b id="mkt-index">' + indexAt(now).toFixed(2) + '</b><span class="lbl">Positions</span><b id="mkt-pv">' + tc(markPositions(mb.pos)) + '</b></div>' +
+        '<div class="mkt-tranches">' + TRANCHES.map(function (t) { var pq = (mb.pos && mb.pos[t.k] && mb.pos[t.k].qty) || 0; return '<button type="button" data-mkt-tranche="' + t.k + '" aria-pressed="' + (mktTranche === t.k) + '"><span class="nm">' + esc(t.name) + '</span><span class="tag">' + esc(t.tag) + '</span><b data-mkt-px="' + t.k + '" data-was="' + tranchePrice(t.k, now) + '">' + tranchePrice(t.k, now).toFixed(2) + '</b>' + (pq ? '<small>you hold ' + pq + '</small>' : '') + '</button>'; }).join('') + '</div>' +
+        '<div class="mkt-note">' + esc(tr.note) + (held.qty ? ' You hold ' + held.qty + ' at an average of ' + held.avg.toFixed(2) + '.' : '') + '</div>' +
+        '<div id="mkt-spark" class="mkt-spark">' + sparkline(mktTranche, now) + '</div>' +
+        '<div class="mkt-grid"><div><div class="mkt-title">Order book</div><div id="mkt-book" class="mkt-book"></div></div><div><div class="mkt-title">Tape</div><div id="mkt-tape" class="mkt-tape"></div></div></div>' +
+        '<div class="mkt-qty"><span>Notes</span><span class="stepper"><button type="button" data-mkt-qty="-1">−</button><b>' + mktQty + '</b><button type="button" data-mkt-qty="1">+</button></span><span class="stepper"><button type="button" data-mkt-qty="-10">−10</button><button type="button" data-mkt-qty="10">+10</button></span></div>' +
+        '<div class="cas-btns two"><button type="button" class="big-btn" id="mkt-buy"' + (casClosed ? ' disabled' : '') + '>Buy ' + mktQty + ' · ' + tc(book0.asks[0].px * mktQty) + '</button><button type="button" class="big-btn stand" id="mkt-sell"' + (casClosed || !held.qty ? ' disabled' : '') + '>Sell ' + mktQty + ' · ' + tc(book0.bids[0].px * mktQty) + '</button></div>' +
+        '<div class="res-fine">Not a security. Not collateralized by anything but vibes. The tranches are cut from one index and the bots are a formula; past performance is a sine wave.</div></div>';
+      clearInterval(mktTimer); mktTimer = setInterval(marketTick, 1000); setTimeout(marketTick, 0);
     } else {
       html += '<div class="cas-rules">Kyrkat’s wheel · evens pay 1 to 1, a dozen 2 to 1, a number 35 to 1 · zero is Kyrkat</div>';
       var idx = wheel ? WHEEL_ORDER.indexOf(wheel.n) : 0, seg = 360 / WHEEL_ORDER.length, finalDeg = wheel ? -(idx * seg) - (wheel.turns * 360) : 0;
@@ -3582,7 +3674,7 @@
     if (e.target.closest('#cas-close') && CAS_BOSSES.indexOf(me) >= 0) { if (!window.confirm('Close the floor for everyone and post final standings?')) return; var cl = { closed: true, by: me, at: new Date().toISOString() }; casClosed = cl; renderCasino(); store.setGame('casinoclose', cl).catch(function (err) { toast('Couldn’t close: ' + ((err && err.message) || err)); }); return; }
     if (e.target.closest('#cas-reopen') && CAS_BOSSES.indexOf(me) >= 0) { var op = { closed: false, by: me, at: new Date().toISOString() }; casClosed = null; renderCasino(); store.setGame('casinoclose', op).catch(function (err) { toast('Couldn’t reopen: ' + ((err && err.message) || err)); }); return; }
     if (casClosed) return;
-    var g = e.target.closest('[data-cas-game]'); if (g && !g.disabled) { casGame = g.getAttribute('data-cas-game'); buzz(6); renderCasino(); return; }
+    var g = e.target.closest('[data-cas-game]'); if (g && !g.disabled) { casGame = g.getAttribute('data-cas-game'); if (casGame !== 'market') clearInterval(mktTimer); buzz(6); renderCasino(); return; }
     var c = e.target.closest('[data-cas-bet]'); if (c) { casBet = +c.getAttribute('data-cas-bet'); buzz(6); renderCasino(); return; }
     var wb = e.target.closest('[data-wheel-bet]'); if (wb) { wheelBet.kind = wb.getAttribute('data-wheel-bet'); buzz(6); renderCasino(); return; }
     var wn = e.target.closest('[data-wheel-num]'); if (wn) { wheelBet.n = +wn.getAttribute('data-wheel-num'); buzz(6); renderCasino(); return; }
@@ -3602,6 +3694,10 @@
     var hp = e.target.closest('[data-horse]'); if (hp) { racePick = +hp.getAttribute('data-horse'); buzz(6); renderCasino(); return; }
     var rk = e.target.closest('[data-race-kind]'); if (rk) { raceKind = rk.getAttribute('data-race-kind'); buzz(6); renderCasino(); return; }
     if (e.target.closest('#race-go')) { raceStart(); return; }
+    var mt = e.target.closest('[data-mkt-tranche]'); if (mt) { mktTranche = mt.getAttribute('data-mkt-tranche'); buzz(6); renderCasino(); return; }
+    var mq = e.target.closest('[data-mkt-qty]'); if (mq) { mktQty = Math.max(1, Math.min(99, mktQty + (+mq.getAttribute('data-mkt-qty')))); var qb = document.querySelector('.mkt-qty > .stepper > b'); if (qb) qb.textContent = mktQty; marketTick(); buzz(4); return; }
+    if (e.target.closest('#mkt-buy')) { mktTrade('buy'); return; }
+    if (e.target.closest('#mkt-sell')) { mktTrade('sell'); return; }
     if (e.target.closest('#race-field')) { field = null; race = null; racePick = 0; buzz(6); renderCasino(); return; }
   });
 
@@ -4468,7 +4564,7 @@
       var recs = Object.keys(by).map(function (n) { return n + ' ' + (by[n].w || 0) + '-' + (by[n].l || 0); });
       lines.push('Air hockey right now: humans ' + h + ', Claude ' + c + (recs.length ? '. Records (wins-losses vs Claude): ' + recs.join(', ') : '') + '. You lose a lot at air hockey and own it.');
       var casRows = NAMES.filter(function (n) { return casino[n] || (n === HOUSE && houseTake()); }).map(function (n) { return { n: n, bal: effBal(n), d: casino[n] || {} }; }).sort(function (x, y) { return y.bal - x.bal; });
-      if (casRows.length) lines.push('Terry’s Casino (Terry is the house: table winnings go into his bank), Terry coin banks right now: ' + casRows.map(function (r) { return r.n + ' ' + Math.round(r.bal) + (r.d.hands ? ' (' + r.d.hands + ' hands, net ' + (r.d.net > 0 ? '+' : '') + Math.round(r.d.net || 0) + ')' : '') + (r.d.loans ? ', ' + r.d.loans + ' loan' + (r.d.loans === 1 ? '' : 's') + ' from Terry' : ''); }).join('; ') + '. The house is ' + (houseTake() > 0 ? 'up ' + Math.round(houseTake()) : houseTake() < 0 ? 'down ' + Math.abs(Math.round(houseTake())) : 'even') + '.' + (casClosed ? ' The floor is closed for the weekend; these are the final standings.' : '') + ' Fair game: whoever is deepest in Terry’s debt, and anyone up big. Terry coin is backed by the Terry Reserve (a case of Banquet, the hot tub, Mitch’s plate, one Kyrkat, the door code), currently ' + Math.round((moneySupply() ? reserveValue() / moneySupply() : 0) * 100) + '% backed' + (stimIssued() ? ', after ' + stimIssued() + ' coin of stimulus printed per person' : '') + '.');
+      if (casRows.length) lines.push('Terry’s Casino (Terry is the house: table winnings go into his bank), Terry coin banks right now: ' + casRows.map(function (r) { return r.n + ' ' + Math.round(r.bal) + (r.d.hands ? ' (' + r.d.hands + ' hands, net ' + (r.d.net > 0 ? '+' : '') + Math.round(r.d.net || 0) + ')' : '') + (r.d.loans ? ', ' + r.d.loans + ' loan' + (r.d.loans === 1 ? '' : 's') + ' from Terry' : ''); }).join('; ') + '. The house is ' + (houseTake() > 0 ? 'up ' + Math.round(houseTake()) : houseTake() < 0 ? 'down ' + Math.abs(Math.round(houseTake())) : 'even') + '.' + (casClosed ? ' The floor is closed for the weekend; these are the final standings.' : '') + ' Fair game: whoever is deepest in Terry’s debt, and anyone up big. The derivatives desk sells Synthetic Collateralized Terry Coin Obligations in three tranches off a Terry Coin Index (now ' + indexAt(Date.now()).toFixed(2) + '); positions are marked to market in the banks above. Terry coin is backed by the Terry Reserve (a case of Banquet, the hot tub, Mitch’s plate, one Kyrkat, the door code), currently ' + Math.round((moneySupply() ? reserveValue() / moneySupply() : 0) * 100) + '% backed' + (stimIssued() ? ', after ' + stimIssued() + ' coin of stimulus printed per person' : '') + '.');
       var mc = smashCounts(SMASH_MAIN), allWins = {}; smashLog().forEach(function (e) { allWins[e.w] = (allWins[e.w] || 0) + 1; });
       lines.push('Mitch vs Luke Smash tally: Mitch ' + mc.Mitch + ', Luke ' + mc.Luke + (Object.keys(allWins).length ? '. All Smash wins: ' + Object.keys(allWins).map(function (n) { return n + ' ' + allWins[n]; }).join(', ') : '') + '.');
       // Time on the courses: what the clock recorded, plus an estimate for the rounds played before the clock went in.
