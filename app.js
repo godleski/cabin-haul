@@ -3222,7 +3222,7 @@
   // the same document), and Terry's bank is his own balance plus the sum of those.
   function houseTake() { var t = 0; Object.keys(casino).forEach(function (n) { if (n !== HOUSE) t += (casino[n].house || 0); }); return t; }
   function effBal(n) { var d = casino[n]; return (d ? d.bal : TC_START) + stimIssued() + dividendsIssued() + grantsFor(n) + (n === HOUSE ? houseTake() : 0) + markPositions(d && d.pos) + sbNetFor(n) + pmNetFor(n); }
-  var CAS_GAMES = [['smash', '🎮 Smash book'], ['fights', '🥊 Prize fights'], ['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs'], ['market', '📈 Derivatives'], ['shop', '🛍️ Gift shop']];
+  var CAS_GAMES = [['smash', '🎮 Smash book'], ['fights', '🥊 Prize fights'], ['dond', '💼 Deal or No Deal'], ['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs'], ['market', '📈 Derivatives'], ['shop', '🛍️ Gift shop']];
   var CAS_BOSSES = ['Terry', 'Mitch'], casClosed = null;
   // Who sees the Reserve's books (grants, escrow, seizures): the chairman's circle. Everyone else sees the public face.
   var RESERVE_INSIDERS = ['Mitch', 'Terry', 'Joe'];
@@ -3286,7 +3286,7 @@
     buzz(win > bet ? [20, 40, 20, 40, 60] : win ? 15 : 60);
   }
   function stake(bet) { var b = myBank(); if (bet > myBal()) { toast('You don’t have ' + tcText(bet) + '.'); return false; } bankWrite({ bal: b.bal - bet }); return true; }
-  function casInHand() { return (casGame === 'blackjack' && bj && !bj.done) || (casGame === 'craps' && craps && !craps.done) || (casGame === 'holdem' && holdem && !holdem.done) || (casGame === 'slots' && slots && !slots.done) || (casGame === 'wheel' && wheel && !wheel.done) || (casGame === 'horses' && race && !race.done) || (casGame === 'fights' && fight && !fight.done); }
+  function casInHand() { return (casGame === 'blackjack' && bj && !bj.done) || (casGame === 'craps' && craps && !craps.done) || (casGame === 'holdem' && holdem && !holdem.done) || (casGame === 'slots' && slots && !slots.done) || (casGame === 'wheel' && wheel && !wheel.done) || (casGame === 'horses' && race && !race.done) || (casGame === 'fights' && fight && !fight.done) || (casGame === 'dond' && dond && !dond.done); }
   // Churchill Downs: six horses, a fun coat and mane each, fixed odds. Win pays the odds, place (top two) half the odds,
   // show (top three) a third. The race itself is run on this phone, fair and random, the favourites a touch quicker.
   // The stable: every race draws six at random, so the names keep coming. Odds and pace go together.
@@ -3865,6 +3865,64 @@
     if (buys.length) html += '<div class="deal-sum">Your receipts: ' + buys.map(function (x) { var it = SHOP.filter(function (y) { return y.id === x.id; })[0]; return esc(it ? it.name : x.id) + ' ' + tcText(x.n); }).join(' · ') + '</div>';
     return html;
   }
+  // ---- Deal or No Deal: twenty cases, Terry on the phone ----
+  // The cases hold multiples of the bet (the board averages a little under the bet, so the house keeps its edge). Pick a
+  // case, open the rest a round at a time, and after each round Terry calls with an offer: a slice of what's left on the
+  // board, stingy early and nearly fair at the end. Deal takes the offer; no deal keeps going. Two cases left: keep or swap.
+  var DOND_MULT = [0, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
+  var DOND_ROUNDS = [5, 4, 3, 2, 1, 1, 1, 1], DOND_FACTOR = [0.45, 0.55, 0.65, 0.72, 0.8, 0.86, 0.9, 0.95];
+  var DOND_LINES = ['Take it or leave it.', 'That’s a lot of Banquet.', 'I’m being generous here.', 'Don’t be greedy.', 'Walk away a winner.', 'My final offer. Probably.', 'You’re sweating. I can hear it.', 'Last chance, pal.'];
+  var dond = null;
+  function dondStart() {
+    if (!stake(casBet)) return;
+    dond = { bet: casBet, cases: shuffled(DOND_MULT.map(function (m) { return Math.round(m * casBet); })).map(function (v) { return { v: v, open: false }; }), mine: null, round: 0, left: 0, offer: null, offers: [], phase: 'pick', done: false, win: 0, result: null };
+    buzz([10, 30, 10]); renderCasino();
+  }
+  function dondLeft() { return dond.cases.filter(function (c) { return !c.open; }); }
+  function dondEV() { var l = dondLeft(); return l.reduce(function (a, c) { return a + c.v; }, 0) / l.length; }
+  function dondTap(i) {
+    if (!dond || dond.done) return; var c = dond.cases[i]; if (c.open) return;
+    if (dond.phase === 'pick') { dond.mine = i; dond.phase = 'open'; dond.round = 0; dond.left = DOND_ROUNDS[0]; buzz(12); renderCasino(); return; }
+    if (dond.phase !== 'open' || i === dond.mine) return;
+    c.open = true; dond.left--; buzz(c.v >= dond.bet * 2 ? [40, 30, 60] : 10);
+    if (dond.left <= 0) { var f = DOND_FACTOR[Math.min(dond.round, DOND_FACTOR.length - 1)]; dond.offer = Math.max(1, Math.round(dondEV() * f * (0.95 + Math.random() * 0.1))); dond.offers.push(dond.offer); dond.phase = 'offer'; buzz([30, 60, 30, 60]); }
+    renderCasino();
+  }
+  function dondDeal() {
+    if (!dond || dond.phase !== 'offer') return;
+    var mine = dond.cases[dond.mine].v; dond.done = true; dond.win = dond.offer; dond.cases.forEach(function (c) { c.open = true; });
+    dond.result = 'Deal at ' + dond.offer.toLocaleString() + '. Your case had ' + mine.toLocaleString() + (mine > dond.offer ? '. Terry got you.' : mine === dond.offer ? '. Dead even.' : '. Good deal.');
+    settle(dond.bet, dond.offer); renderCasino();
+  }
+  function dondNoDeal() {
+    if (!dond || dond.phase !== 'offer') return;
+    dond.round++;
+    if (dondLeft().length <= 2) dond.phase = 'final'; else { dond.left = DOND_ROUNDS[Math.min(dond.round, DOND_ROUNDS.length - 1)]; dond.phase = 'open'; }
+    buzz(8); renderCasino();
+  }
+  function dondFinal(swap) {
+    if (!dond || dond.phase !== 'final') return;
+    var other = dond.cases.map(function (c, i) { return i; }).filter(function (i) { return !dond.cases[i].open && i !== dond.mine; })[0], idx = swap ? other : dond.mine, v = dond.cases[idx].v, best = Math.max.apply(null, dond.offers);
+    dond.done = true; dond.win = v; dond.cases.forEach(function (c) { c.open = true; }); if (swap) dond.mine = idx;
+    dond.result = (swap ? 'Swapped. ' : 'Kept it. ') + 'Your case: ' + v.toLocaleString() + '.' + (best > v ? ' Terry offered ' + best.toLocaleString() + ' and you said no.' : ' You beat every offer.');
+    settle(dond.bet, v); renderCasino();
+  }
+  function dondHtml(b) {
+    var html = '<div class="cas-rules">Twenty cases, one of them yours · open the rest a round at a time · after every round Terry calls with an offer · deal, or no deal</div>';
+    var g = dond, vals = DOND_MULT.map(function (m) { return Math.round(m * (g ? g.bet : casBet)); }), gone = {};
+    if (g) g.cases.forEach(function (c) { if (c.open) gone[c.v] = (gone[c.v] || 0) + 1; });
+    var used = {};
+    html += '<div class="dond"><div class="dond-board">' + vals.map(function (v, i) { used[v] = (used[v] || 0) + 1; var off = g && (gone[v] || 0) >= used[v]; return '<span class="' + (i >= 10 ? 'hi' : 'lo') + (off ? ' gone' : '') + '">' + tc(v) + '</span>'; }).join('') + '</div>';
+    html += '<div class="dond-cases">' + vals.map(function (_, i) { var c = g ? g.cases[i] : null, mine = g && g.mine === i; return '<button type="button" data-dond-case="' + i + '" class="' + (c && c.open ? 'open' : '') + (mine ? ' mine' : '') + '"' + (!g || g.done || (c && c.open) || mine || (g.phase !== 'pick' && g.phase !== 'open') ? ' disabled' : '') + '>' + (c && c.open ? tc(c.v) : '<i></i>' + (i + 1)) + '</button>'; }).join('') + '</div>';
+    if (!g) html += '<div class="mafia-actions"><button type="button" class="big-btn" id="dond-go"' + (b.bal < casBet ? ' disabled' : '') + '>💼 Play · ' + tc(casBet) + '</button></div>';
+    else if (g.done) html += resultHtml(g.result, g.win, g.bet) + '<div class="mafia-actions"><button type="button" class="big-btn" id="dond-go"' + (b.bal < casBet ? ' disabled' : '') + '>💼 Play again · ' + tc(casBet) + '</button></div>';
+    else if (g.phase === 'pick') html += '<div class="dond-line">Pick your case. It stays shut till the end.</div>';
+    else if (g.phase === 'open') html += '<div class="dond-line">Open ' + g.left + ' more' + (g.left === 1 ? ' case' : ' cases') + '. Case ' + (g.mine + 1) + ' is yours.</div>';
+    else if (g.phase === 'offer') html += '<div class="dond-offer"><div class="who">📞 Terry’s on the phone</div><div class="amt">' + tc(g.offer) + '</div><div class="say">“' + esc(DOND_LINES[Math.min(g.round, DOND_LINES.length - 1)]) + '”</div></div><div class="cas-btns two"><button type="button" class="big-btn" id="dond-deal">Deal</button><button type="button" class="big-btn stand" id="dond-nodeal">No deal</button></div>';
+    else html += '<div class="dond-line">Two cases left. Keep case ' + (g.mine + 1) + ' or swap for the other one?</div><div class="cas-btns two"><button type="button" class="big-btn" id="dond-keep">Keep mine</button><button type="button" class="big-btn stand" id="dond-swap">Swap</button></div>';
+    if (g && g.offers.length && !g.done) html += '<div class="deal-sum">Offers so far: ' + g.offers.map(function (o) { return tcText(o); }).join(' · ') + '</div>';
+    return html + '</div>';
+  }
   function renderCasino() {
     var body = $('casino-body'), status = $('casino-status'); if (!body) return;
     if (!casinoLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
@@ -3917,6 +3975,8 @@
       html += fightHtml(b);
     } else if (casGame === 'shop') {
       html += shopHtml(b);
+    } else if (casGame === 'dond') {
+      html += dondHtml(b);
     } else if (casGame === 'blackjack') {
       html += '<div class="cas-rules">Dealer stands on 17 · blackjack pays 3 to 2 · double on any two</div>';
       if (bj) {
@@ -4044,6 +4104,12 @@
     var ff = e.target.closest('[data-fighter]'); if (ff) { fightPick = +ff.getAttribute('data-fighter'); buzz(6); renderCasino(); return; }
     var fs0 = e.target.closest('[data-fight-side]'); if (fs0) { fightSide = fs0.getAttribute('data-fight-side'); buzz(6); renderCasino(); return; }
     if (e.target.closest('#fight-go')) { fightStart(); return; }
+    var dc = e.target.closest('[data-dond-case]'); if (dc && !dc.disabled) { dondTap(+dc.getAttribute('data-dond-case')); return; }
+    if (e.target.closest('#dond-go')) { dondStart(); return; }
+    if (e.target.closest('#dond-deal')) { dondDeal(); return; }
+    if (e.target.closest('#dond-nodeal')) { dondNoDeal(); return; }
+    if (e.target.closest('#dond-keep')) { dondFinal(false); return; }
+    if (e.target.closest('#dond-swap')) { dondFinal(true); return; }
     var sb0 = e.target.closest('[data-shop-buy]'); if (sb0) { shopBuy(sb0.getAttribute('data-shop-buy')); return; }
     var so = e.target.closest('[data-shop-off]'); if (so) { shopOff(so.getAttribute('data-shop-off')); return; }
     if (e.target.closest('#race-go')) { raceStart(); return; }
