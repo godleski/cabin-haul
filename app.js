@@ -3222,7 +3222,7 @@
   // the same document), and Terry's bank is his own balance plus the sum of those.
   function houseTake() { var t = 0; Object.keys(casino).forEach(function (n) { if (n !== HOUSE) t += (casino[n].house || 0); }); return t; }
   function effBal(n) { var d = casino[n]; return (d ? d.bal : TC_START) + (n === HOUSE ? houseTake() : 0); }
-  var CAS_GAMES = [['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel']];
+  var CAS_GAMES = [['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs']];
   var casino = {}, casinoLoaded = false, casinoSub = false, casGame = 'blackjack', casBet = 10, bj = null, craps = null, holdem = null, slots = null, wheel = null, casAnim = null, fieldOn = false, wheelBet = { kind: 'red', n: 17 };
   function subscribeCasino() {
     if (casinoSub || !store || !store.games) { casinoLoaded = true; return; }
@@ -3247,7 +3247,54 @@
     buzz(win > bet ? [20, 40, 20, 40, 60] : win ? 15 : 60);
   }
   function stake(bet) { var b = myBank(); if (bet > myBal()) { toast('You don’t have ' + tc(bet) + '.'); return false; } bankWrite({ bal: b.bal - bet }); return true; }
-  function casInHand() { return (casGame === 'blackjack' && bj && !bj.done) || (casGame === 'craps' && craps && !craps.done) || (casGame === 'holdem' && holdem && !holdem.done) || (casGame === 'slots' && slots && !slots.done) || (casGame === 'wheel' && wheel && !wheel.done); }
+  function casInHand() { return (casGame === 'blackjack' && bj && !bj.done) || (casGame === 'craps' && craps && !craps.done) || (casGame === 'holdem' && holdem && !holdem.done) || (casGame === 'slots' && slots && !slots.done) || (casGame === 'wheel' && wheel && !wheel.done) || (casGame === 'horses' && race && !race.done); }
+  // Churchill Downs: six horses, a fun coat and mane each, fixed odds. Win pays the odds, place (top two) half the odds,
+  // show (top three) a third. The race itself is run on this phone, fair and random, the favourites a touch quicker.
+  var HORSES = [
+    { name: 'Hot Tub Time Machine', coat: '#c0392b', mane: '#ffd60a', silks: '#ffd60a', odds: 2, pace: 1.06 },
+    { name: 'Mitch’s Plate', coat: '#2c3e50', mane: '#ff6b6b', silks: '#ff6b6b', odds: 3, pace: 1.03 },
+    { name: 'Kyle’s Mini Golf Game', coat: '#8e44ad', mane: '#53d337', silks: '#53d337', odds: 4, pace: 1.0 },
+    { name: 'Seven Out', coat: '#1f6fb2', mane: '#ff9f43', silks: '#ff9f43', odds: 6, pace: 0.98 },
+    { name: 'Kyrkat', coat: '#111', mane: '#ff69b4', silks: '#ff69b4', odds: 8, pace: 0.96 },
+    { name: 'Terry’s Loan', coat: '#2d6a4f', mane: '#30d5c8', silks: '#30d5c8', odds: 12, pace: 0.93 }
+  ];
+  var race = null, racePick = 0, raceKind = 'win', raceTimer = null;
+  function raceStart() {
+    if (!stake(casBet)) return;
+    race = { horse: racePick, kind: raceKind, bet: casBet, pos: HORSES.map(function () { return 0; }), order: [], done: false, result: null, t0: null };
+    buzz([10, 30, 10]); renderCasino();
+    var last = null;
+    function frame(ts) {
+      if (!race || race.done) return;
+      if (!race.t0) { race.t0 = ts; last = ts; }
+      var dt = Math.min(50, ts - last) / 1000; last = ts;
+      race.pos.forEach(function (p, i) {
+        if (race.order.indexOf(i) >= 0) return;
+        var h = HORSES[i], surge = Math.random() < 0.08 ? 1.6 : 1, v = (14 + Math.random() * 10) * h.pace * surge;   // % per second
+        race.pos[i] = Math.min(100, p + v * dt);
+        if (race.pos[i] >= 100) race.order.push(i);
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('.track .horse'), function (el) { var i = +el.getAttribute('data-i'); el.style.left = 'calc(' + race.pos[i] + '% - ' + (race.pos[i] * 0.56) + 'px)'; });
+      var lead = $('race-lead'); if (lead) { var li = race.order.length ? race.order[0] : race.pos.indexOf(Math.max.apply(null, race.pos)); lead.textContent = (race.order.length ? 'Winner: ' : 'Leading: ') + HORSES[li].name; }
+      if (race.order.length >= 3 && ts - race.t0 > 3000) { raceFinish(); return; }
+      if (ts - race.t0 > 12000) { race.pos.forEach(function (p, i) { if (race.order.indexOf(i) < 0) race.order.push(i); }); raceFinish(); return; }
+      raceTimer = requestAnimationFrame(frame);
+    }
+    raceTimer = requestAnimationFrame(frame);
+  }
+  function raceFinish() {
+    var h = HORSES[race.horse], place = race.order.indexOf(race.horse), win = 0, r;
+    var k = race.kind === 'win' ? (place === 0 ? h.odds : 0) : race.kind === 'place' ? (place >= 0 && place <= 1 ? h.odds / 2 : 0) : (place >= 0 && place <= 2 ? h.odds / 3 : 0);
+    if (k) { win = Math.round(race.bet * (k + 1)); r = h.name + (place === 0 ? ' wins it!' : place === 1 ? ' runs second.' : ' shows third.') + ' Your ' + race.kind + ' bet pays.'; }
+    else r = HORSES[race.order[0]].name + ' wins. ' + h.name + (place < 0 ? ' never got there.' : place === 1 ? ' second.' : place === 2 ? ' third.' : ' finished ' + (place + 1) + 'th.') + ' Tear up the ticket.';
+    race.done = true; race.result = r; race.win = win; settle(race.bet, win); renderCasino();
+  }
+  function horseSvg(h) {
+    return '<svg class="hs" viewBox="0 0 64 40" aria-hidden="true"><path class="tail" d="M8 16 q-8 4 -5 14" stroke="' + h.mane + '" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+      '<ellipse cx="30" cy="20" rx="20" ry="10" fill="' + h.coat + '"/><path d="M44 14 l10 -10 l6 4 l-4 10 z" fill="' + h.coat + '"/><path d="M46 12 q6 -8 12 -6" stroke="' + h.mane + '" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+      '<rect x="14" y="26" width="4" height="13" fill="' + h.coat + '" class="leg a"/><rect x="22" y="27" width="4" height="12" fill="' + h.coat + '" class="leg b"/><rect x="36" y="27" width="4" height="12" fill="' + h.coat + '" class="leg a"/><rect x="44" y="26" width="4" height="13" fill="' + h.coat + '" class="leg b"/>' +
+      '<circle cx="31" cy="9" r="5" fill="' + h.silks + '"/><rect x="26" y="12" width="10" height="7" rx="2" fill="' + h.silks + '"/><circle cx="57" cy="8" r="1.4" fill="#fff"/></svg>';
+  }
   // cards: a six-deck shoe shared by the card games
   var SUITS = ['♠', '♥', '♦', '♣'], RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
   function newShoe() { var d = []; for (var n = 0; n < 6; n++) SUITS.forEach(function (su) { RANKS.forEach(function (r) { d.push({ r: r, s: su }); }); }); return shuffled(d); }
@@ -3442,6 +3489,18 @@
       html += '<div class="slot-machine' + (an === 'spin' ? ' spin' : '') + '"><div class="marquee">Peak Fortune</div><div class="reels">' + reels.map(function (sym, i) { return '<div class="reel" style="--i:' + i + '"><div class="strip">' + SLOT_SYMS.concat(SLOT_SYMS).concat([sym]).map(function (x) { return '<span>' + x + '</span>'; }).join('') + '</div></div>'; }).join('') + '</div>' +
         (slots && slots.done ? resultHtml(slots.result, slots.win, slots.bet) : '<div class="slot-hint">' + (slots ? 'Spinning…' : 'Pull for ' + tc(casBet)) + '</div>') + '</div>';
       html += '<div class="mafia-actions"><button type="button" class="big-btn" id="slots-spin"' + (b.bal < casBet || (slots && !slots.done) ? ' disabled' : '') + '>🏔️ Spin · ' + tc(casBet) + '</button></div>';
+    } else if (casGame === 'horses') {
+      html += '<div class="cas-rules">Win pays the odds · place (top two) half · show (top three) a third</div>';
+      var running = race && !race.done;
+      html += '<div class="downs"><div class="sky"><div class="stand"><i class="spire"></i><i class="spire"></i><span class="roof"></span><span class="sign">Churchill Downs</span></div></div>' +
+        '<div class="track">' + HORSES.map(function (h, i) { var p = race ? race.pos[i] : 0; return '<div class="lane"><span class="num" style="background:' + h.silks + '">' + (i + 1) + '</span><div class="horse' + (running ? ' run' : '') + (race && race.done && race.order[0] === i ? ' won' : '') + '" data-i="' + i + '" style="left:calc(' + p + '% - ' + (p * 0.56) + 'px)">' + horseSvg(h) + '</div></div>'; }).join('') + '<div class="wire"></div></div>' +
+        '<div class="race-line" id="race-lead">' + (race ? (race.done ? 'Winner: ' + HORSES[race.order[0]].name : 'They’re off!') : 'Pick a horse and a bet') + '</div>' +
+        (race && race.done ? '<div class="race-order">' + race.order.slice(0, 3).map(function (i, k) { return '<span><b>' + (k + 1) + '</b>' + esc(HORSES[i].name) + '</span>'; }).join('') + '</div>' + resultHtml(race.result, race.win, race.bet) : '') + '</div>';
+      if (!running) {
+        html += '<div class="horse-list">' + HORSES.map(function (h, i) { return '<button type="button" data-horse="' + i + '" aria-pressed="' + (racePick === i) + '"><span class="num" style="background:' + h.silks + '">' + (i + 1) + '</span><span class="nm">' + esc(h.name) + '</span><span class="odds">' + h.odds + '-1</span></button>'; }).join('') + '</div>';
+        html += '<div class="cas-tabs small">' + [['win', 'Win'], ['place', 'Place'], ['show', 'Show']].map(function (k) { return '<button type="button" data-race-kind="' + k[0] + '" aria-pressed="' + (raceKind === k[0]) + '">' + k[1] + '</button>'; }).join('') + '</div>';
+        html += '<div class="mafia-actions"><button type="button" class="big-btn" id="race-go"' + (b.bal < casBet ? ' disabled' : '') + '>🏇 ' + (race ? 'Run it again' : 'And they’re off') + ' · ' + tc(casBet) + '</button></div>';
+      }
     } else {
       html += '<div class="cas-rules">Kyrkat’s wheel · evens pay 1 to 1, a dozen 2 to 1, a number 35 to 1 · zero is Kyrkat</div>';
       var idx = wheel ? WHEEL_ORDER.indexOf(wheel.n) : 0, seg = 360 / WHEEL_ORDER.length, finalDeg = wheel ? -(idx * seg) - (wheel.turns * 360) : 0;
@@ -3475,6 +3534,9 @@
     if (e.target.closest('#holdem-fold')) { holdemFold(); return; }
     if (e.target.closest('#slots-spin')) { slotsSpin(); return; }
     if (e.target.closest('#wheel-spin')) { wheelSpin(); return; }
+    var hp = e.target.closest('[data-horse]'); if (hp) { racePick = +hp.getAttribute('data-horse'); buzz(6); renderCasino(); return; }
+    var rk = e.target.closest('[data-race-kind]'); if (rk) { raceKind = rk.getAttribute('data-race-kind'); buzz(6); renderCasino(); return; }
+    if (e.target.closest('#race-go')) { raceStart(); return; }
   });
 
   // ---- Cabin tab ----

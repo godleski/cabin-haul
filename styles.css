@@ -663,6 +663,28 @@
   .cas-welcome .wtitle { font: 900 1.35rem/1.1 var(--display); letter-spacing: 0.04em; text-transform: uppercase; color: #e8c547; text-shadow: 0 0 12px rgba(232, 197, 71, 0.8), 0 2px 0 #4a2c17; } .cas-welcome .wsub { margin-top: 6px; font-size: 0.82rem; color: rgba(255, 255, 255, 0.85); line-height: 1.4; }
   .cas-warn { margin-top: 8px; font-size: 0.72rem; line-height: 1.4; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; } .cas-warn b { color: var(--fg); } .cas-warn a { color: var(--fg); font-weight: 700; white-space: nowrap; }
   @media (prefers-reduced-motion: reduce) { .cas-welcome .lights { animation: none; } }
+  /* Churchill Downs: the twin spires over the track, six lanes of dirt */
+  .downs { margin-top: 12px; border-radius: 16px; overflow: hidden; border: 6px solid #4a2c17; background: #7a5a3a; color: #fff; }
+  .downs .sky { height: 74px; background: linear-gradient(#8fd3ff, #d8f0ff); position: relative; }
+  .downs .stand { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(#f4f1ea, #d9d2c3); border-top: 3px solid #2d6a4f; }
+  .downs .stand .roof { position: absolute; left: 0; right: 0; top: -8px; height: 10px; background: #2d6a4f; }
+  .downs .stand .spire { position: absolute; top: -40px; width: 0; height: 0; border-left: 11px solid transparent; border-right: 11px solid transparent; border-bottom: 34px solid #2d6a4f; } .downs .stand .spire::after { content: ''; position: absolute; left: -7px; top: 30px; width: 14px; height: 14px; background: #f4f1ea; border: 2px solid #2d6a4f; }
+  .downs .stand .spire:first-child { left: 30%; } .downs .stand .spire:nth-child(2) { left: 62%; }
+  .downs .stand .sign { position: absolute; left: 0; right: 0; top: 10px; text-align: center; font: 900 0.82rem var(--display); letter-spacing: 0.18em; text-transform: uppercase; color: #2d6a4f; }
+  .downs .track { position: relative; padding: 8px 10px 6px 6px; background: repeating-linear-gradient(#9c7a52 0 34px, #8d6c47 34px 35px); }
+  .downs .lane { position: relative; height: 34px; display: flex; align-items: center; } .downs .lane .num { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font: 800 0.62rem var(--mono); color: #111; z-index: 1; }
+  .downs .horse { position: absolute; left: 0; width: 56px; height: 34px; margin-left: 20px; transition: none; } .downs .horse .hs { width: 56px; height: 34px; display: block; }
+  .downs .horse.run .leg.a { animation: gallop 220ms ease-in-out infinite alternate; transform-origin: 50% 0; } .downs .horse.run .leg.b { animation: gallop 220ms ease-in-out infinite alternate-reverse; transform-origin: 50% 0; } @keyframes gallop { from { transform: rotate(-22deg); } to { transform: rotate(22deg); } }
+  .downs .horse.run .hs { animation: bob 220ms ease-in-out infinite alternate; } @keyframes bob { from { transform: translateY(0); } to { transform: translateY(-3px); } }
+  .downs .horse.won .hs { filter: drop-shadow(0 0 6px #ffd60a); }
+  .downs .wire { position: absolute; right: 12px; top: 0; bottom: 0; width: 3px; background: repeating-linear-gradient(#fff 0 6px, #c0392b 6px 12px); }
+  .downs .race-line { padding: 8px 10px; text-align: center; font: 700 0.9rem var(--display); background: #2d6a4f; }
+  .downs .race-order { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px 12px; padding: 8px 10px 0; font-size: 0.8rem; background: #2d6a4f; } .downs .race-order b { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: #ffd60a; color: #111; margin-right: 5px; font-size: 0.7rem; }
+  .downs .cas-result { margin: 8px 10px 10px; }
+  .horse-list { display: grid; gap: 6px; margin-top: 12px; } .horse-list button { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); color: var(--fg); font: 600 0.9rem var(--body); cursor: pointer; text-align: left; }
+  .horse-list button .num { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 800 0.7rem var(--mono); color: #111; flex: none; } .horse-list button .nm { flex: 1; } .horse-list button .odds { font: 700 0.8rem var(--mono); color: var(--muted); } .horse-list button[aria-pressed="true"] { border-color: #e8c547; background: var(--ac-soft); } .horse-list button[aria-pressed="true"] .odds { color: #e8c547; }
+  .cas-tabs.small button { flex: 1; }
+  @media (prefers-reduced-motion: reduce) { .downs .horse.run .leg.a, .downs .horse.run .leg.b, .downs .horse.run .hs { animation: none; } }
   .cas-rules { margin-top: 10px; font-size: 0.74rem; color: var(--muted); text-align: center; line-height: 1.4; }
   .cas-btns.two { grid-template-columns: 1fr auto; } .cas-btns .btn.field { background: var(--surface); border: 1.5px solid var(--line); color: var(--muted); } .cas-btns .btn.field.on { background: #e8c547; color: #111; border-color: #e8c547; }
   .craps-table.bubble { padding-top: 10px; } .craps-table .dome { position: relative; width: 170px; height: 170px; margin: 0 auto; border-radius: 50%; background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.06) 45%, rgba(0, 0, 0, 0.25)); box-shadow: inset 0 -14px 30px rgba(0, 0, 0, 0.35), 0 10px 24px rgba(0, 0, 0, 0.35); display: grid; place-items: center; overflow: hidden; }
