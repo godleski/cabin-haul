@@ -3827,6 +3827,7 @@
     { id: 'degen', kind: 'title', name: 'Degenerate', price: 50, blurb: 'Affordable. Accurate.' },
     { id: 'fav', kind: 'title', name: 'Terry’s Favorite', price: 500, blurb: 'Buys exactly what it says.' },
     { id: 'baddest', kind: 'title', name: 'Baddest in Town', price: 1, only: ['Kelly', 'Liv'], othersPrice: 5000, blurb: 'One coin for Kelly and Liv. Five thousand for anyone else with the nerve.' },
+    { id: 'ruined', kind: 'title', name: 'Terry Coin Ruined My Life', price: 20, blurb: 'Wear it with whatever you have left.' },
     { id: 'repay', kind: 'repay', name: 'Repay a loan', price: 55, blurb: 'Clears one loan off your record. Terry keeps the five.' },
     { id: 'round', kind: 'round', name: 'A round for the wall', price: 40, blurb: 'Posts a round of Banquets on the wall in your name.' },
     { id: 'tee', kind: 'merch', name: 'Terry’s Casino tee', price: 1500, soon: true, blurb: 'Real cotton. Coming soon.' },
