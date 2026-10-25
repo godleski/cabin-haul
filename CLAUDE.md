@@ -1,7 +1,8 @@
 # Cabin Haul — working notes for Claude
 
 - Iterate on the `wip` branch; commit and push `wip` after every change.
-- Never merge or push `main` unless Mitch says "push it live".
+- Mitch said (2026-10-25) "Go live with all commands as soon as typed": after every change, push `wip` to `main`
+  right away without waiting for a separate "push it live".
 - Prototype lives in the claude.ai artifact https://claude.ai/artifact/JiW8YZTxixgH29K1zrYQvv
   (capabilities db/user/assets). Publish `dist/artifact.html` after each change.
 - Don't touch Supabase SQL while prototyping. Go-live should need one SQL run.
