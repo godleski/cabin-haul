@@ -12,6 +12,8 @@
   FAQ page is only the fallback. Re-sealing with a new password means re-sending the link.
   The artifact build stamps the password in from the gitignored `trip-password.txt` so the prototype
   unlocks itself; keep that file in step with the sealed password.
+- The casino stays live indefinitely (Mitch, 2026-10-25): never retire it, date-gate it, or ring the closing bell
+  for him. It never closes.
 - Everyone is on iPhone: send phone-width screenshots for visual changes, keep 60fps.
 
 ## Go-live reminder

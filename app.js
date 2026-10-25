@@ -3221,8 +3221,8 @@
   // comes out of it. Each player's own document carries the house's running take from them (no two phones ever write
   // the same document), and Terry's bank is his own balance plus the sum of those.
   function houseTake() { var t = 0; Object.keys(casino).forEach(function (n) { if (n !== HOUSE) t += (casino[n].house || 0); }); return t; }
-  function effBal(n) { var d = casino[n]; return (d ? d.bal : TC_START) + stimIssued() + dividendsIssued() + grantsFor(n) + (n === HOUSE ? houseTake() : 0) + markPositions(d && d.pos) + sbNetFor(n); }
-  var CAS_GAMES = [['smash', '🎮 Smash book'], ['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs'], ['market', '📈 Derivatives']];
+  function effBal(n) { var d = casino[n]; return (d ? d.bal : TC_START) + stimIssued() + dividendsIssued() + grantsFor(n) + (n === HOUSE ? houseTake() : 0) + markPositions(d && d.pos) + sbNetFor(n) + pmNetFor(n); }
+  var CAS_GAMES = [['smash', '🎮 Smash book'], ['fights', '🥊 Prize fights'], ['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs'], ['market', '📈 Derivatives']];
   var CAS_BOSSES = ['Terry', 'Mitch'], casClosed = null;
   // Who sees the Reserve's books (grants, escrow, seizures): the chairman's circle. Everyone else sees the public face.
   var RESERVE_INSIDERS = ['Mitch', 'Terry', 'Joe'];
@@ -3259,7 +3259,7 @@
   function subscribeCasino() {
     if (casinoSub || !store || !store.games) { casinoLoaded = true; return; }
     casinoSub = true;
-    subscribeMarket();
+    subscribeMarket(); subscribePredMarket();
     store.game('casinosmash', function (doc) { var same = sameDoc(doc, smashBook); smashBook = doc; if (!same) renderCasino(); });
     store.games('smashbet-', function (rows) { var next = {}; rows.forEach(function (r) { if (r.doc && r.doc.by) next[r.doc.by] = r.doc; }); var same = sameDoc(next, smashBets); smashBets = next; if (!same) renderCasino(); });
     store.game('casinoreserve', function (doc) { var same = sameDoc(doc, reserve); reserve = doc; if (!same) renderCasino(); });
@@ -3286,7 +3286,7 @@
     buzz(win > bet ? [20, 40, 20, 40, 60] : win ? 15 : 60);
   }
   function stake(bet) { var b = myBank(); if (bet > myBal()) { toast('You don’t have ' + tcText(bet) + '.'); return false; } bankWrite({ bal: b.bal - bet }); return true; }
-  function casInHand() { return (casGame === 'blackjack' && bj && !bj.done) || (casGame === 'craps' && craps && !craps.done) || (casGame === 'holdem' && holdem && !holdem.done) || (casGame === 'slots' && slots && !slots.done) || (casGame === 'wheel' && wheel && !wheel.done) || (casGame === 'horses' && race && !race.done); }
+  function casInHand() { return (casGame === 'blackjack' && bj && !bj.done) || (casGame === 'craps' && craps && !craps.done) || (casGame === 'holdem' && holdem && !holdem.done) || (casGame === 'slots' && slots && !slots.done) || (casGame === 'wheel' && wheel && !wheel.done) || (casGame === 'horses' && race && !race.done) || (casGame === 'fights' && fight && !fight.done); }
   // Churchill Downs: six horses, a fun coat and mane each, fixed odds. Win pays the odds, place (top two) half the odds,
   // show (top three) a third. The race itself is run on this phone, fair and random, the favourites a touch quicker.
   // The stable: every race draws six at random, so the names keep coming. Odds and pace go together.
@@ -3640,7 +3640,7 @@
     sbMatches().forEach(function (m) { if (m.void) return; var ps = sbPools(m), mine = sbStake(ps, m, name); t += sbRoyalty(ps, m, name); if (!mine) return; t += m.result ? sbPayout(ps, m, name) - mine : -mine; });
     return t;
   }
-  function sbPlayed(n) { return !!(smashBets[n] && (smashBets[n].bets || []).length) || sbNetFor(n) !== 0; }   // on the floor through the book alone
+  function sbPlayed(n) { return !!(smashBets[n] && (smashBets[n].bets || []).length) || sbNetFor(n) !== 0 || pmPlayed(n); }   // on the floor through the book alone
   function sbSide(id, name) { var bets = sbBetsOn(id).filter(function (b) { return b.by === name; }); return bets.length ? bets[0].on : null; }
   function sbWrite(matches, msg) {
     var doc = { matches: matches.slice(-60), updated_at: new Date().toISOString() }; smashBook = doc; renderCasino(); if (msg) toast(msg);
@@ -3686,12 +3686,138 @@
     if (held || won) html += '<div class="deal-sum">' + (held ? 'The book is holding ' + tc(held) + ' of yours on open matches. ' : '') + (won ? 'Called matches have ' + (won > 0 ? 'paid you ' + tc(won) : 'cost you ' + tc(-won)) + ' net.' : '') + '</div>';
     return html;
   }
+  // ---- The predictions market: Terry coin on the sportsbook's markets ----
+  // Picks stay free. On top of a pick you can stake Terry coin: predbet-<name> { by, bets: [{ q, on, n, at }] } is each
+  // player's own doc, and predresults { results: { <question id>: { pick, by, at } } } is written by a boss when a market
+  // settles. Parimutuel like the Smash book: the pool on a question splits among whoever had coin on the right answer,
+  // by stake; nobody on it, every stake goes back. Nothing writes to anyone's bank; balances are derived.
+  var predBets = {}, predResults = null, pmSub = false, pmStake = 25, pmAnswer = '', PM_CHIPS = [5, 10, 25, 50, 100];
+  function subscribePredMarket() {
+    if (pmSub || !store || !store.games) return; pmSub = true;
+    store.games('predbet-', function (rows) { var next = {}; rows.forEach(function (r) { if (r.doc && r.doc.by) next[r.doc.by] = r.doc; }); var same = sameDoc(next, predBets); predBets = next; if (!same) { renderPredictions(); renderCasino(); } });
+    store.game('predresults', function (doc) { var same = sameDoc(doc, predResults); predResults = doc; if (!same) { renderPredictions(); renderCasino(); } });
+  }
+  function pmResult(qid) { return (predResults && predResults.results && predResults.results[qid]) || null; }
+  function pmPools(qid) {
+    var pool = {}, who = {}, total = 0, n = 0;
+    Object.keys(predBets).forEach(function (name) { (predBets[name].bets || []).forEach(function (b) { if (b.q !== qid) return; var amt = +b.n || 0; pool[b.on] = (pool[b.on] || 0) + amt; who[b.on] = who[b.on] || {}; who[b.on][name] = (who[b.on][name] || 0) + amt; total += amt; n++; }); });
+    return { pool: pool, who: who, total: total, n: n };
+  }
+  function pmStakeOf(ps, name) { var t = 0; Object.keys(ps.who).forEach(function (k) { t += ps.who[k][name] || 0; }); return t; }
+  function pmSideOf(qid, name) { var bets = ((predBets[name] || {}).bets || []).filter(function (b) { return b.q === qid; }); return bets.length ? bets[0].on : null; }
+  function pmPays(ps, pick) { var p = ps.pool[pick] || 0; return p ? ps.total / p : 0; }
+  function pmPayout(ps, pick, name) { var w = ps.pool[pick] || 0; if (!w) return pmStakeOf(ps, name); var s = (ps.who[pick] || {})[name] || 0; return s ? s * ps.total / w : 0; }
+  function pmNetFor(name) { var t = 0; QUESTIONS.forEach(function (q) { var ps = pmPools(q.id), mine = pmStakeOf(ps, name); if (!mine) return; var r = pmResult(q.id); t += r ? pmPayout(ps, r.pick, name) - mine : -mine; }); return t; }
+  function pmPlayed(n) { return !!(predBets[n] && (predBets[n].bets || []).length); }
+  function pmRiding() { var t = 0; QUESTIONS.forEach(function (q) { if (!pmResult(q.id)) t += pmStakeOf(pmPools(q.id), me); }); return t; }
+  function pmBoss() { return CAS_BOSSES.indexOf(me) >= 0; }
+  function pmBet(qid, on, n) {
+    if (pmResult(qid)) { toast('That market has settled.'); return; }
+    var have = pmSideOf(qid, me); if (have && have !== on) { toast('Your ' + tcText(pmStakeOf(pmPools(qid), me)) + ' is already on ' + have + '. No hedging.'); return; }
+    if (n > myBal()) { toast('You don’t have ' + tcText(n) + '.'); return; }
+    var mine = Object.assign({ by: me, bets: [] }, predBets[me] || {}); mine.bets = (mine.bets || []).concat([{ q: qid, on: on, n: n, at: new Date().toISOString() }]).slice(-200); mine.at = new Date().toISOString();
+    predBets = Object.assign({}, predBets); predBets[me] = mine; renderPredictions(); renderCasino(); buzz([20, 30, 20]); toast(tcText(n) + ' on ' + on + '.');
+    store.setGame('predbet-' + me, mine).catch(function (e) { toast('The stake didn’t land: ' + ((e && e.message) || e)); });
+  }
+  function pmWrite(results, msg) { var doc = { results: results, updated_at: new Date().toISOString() }; predResults = doc; renderPredictions(); renderCasino(); if (msg) toast(msg); store.setGame('predresults', doc).catch(function (e) { toast('That didn’t save: ' + ((e && e.message) || e)); }); }
+  function pmBankHtml() { var r = pmRiding(); return '<div class="pm-bank"><span>🪙 Your bank</span><b>' + tc(myBal()) + '</b>' + (r ? '<span>· riding</span><b>' + tc(r) + '</b>' : '<span class="pm-tip">· open a market to stake Terry coin on your pick</span>') + '</div>'; }
+  function pmOddsText(q, pick, n) { var ps = pmPools(q.id); return ps.pool[pick] ? pmPays(ps, pick).toFixed(2) + '×' : oddsForQ(q, n); }
+  function pmLine(q) {   // the one-line Terry coin summary on a card
+    var ps = pmPools(q.id), r = pmResult(q.id), mine = pmStakeOf(ps, me), side = pmSideOf(q.id, me);
+    if (r) return '<div class="pm-line settled">✓ Settled: <b>' + esc(r.pick) + '</b>' + (ps.total ? ' · ' + tc(ps.total) + ' paid out' : '') + (mine ? ' · you ' + (pmPayout(ps, r.pick, me) >= mine ? '+' : '') + Math.round(pmPayout(ps, r.pick, me) - mine) : '') + '</div>';
+    if (!ps.total) return '';
+    return '<div class="pm-line">' + tc(ps.total) + ' in the pool · ' + ps.n + ' stake' + (ps.n === 1 ? '' : 's') + (mine ? ' · you have ' + tc(mine) + ' on ' + esc(side) : '') + '</div>';
+  }
+  function pmSheetHtml(q, mine) {   // the Terry coin box on a market's sheet; mine = my pick
+    var ps = pmPools(q.id), r = pmResult(q.id), side = pmSideOf(q.id, me), myStake = pmStakeOf(ps, me), bal = myBal();
+    var html = '<div class="pm-box"><div class="pm-head"><span>🪙 Terry coin on this market</span><span>pool ' + tc(ps.total) + '</span></div>';
+    var picks = Object.keys(ps.pool).sort(function (a, b) { return ps.pool[b] - ps.pool[a]; });
+    if (picks.length) html += '<div class="pm-rows">' + picks.map(function (p) { var backers = Object.keys(ps.who[p]).length, you = ps.who[p][me] || 0; return '<div class="pm-row' + (r && r.pick === p ? ' won' : r ? ' lost' : '') + '"><span class="nm">' + esc(p) + (r && r.pick === p ? ' 🏆' : '') + '<small>' + backers + ' backer' + (backers === 1 ? '' : 's') + (you ? ' · you ' + tc(you) : '') + '</small></span><span class="pool">' + tc(ps.pool[p]) + '</span><span class="pays">' + (r ? (r.pick === p ? '✓' : '✕') : 'pays ' + pmPays(ps, p).toFixed(2) + '×') + '</span></div>'; }).join('') + '</div>';
+    if (r) {
+      var w = ps.pool[r.pick] || 0, winners = Object.keys(ps.who[r.pick] || {}).map(function (n) { return { n: n, d: pmPayout(ps, r.pick, n) - pmStakeOf(ps, n) }; }).sort(function (x, y) { return y.d - x.d; });
+      html += '<div class="pm-note">Settled on <b>' + esc(r.pick) + '</b> by ' + esc(r.by) + ' ' + esc(agoText(r.at)) + '. ' + (!ps.total ? 'No coin was on it.' : !w ? 'Nobody had coin on ' + esc(r.pick) + ', so every stake went back.' : 'Pool ' + tc(ps.total) + ' split ' + winners.map(function (x) { return esc(x.n === me ? 'you' : x.n) + ' +' + Math.round(x.d).toLocaleString(); }).join(', ') + '.') + '</div>';
+      if (pmBoss()) html += '<div class="pm-boss"><button type="button" class="linkbtn" id="pm-reopen" data-q="' + esc(q.id) + '">Reopen this market</button></div>';
+    } else {
+      html += '<div class="cas-chips small">' + PM_CHIPS.map(function (c) { return '<button type="button" class="chip' + (c === pmStake ? ' on' : '') + (c > bal ? ' off' : '') + '" data-pm-chip="' + c + '">' + c + '</button>'; }).join('') + '</div>';
+      var can = mine && (!side || side === mine) && pmStake <= bal;
+      html += '<div class="pm-stake"><button type="button" class="big-btn" id="pm-stake" data-q="' + esc(q.id) + '"' + (can ? '' : ' disabled') + '>' + (!mine ? 'Pick first, then stake' : side && side !== mine ? 'Your coin is on ' + esc(side) : 'Stake ' + tc(pmStake) + ' on ' + esc(mine)) + '</button><span>bank ' + tc(bal) + (myStake ? ' · ' + tc(myStake) + ' riding' : '') + '</span></div>';
+      if (side && mine && side !== mine) html += '<div class="pm-note">You picked ' + esc(mine) + ' but your coin is on ' + esc(side) + '. No hedging: switch your pick back to add more.</div>';
+      if (pmBoss()) html += '<div class="pm-boss"><select id="pm-answer" aria-label="The answer">' + (q.type === 'couple' ? COUPLES : NAMES).map(function (n) { return '<option' + (n === pmAnswer ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select><button type="button" class="btn" id="pm-declare" data-q="' + esc(q.id) + '">Settle it</button></div><div class="pm-note">Settling pays the pool to whoever had coin on the answer. Everyone sees it.</div>';
+    }
+    return html + '</div>';
+  }
+  // ---- Prize fights: Rock ’Em Sock ’Em robots, Claude in the blue corner every night ----
+  // Pick a challenger and a corner, bet, ring the bell. The result is drawn up front (Claude is the champ; every challenger
+  // has their own chance, p), then the punches play out on this phone with CSS transforms: first to three clean hits pops
+  // the other one's head. Fixed odds with a house edge, paid like every other table.
+  var FIGHTERS = [
+    { n: 'Terry', tag: 'The Chairman', p: 0.42 }, { n: 'Mitch', tag: 'The Commissioner', p: 0.40 }, { n: 'Kelly', tag: 'The Baddest', p: 0.45 }, { n: 'Liv', tag: 'The Other Baddest', p: 0.45 },
+    { n: 'Joe', tag: 'Glass Jaw', p: 0.28 }, { n: 'Luke', tag: 'Cool Hand', p: 0.38 }, { n: 'Drew', tag: 'Dr. Drew', p: 0.36 }, { n: 'Katelyn', tag: 'Kat Scratch', p: 0.40 },
+    { n: 'Gabby', tag: 'Gab the Jab', p: 0.37 }, { n: 'Jess', tag: 'Jess the Mess', p: 0.35 }, { n: 'Kyle', tag: 'Kilowatt', p: 0.38 }, { n: 'Kyrsten', tag: 'Kyrkat', p: 0.39 },
+    { n: 'Justin', tag: 'Just In Time', p: 0.34 }, { n: 'Jessie', tag: 'The Hammer', p: 0.41 }, { n: 'Conner', tag: 'The Con', p: 0.36 }, { n: 'Emilio', tag: 'El Matador', p: 0.43 }, { n: 'Claire', tag: 'Clear Shot', p: 0.37 }
+  ];
+  var FIGHT_EDGE = 0.93, fight = null, fightPick = 0, fightSide = 'claude', fightTimers = [];
+  function fightOdds(f) { return { claude: Math.round(FIGHT_EDGE / (1 - f.p) * 100) / 100, chal: Math.round(FIGHT_EDGE / f.p * 100) / 100 }; }
+  function fightName(who) { return who === 'claude' ? 'Claude' : fight.f.n; }
+  function fightStart() {
+    if (!stake(casBet)) return;
+    var f = FIGHTERS[fightPick], claudeWins = Math.random() >= f.p, winner = claudeWins ? 'claude' : 'chal', loser = claudeWins ? 'chal' : 'claude';
+    var seq = [], i, winnerHits = Math.floor(Math.random() * 3), misses = 2 + Math.floor(Math.random() * 3);
+    for (i = 0; i < 2; i++) seq.push({ by: winner, hit: true });
+    for (i = 0; i < winnerHits; i++) seq.push({ by: loser, hit: true });
+    for (i = 0; i < misses; i++) seq.push({ by: Math.random() < 0.5 ? winner : loser, hit: false });
+    seq = shuffled(seq); seq.push({ by: winner, hit: true });   // the knockout lands last
+    fight = { f: f, side: fightSide, bet: casBet, seq: seq, i: 0, hp: { claude: 3, chal: 3 }, done: false, claudeWins: claudeWins, result: null, win: 0 };
+    fightTimers.forEach(clearTimeout); fightTimers = []; buzz([10, 30, 10]); renderCasino();
+    fightTimers.push(setTimeout(fightPunch, 900));
+  }
+  function fightPunch() {
+    if (!fight || fight.done) return;
+    var p = fight.seq[fight.i++], ring = document.querySelector('.rsr'); if (!p || !ring) { fightFinish(); return; }
+    var tgt = p.by === 'claude' ? 'chal' : 'claude', bot = ring.querySelector('.bot.' + p.by), other = ring.querySelector('.bot.' + tgt), line = $('fight-line');
+    bot.classList.add('jab'); fightTimers.push(setTimeout(function () { bot.classList.remove('jab'); }, 260));
+    if (p.hit) {
+      fight.hp[tgt]--;
+      var lights = ring.parentNode.querySelectorAll('.hp .' + tgt + ' i'); if (lights[fight.hp[tgt]]) lights[fight.hp[tgt]].classList.add('out');
+      if (fight.hp[tgt] <= 0) { other.classList.add('ko'); ring.classList.add('ko-flash'); if (line) line.textContent = 'K.O.! ' + fightName(p.by) + ' pops the head clean off.'; buzz([40, 30, 80]); fightTimers.push(setTimeout(fightFinish, 1100)); return; }
+      other.classList.add('hit'); fightTimers.push(setTimeout(function () { other.classList.remove('hit'); }, 320));
+      if (line) line.textContent = fightName(p.by) + ' lands one!' + (fight.hp[tgt] === 1 ? ' ' + fightName(tgt) + ' is wobbling.' : '');
+      buzz(20);
+    } else { other.classList.add('dodge'); fightTimers.push(setTimeout(function () { other.classList.remove('dodge'); }, 260)); if (line) line.textContent = fightName(p.by) + ' swings and misses.'; }
+    fightTimers.push(setTimeout(fightPunch, 650 + Math.random() * 350));
+  }
+  function fightFinish() {
+    if (!fight || fight.done) return;
+    var o = fightOdds(fight.f), won = (fight.side === 'claude') === fight.claudeWins, mult = fight.side === 'claude' ? o.claude : o.chal, win = won ? Math.round(fight.bet * mult) : 0;
+    fight.result = (fight.claudeWins ? 'Claude' : fight.f.n + ' “' + fight.f.tag + '”') + ' by knockout. ' + (won ? 'Your corner. It pays ' + mult.toFixed(2) + '×.' : 'Wrong corner. Tear up the ticket.');
+    fight.done = true; fight.win = win; settle(fight.bet, win); renderCasino();
+  }
+  function fightBotHtml(cls, name, ko) {
+    return '<div class="bot ' + cls + (ko ? ' ko' : '') + '"><div class="head"><i class="eye"></i><i class="eye"></i><i class="mouth"></i></div><div class="arm l"><i></i></div><div class="arm r"><i></i></div><div class="torso"><b>' + esc(name.toUpperCase()) + '</b></div><div class="legs"><i></i><i></i></div></div>';
+  }
+  function fightHtml(b) {
+    var f = FIGHTERS[fightPick], o = fightOdds(f), live = fight && !fight.done, over = fight && fight.done, cf = fight ? fight.f : f;
+    var lights = function (who) { return [0, 1, 2].map(function (k) { return '<i' + (fight && fight.hp[who] <= k ? ' class="out"' : '') + '></i>'; }).join(''); };
+    var html = '<div class="cas-rules">Rock ’Em Sock ’Em · Claude holds the blue corner · pick a challenger and a corner, bet, ring the bell · fixed odds, first to three clean hits</div>';
+    html += '<div class="rsr-wrap"><div class="rsr' + (over ? ' over' : '') + '"><div class="lights"><span></span><span></span><span></span><span></span><span></span><span></span></div><div class="ropes"></div>' +
+      fightBotHtml('chal', cf.n, over && fight.claudeWins) + fightBotHtml('claude', 'Claude', over && !fight.claudeWins) + '<div class="ko-sign">K.O.!</div></div>' +
+      '<div class="base"><span class="lever"></span><span class="brand">ROCK ’EM SOCK ’EM</span><span class="lever"></span></div>' +
+      '<div class="hp"><span class="chal">' + esc(cf.n) + ' ' + lights('chal') + '</span><span class="claude">' + lights('claude') + ' Claude</span></div>' +
+      '<div class="fight-line" id="fight-line">' + (fight ? (over ? '' : 'Ding ding!') : 'Red corner: ' + esc(f.n) + ' “' + esc(f.tag) + '”. Blue corner: Claude.') + '</div>' +
+      (over ? resultHtml(fight.result, fight.win, fight.bet) : '') + '</div>';
+    if (!live) {
+      html += '<div class="fighters">' + FIGHTERS.map(function (x, i) { return '<button type="button" data-fighter="' + i + '" aria-pressed="' + (fightPick === i) + '"><span class="nm">' + esc(x.n) + '</span><small>“' + esc(x.tag) + '”</small><b>' + fightOdds(x).chal.toFixed(2) + '×</b></button>'; }).join('') + '</div>';
+      html += '<div class="sb-sides"><button type="button" data-fight-side="claude" aria-pressed="' + (fightSide === 'claude') + '"><span class="nm">Claude</span><small>blue corner · the champ</small><b>pays ' + o.claude.toFixed(2) + '×</b></button><button type="button" data-fight-side="chal" aria-pressed="' + (fightSide === 'chal') + '"><span class="nm">' + esc(f.n) + '</span><small>red corner · “' + esc(f.tag) + '”</small><b>pays ' + o.chal.toFixed(2) + '×</b></button></div>';
+      html += '<div class="mafia-actions"><button type="button" class="big-btn" id="fight-go"' + (b.bal < casBet ? ' disabled' : '') + '>🥊 ' + (fight ? 'Run it back' : 'Ring the bell') + ' · ' + tc(casBet) + '</button></div>';
+    }
+    return html;
+  }
   function renderCasino() {
     var body = $('casino-body'), status = $('casino-status'); if (!body) return;
     if (!casinoLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
     var b = Object.assign({}, myBank(), { bal: myBal() }), html = '', an = casAnim || '', take = houseTake(); casAnim = null;
     status.innerHTML = tc(b.bal);
-    html += '<div class="cas-welcome"><div class="lights" aria-hidden="true"></div><div class="coin-hero" role="img" aria-label="Terry coin: Terry’s face in gold"></div><div class="wtitle">Welcome to Terry’s Casino</div><div class="wsub">Terry’s house, Terry’s rules, Terry coin. Everyone starts with ' + tc(TC_START) + '. Go broke and Terry lends you ' + tc(TC_LOAN) + ', and everyone sees the loan. The house is Terry: whatever the tables win goes straight into his bank, and whatever they pay out comes out of it.</div>' + (function () { var dv = latestDividend(); return dv ? '<div class="dividend">\uD83D\uDCB8 <b>Dividend: ' + tc(dv.n) + ' to every player.</b> \u201C' + esc(dv.note || '') + '\u201D \u2014 Terry coin</div>' : ''; })() + '</div>';
+    html += '<div class="cas-welcome"><div class="lights" aria-hidden="true"></div><div class="coin-hero" role="img" aria-label="Terry coin: Terry’s face in gold"></div><div class="wtitle">Welcome to Terry’s Casino</div><div class="wsub">Terry’s house, Terry’s rules, Terry coin. Everyone starts with ' + tc(TC_START) + '. Go broke and Terry lends you ' + tc(TC_LOAN) + ', and everyone sees the loan. The house is Terry: whatever the tables win goes straight into his bank, and whatever they pay out comes out of it. The casino never closes.</div>' + (function () { var dv = latestDividend(); return dv ? '<div class="dividend">\uD83D\uDCB8 <b>Dividend: ' + tc(dv.n) + ' to every player.</b> \u201C' + esc(dv.note || '') + '\u201D \u2014 Terry coin</div>' : ''; })() + '</div>';
     html += '<div class="cas-warn"><b>Please gamble responsibly.</b> Terry coin is worth nothing and the house always wins. If gambling is a problem for you or someone you know, call or text the National Problem Gambling Helpline, <a href="tel:18004262537">1-800-GAMBLER</a>, 24 hours a day, free and confidential.</div>';
     var supply = moneySupply(), rv = reserveValue(), ratio = supply ? rv / supply : 0;
     html += '<details class="reserve"' + (resOpen ? ' open' : '') + '><summary><span class="seal">\uD83C\uDFDB\uFE0F</span><span><b>The Terry Reserve</b><small>Terry coin is ' + Math.round(ratio * 100) + '% backed</small></span></summary>' +
@@ -3734,6 +3860,8 @@
     }
     if (casGame === 'smash') {
       html += smashBookHtml(b);
+    } else if (casGame === 'fights') {
+      html += fightHtml(b);
     } else if (casGame === 'blackjack') {
       html += '<div class="cas-rules">Dealer stands on 17 · blackjack pays 3 to 2 · double on any two</div>';
       if (bj) {
@@ -3858,6 +3986,9 @@
     if (e.target.closest('#wheel-spin')) { wheelSpin(); return; }
     var hp = e.target.closest('[data-horse]'); if (hp) { racePick = +hp.getAttribute('data-horse'); buzz(6); renderCasino(); return; }
     var rk = e.target.closest('[data-race-kind]'); if (rk) { raceKind = rk.getAttribute('data-race-kind'); buzz(6); renderCasino(); return; }
+    var ff = e.target.closest('[data-fighter]'); if (ff) { fightPick = +ff.getAttribute('data-fighter'); buzz(6); renderCasino(); return; }
+    var fs0 = e.target.closest('[data-fight-side]'); if (fs0) { fightSide = fs0.getAttribute('data-fight-side'); buzz(6); renderCasino(); return; }
+    if (e.target.closest('#fight-go')) { fightStart(); return; }
     if (e.target.closest('#race-go')) { raceStart(); return; }
     var mt = e.target.closest('[data-mkt-tranche]'); if (mt) { mktTranche = mt.getAttribute('data-mkt-tranche'); buzz(6); renderCasino(); return; }
     var mq = e.target.closest('[data-mkt-qty]'); if (mq) { mktQty = Math.max(1, Math.min(99, mktQty + (+mq.getAttribute('data-mkt-qty')))); var qb = document.querySelector('.mkt-qty > .stepper > b'); if (qb) qb.textContent = mktQty; marketTick(); buzz(4); return; }
@@ -4167,7 +4298,7 @@
     if (!store || !store.predictions) { el.hidden = true; return; }
     el.hidden = false;
     var mine = myVotes(), left = QUESTIONS.length - answeredCount();
-    var html = '';
+    var html = casinoLoaded ? pmBankHtml() : '';
     var slip = $('dk-slip'); if (slip) slip.textContent = (QUESTIONS.length - left) + '/' + QUESTIONS.length;
     var allIn = QUESTIONS.every(function (q) { return tallyFor(q).voted >= NAMES.length; });   // every slip is in: the board reads as results
     if (left && plainPicks()) html += '<div class="pred-banner"><div><b>' + (left === QUESTIONS.length ? 'You haven\u2019t picked yet' : left + ' still to pick') + '</b><span>Six quick questions. Takes a minute.</span></div><button type="button" class="btn primary" id="pred-open">Make my picks</button></div>';
@@ -4184,7 +4315,7 @@
         var onFav = favs.some(function (r) { return r.pick === my; });
         var miss = t.missing.length ? (t.missing.length <= 2 ? t.missing.join(' and ') + (t.missing.length === 1 ? ' hasn’t' : ' haven’t') + ' picked' : t.missing.length + ' haven’t picked') : '';
         html += '<button type="button" class="pred-card res ' + (plainPicks() ? 'plain' : 'dk') + (nu ? ' has-new' : '') + '" data-q="' + i + '">' +
-          '<div class="pq">' + esc(q.text) + '</div>' +
+          '<div class="pq">' + esc(q.text) + '</div>' + pmLine(q) +
           '<div class="res-lead"><span class="nm">' + favs.map(function (r) { return esc(r.pick); }).join('<i>/</i>') + '</span>' + (plainPicks() ? '' : '<span class="odds">' + oddsForQ(q, lead.n) + '</span>') + '</div>' +
           '<div class="res-bar"><span style="width:' + (100 * lead.n / total) + '%"></span></div>' +
           '<div class="res-sub"><span class="share">' + (tie ? 'Dead heat \u00b7 ' + lead.n + ' each' : lead.n + ' of ' + total) + '</span>' + (rest.length ? '<span class="rest">' + rest.map(function (r) { return esc(r.pick) + ' ' + r.n; }).join(' \u00b7 ') + '</span>' : '') + '</div>' +
@@ -4195,7 +4326,7 @@
       if (plainPicks()) {   // the simple card: question, who's winning, a bar, your pick
         var lead = t.rows[0];
         html += '<button type="button" class="pred-card plain' + (nu ? ' has-new' : '') + '" data-q="' + i + '">' +
-          '<div class="pq">' + esc(q.text) + '</div>' +
+          '<div class="pq">' + esc(q.text) + '</div>' + pmLine(q) +
           '<div class="lead-row"><span class="lead' + (lead ? '' : ' none') + '">' + (lead ? esc(lead.pick) : 'No picks yet') + '</span>' + (lead ? '<span class="share">' + lead.n + ' <small>of ' + total + '</small></span>' : '') + '</div>' +
           (total ? '<div class="seg">' + t.rows.map(function (r, k) { return '<span style="width:' + (100 * r.n / total) + '%;background:' + segColor(k) + '"></span>'; }).join('') + '</div>' : '') +
           '<div class="sub"><span>' + t.voted + ' of ' + NAMES.length + ' have picked</span>' + (cc ? '<span class="k' + (nu ? ' new' : '') + '">\uD83D\uDCAC ' + cc + (nu ? ' \u00b7 ' + nu + ' new' : '') + '</span>' : '') + (my ? '<span class="you">You picked ' + esc(my) + '</span>' : '<span class="you no">You haven\u2019t picked</span>') + '</div>';
@@ -4210,10 +4341,10 @@
       if (my && !rows.some(function (r) { return r.pick === my; })) rows.push({ pick: my, n: (t.rows.filter(function (r) { return r.pick === my; })[0] || { n: 0 }).n });
       var hot = cc >= 2, top = t.rows.length ? t.rows[0].n : 0;
       html += '<button type="button" class="pred-card dk' + (nu ? ' has-new' : '') + '" data-q="' + i + '">' +
-        '<div class="dk-top">' + (total ? '<span class="live"><i></i>Live</span>' : '<span class="soon">Opens</span>') + '<span class="mk">' + esc(q.text) + '</span>' + (hot ? '<span class="boost">\u26A1 Boosted</span>' : '<span class="sgp">SGP</span>') + '</div>' +
+        '<div class="dk-top">' + (total ? '<span class="live"><i></i>Live</span>' : '<span class="soon">Opens</span>') + '<span class="mk">' + esc(q.text) + '</span>' + (hot ? '<span class="boost">\u26A1 Boosted</span>' : '<span class="sgp">SGP</span>') + '</div>' + pmLine(q) +
         '<div class="dk-rows">' + rows.map(function (r) {
           var fav = top > 0 && r.n === top, picked = r.pick === my;
-          return '<div class="dk-row' + (fav ? ' fav' : '') + (picked ? ' picked' : '') + '"><span class="rn">' + esc(r.pick) + '<small>' + (r.n ? r.n + (r.n === 1 ? ' bet' : ' bets') : 'no action') + '</small>' + (fav ? '<em class="tag fav">Fav</em>' : '') + (picked ? '<em class="tag you">\u2713 Your bet</em>' : '') + '</span><span class="odds">' + oddsForQ(q, r.n) + '</span></div>';
+          return '<div class="dk-row' + (fav ? ' fav' : '') + (picked ? ' picked' : '') + '"><span class="rn">' + esc(r.pick) + '<small>' + (r.n ? r.n + (r.n === 1 ? ' bet' : ' bets') : 'no action') + '</small>' + (fav ? '<em class="tag fav">Fav</em>' : '') + (picked ? '<em class="tag you">\u2713 Your bet</em>' : '') + '</span><span class="odds">' + pmOddsText(q, r.pick, r.n) + '</span></div>';
         }).join('') + (function () { var hidden = t.rows.filter(function (r) { return !rows.some(function (x) { return x.pick === r.pick; }); }).length; return hidden ? '<div class="dk-more">+' + hidden + ' more ' + (hidden === 1 ? 'wager' : 'wagers') + '</div>' : ''; })() + '</div>' +
         '<div class="dk-foot"><span>' + t.voted + ' of ' + NAMES.length + ' bets in</span>' + (cc ? '<span class="k' + (nu ? ' new' : '') + '">\uD83D\uDCAC ' + cc + (nu ? ' \u00b7 ' + nu + ' new' : '') + '</span>' : '') + (my ? '<span class="you">\u2713 Your bet: ' + esc(my) + '</span>' : '<span class="you no">No bet placed</span>') + '</div>';
       var thread = qThread(q.id), last2 = thread.slice(-2), seenDk = qSeen(q.id);
@@ -4571,6 +4702,7 @@
         '<div class="poll-who">' + r.who.map(function (n) { return '<span' + (n === me ? ' class="me"' : '') + '>' + esc(n === me ? 'you' : n) + '</span>'; }).join('') + '</div></div>';
     });
     html += '</div>';
+    html += pmSheetHtml(q, mine);
     html += '<div class="sheet-actions"><span>' + t.voted + ' of ' + NAMES.length + (plainPicks() ? ' have called it' : ' bets in') + (mine ? (plainPicks() ? ' · you said <b>' : ' · your bet <b>') + esc(mine) + '</b>' : '') + '</span><button type="button" class="' + (mine ? 'linkbtn' : 'nudge') + '" id="pred-change" data-q="' + expanded + '">' + (mine ? (plainPicks() ? 'Change mine' : 'Change my bet') : (plainPicks() ? 'Make my call' : 'Place a bet')) + '</button></div>';
     var thread = comments.filter(function (c) { return c.question_id === q.id; });
     html += '<div class="chat"><div class="chat-head">Trash talk' + (thread.length ? ' <span class="k">' + thread.length + '</span>' : '') + '</div>';
@@ -4592,6 +4724,7 @@
     return Math.round(h / 24) + 'd';
   }
   $('pred-sheet').addEventListener('input', function (e) { if (e.target.id === 'chat-input') draft = e.target.value; });
+  $('pred-sheet').addEventListener('change', function (e) { if (e.target.id === 'pm-answer') pmAnswer = e.target.value; });
   $('pred-sheet').addEventListener('submit', function (e) {
     if (e.target.id !== 'chat-form') return;
     e.preventDefault();
@@ -4616,6 +4749,10 @@
     store.react(cid, me, emoji, on).catch(function (err) { toast('That reaction didn’t stick: ' + ((err && err.message) || err)); });
   }
   function predClick(e) {
+    var pc = e.target.closest('[data-pm-chip]'); if (pc) { pmStake = +pc.getAttribute('data-pm-chip'); buzz(6); renderSheet(); return; }
+    var pst = e.target.closest('#pm-stake'); if (pst) { var qid0 = pst.getAttribute('data-q'), mine0 = myVotes()[qid0]; if (mine0) pmBet(qid0, mine0, pmStake); return; }
+    var pd = e.target.closest('#pm-declare'); if (pd && pmBoss()) { var ans = $('pm-answer').value, qid1 = pd.getAttribute('data-q'), qq = QUESTIONS.filter(function (q) { return q.id === qid1; })[0]; if (!window.confirm('Settle \u201C' + (qq ? qq.text : qid1) + '\u201D on ' + ans + '? The pool pays out and everyone sees it.')) return; var rs = Object.assign({}, (predResults && predResults.results) || {}); rs[qid1] = { pick: ans, by: me, at: new Date().toISOString() }; pmWrite(rs, 'Settled on ' + ans + '.'); return; }
+    var pr = e.target.closest('#pm-reopen'); if (pr && pmBoss()) { if (!window.confirm('Reopen this market? The payout is taken back.')) return; var rs2 = Object.assign({}, (predResults && predResults.results) || {}); delete rs2[pr.getAttribute('data-q')]; pmWrite(rs2, 'Reopened.'); return; }
     var rx = e.target.closest('[data-react]'); if (rx) { toggleReaction(rx.getAttribute('data-cid'), rx.getAttribute('data-react')); return; }
     var pk = e.target.closest('[data-picker]'); if (pk) { var cid = pk.getAttribute('data-picker'); pickerFor = pickerFor === cid ? null : cid; renderSheet(); renderWall(); return; }
     var open = e.target.closest('#pred-open, #dk-open'); if (open) { lsDel('cabin-haul-pred-later-' + me); qAuto = false; openQuestionnaire(firstUnanswered(), answeredCount() >= QUESTIONS.length); return; }
