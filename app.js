@@ -3221,7 +3221,7 @@
   // comes out of it. Each player's own document carries the house's running take from them (no two phones ever write
   // the same document), and Terry's bank is his own balance plus the sum of those.
   function houseTake() { var t = 0; Object.keys(casino).forEach(function (n) { if (n !== HOUSE) t += (casino[n].house || 0); }); return t; }
-  function effBal(n) { var d = casino[n]; return (d ? d.bal : TC_START) + stimIssued() + (n === HOUSE ? houseTake() : 0) + markPositions(d && d.pos); }
+  function effBal(n) { var d = casino[n]; return (d ? d.bal : TC_START) + stimIssued() + grantsFor(n) + (n === HOUSE ? houseTake() : 0) + markPositions(d && d.pos); }
   var CAS_GAMES = [['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs'], ['market', '📈 Derivatives']];
   var CAS_BOSSES = ['Terry', 'Mitch'], casClosed = null;
   // The Terry Reserve: what backs the coin, and the printing press. Reserve assets are valued in Terry coin; the money
@@ -3229,7 +3229,10 @@
   // document (casinoreserve): the total issued per person, which every bank includes.
   var RESERVE_ASSETS = [['\uD83C\uDF7A', '24 Coors Banquet', 240], ['\uD83D\uDEC1', 'One hot tub, heated', 500], ['\uD83C\uDF64', 'Mitch’s hibachi plate', 65], ['\uD83D\uDC08\u200D\u2B1B', 'One Kyrkat (priceless, booked at)', 1000], ['\uD83D\uDD11', 'The door code', 300]];
   var reserve = null, TC_STIM = 25;
+  // Standing grants by order of the chairman, counted in the bank of the person named (the Reserve document can add more).
+  var RESERVE_GRANTS = { Joe: 500 };   // 2026-10-25: 500 to Joe, by Mitch
   function stimIssued() { return (reserve && reserve.issued) || 0; }
+  function grantsFor(n) { return (RESERVE_GRANTS[n] || 0) + ((reserve && reserve.grants && reserve.grants[n]) || 0); }
   function moneySupply() { return NAMES.filter(function (n) { return casino[n] || n === HOUSE; }).reduce(function (t, n) { return t + effBal(n); }, 0); }
   function reserveValue() { return RESERVE_ASSETS.reduce(function (t, a) { return t + a[2]; }, 0); }
   var casino = {}, casinoLoaded = false, casinoSub = false, casGame = 'blackjack', casBet = 10, bj = null, craps = null, holdem = null, slots = null, wheel = null, casAnim = null, fieldOn = false, wheelBet = { kind: 'red', n: 17 };
@@ -3377,7 +3380,7 @@
     var k = mktTranche, qty = Math.max(1, Math.min(99, Math.round(mktQty))), b = myBank(), pos = Object.assign({}, b.pos || {}), p = pos[k] ? Object.assign({}, pos[k]) : { qty: 0, avg: 0 }, now = Date.now();
     var book = bookFor(k, now), px = side === 'buy' ? book.asks[0].px : book.bids[0].px, cost = Math.round(px * qty * 100) / 100;   // you lift the best ask, or hit the best bid: the bots are always there
     if (side === 'buy') {
-      if (cost > b.bal + stimIssued() + (me === HOUSE ? houseTake() : 0)) { toast('You don’t have ' + tcText(cost) + ' in cash. Sell something, or lose less.'); return; }
+      if (cost > b.bal + stimIssued() + grantsFor(me) + (me === HOUSE ? houseTake() : 0)) { toast('You don’t have ' + tcText(cost) + ' in cash. Sell something, or lose less.'); return; }
       p.avg = p.qty + qty ? (p.avg * p.qty + px * qty) / (p.qty + qty) : px; p.qty += qty; pos[k] = p;
       bankWrite({ bal: b.bal - cost, pos: pos, trades: (b.trades || 0) + 1 });
     } else {
@@ -3571,8 +3574,10 @@
       '<div class="res-row"><span>Backing</span><b>' + Math.round(ratio * 100) + '%' + (ratio >= 1 ? ' · fully backed' : ratio >= 0.5 ? ' · fractional' : ' · fiat, basically') + '</b></div>' +
       '<div class="res-row"><span>Peg</span><b>1 TC = 1 sip of Banquet</b></div><div class="res-row"><span>Chairman</span><b>Terry</b></div>' +
       (stimIssued() ? '<div class="res-row"><span>Stimulus to date</span><b>' + tc(stimIssued()) + ' per citizen</b></div>' : '') +
-      ((reserve && reserve.log && reserve.log.length) ? '<div class="res-log">' + reserve.log.slice(-3).reverse().map(function (e) { return '<div>' + esc(e.by) + ' printed ' + tc(e.n) + ' for everyone ' + esc(agoText(e.at)) + '</div>'; }).join('') + '</div>' : '') +
-      (CAS_BOSSES.indexOf(me) >= 0 && !casClosed ? '<div class="mafia-actions"><button type="button" class="btn" id="res-print">\uD83D\uDDA8\uFE0F Print ' + tc(TC_STIM) + ' for everyone</button></div><div class="deal-sum">Quantitative easing. Backing drops; everyone cheers anyway.</div>' : '') +
+      (function () { var gs = NAMES.filter(function (n) { return grantsFor(n); }); return gs.length ? '<div class="res-row"><span>Grants by order of the chairman</span><b>' + gs.map(function (n) { return esc(n) + ' ' + tc(grantsFor(n)); }).join('<br>') + '</b></div>' : ''; })() +
+      ((reserve && reserve.log && reserve.log.length) ? '<div class="res-log">' + reserve.log.slice(-3).reverse().map(function (e) { return '<div>' + esc(e.by) + ' printed ' + tc(e.n) + ' ' + (e.who ? 'for ' + esc(e.who) : 'for everyone') + ' ' + esc(agoText(e.at)) + '</div>'; }).join('') + '</div>' : '') +
+      (CAS_BOSSES.indexOf(me) >= 0 && !casClosed ? '<div class="mafia-actions"><button type="button" class="btn" id="res-print">\uD83D\uDDA8\uFE0F Print ' + tc(TC_STIM) + ' for everyone</button></div><div class="deal-sum">Quantitative easing. Backing drops; everyone cheers anyway.</div>' +
+        '<div class="res-grant"><select id="res-who" aria-label="Who">' + NAMES.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('') + '</select><select id="res-amt" aria-label="How much"><option>25</option><option>50</option><option>100</option><option>250</option><option>500</option><option>1000</option></select><button type="button" class="btn" id="res-grant">\uD83D\uDDA8\uFE0F Print for them</button></div>' : '') +
       '<div class="res-fine">Backed by the full faith and credit of Terry. Not legal tender. Not redeemable. Do not eat.</div></div></details>';
     html += '<div class="cas-bank"><div><span class="lbl">Your bank</span><b>' + tc(b.bal) + '</b></div>' + (me === HOUSE ? '<div><span class="lbl">House take</span><b class="' + (take > 0 ? 'up' : take < 0 ? 'down' : '') + '">' + (take > 0 ? '+' : '') + Math.round(take).toLocaleString() + '</b></div>' : '') + '<div><span class="lbl">Net</span><b class="' + (b.net > 0 ? 'up' : b.net < 0 ? 'down' : '') + '">' + (b.net > 0 ? '+' : '') + Math.round(b.net || 0).toLocaleString() + '</b></div><div><span class="lbl">Hands</span><b>' + (b.hands || 0) + '</b></div>' + (b.loans ? '<div><span class="lbl">Loans</span><b class="down">' + b.loans + '</b></div>' : '') + '</div>';
     var inHand = casInHand();
@@ -3672,6 +3677,14 @@
     body.innerHTML = html;
   }
   listen('casino-body', 'click', function (e) {
+    if (e.target.closest('#res-grant') && CAS_BOSSES.indexOf(me) >= 0) {
+      var who = $('res-who').value, amt = +$('res-amt').value;
+      if (!window.confirm('Print ' + amt + ' Terry coin for ' + who + '?')) return;
+      var gr = Object.assign({}, reserve || {}, { grants: Object.assign({}, (reserve && reserve.grants) || {}), log: ((reserve && reserve.log) || []).slice(-19).concat([{ n: amt, by: me, who: who, at: new Date().toISOString() }]) });
+      gr.grants[who] = (gr.grants[who] || 0) + amt; gr.issued = stimIssued();
+      reserve = gr; renderCasino(); toast('The presses ran for ' + who + ': ' + tcText(amt) + '.'); buzz([20, 40, 20]);
+      store.setGame('casinoreserve', gr).catch(function (err) { toast('The press jammed: ' + ((err && err.message) || err)); }); return;
+    }
     if (e.target.closest('#res-print') && CAS_BOSSES.indexOf(me) >= 0) { if (!window.confirm('Print ' + TC_STIM + ' Terry coin for every citizen?')) return; var rs = { issued: stimIssued() + TC_STIM, log: ((reserve && reserve.log) || []).slice(-19).concat([{ n: TC_STIM, by: me, at: new Date().toISOString() }]) }; reserve = rs; renderCasino(); toast('The presses are running. Everyone just got ' + tcText(TC_STIM) + '.'); buzz([20, 40, 20]); store.setGame('casinoreserve', rs).catch(function (err) { toast('The press jammed: ' + ((err && err.message) || err)); }); return; }
     if (e.target.closest('#cas-close') && CAS_BOSSES.indexOf(me) >= 0) { if (!window.confirm('Close the floor for everyone and post final standings?')) return; var cl = { closed: true, by: me, at: new Date().toISOString() }; casClosed = cl; renderCasino(); store.setGame('casinoclose', cl).catch(function (err) { toast('Couldn’t close: ' + ((err && err.message) || err)); }); return; }
     if (e.target.closest('#cas-reopen') && CAS_BOSSES.indexOf(me) >= 0) { var op = { closed: false, by: me, at: new Date().toISOString() }; casClosed = null; renderCasino(); store.setGame('casinoclose', op).catch(function (err) { toast('Couldn’t reopen: ' + ((err && err.message) || err)); }); return; }
