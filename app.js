@@ -3222,7 +3222,7 @@
   // the same document), and Terry's bank is his own balance plus the sum of those.
   function houseTake() { var t = 0; Object.keys(casino).forEach(function (n) { if (n !== HOUSE) t += (casino[n].house || 0); }); return t; }
   function effBal(n) { var d = casino[n]; return (d ? d.bal : TC_START) + stimIssued() + dividendsIssued() + grantsFor(n) + (n === HOUSE ? houseTake() : 0) + markPositions(d && d.pos) + sbNetFor(n) + pmNetFor(n); }
-  var CAS_GAMES = [['smash', '🎮 Smash book'], ['fights', '🥊 Prize fights'], ['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs'], ['market', '📈 Derivatives']];
+  var CAS_GAMES = [['smash', '🎮 Smash book'], ['fights', '🥊 Prize fights'], ['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs'], ['market', '📈 Derivatives'], ['shop', '🛍️ Gift shop']];
   var CAS_BOSSES = ['Terry', 'Mitch'], casClosed = null;
   // Who sees the Reserve's books (grants, escrow, seizures): the chairman's circle. Everyone else sees the public face.
   var RESERVE_INSIDERS = ['Mitch', 'Terry', 'Joe'];
@@ -3742,7 +3742,7 @@
       var can = mine && (!side || side === mine) && pmStake <= bal;
       html += '<div class="pm-stake"><button type="button" class="big-btn" id="pm-stake" data-q="' + esc(q.id) + '"' + (can ? '' : ' disabled') + '>' + (!mine ? 'Pick first, then stake' : side && side !== mine ? 'Your coin is on ' + esc(side) : 'Stake ' + tc(pmStake) + ' on ' + esc(mine)) + '</button><span>bank ' + tc(bal) + (myStake ? ' · ' + tc(myStake) + ' riding' : '') + '</span></div>';
       if (side && mine && side !== mine) html += '<div class="pm-note">You picked ' + esc(mine) + ' but your coin is on ' + esc(side) + '. No hedging: switch your pick back to add more.</div>';
-      if (pmBoss()) html += '<div class="pm-boss"><select id="pm-answer" aria-label="The answer">' + (q.type === 'couple' ? COUPLES : NAMES).map(function (n) { return '<option' + (n === pmAnswer ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select><button type="button" class="btn" id="pm-declare" data-q="' + esc(q.id) + '">Settle it</button></div><div class="pm-note">Settling pays the pool to whoever had coin on the answer. Everyone sees it.</div>';
+      if (pmBoss()) html += '<div class="pm-boss"><select id="pm-answer" aria-label="The answer">' + qOptions(q).map(function (n) { return '<option' + (n === pmAnswer ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select><button type="button" class="btn" id="pm-declare" data-q="' + esc(q.id) + '">Settle it</button></div><div class="pm-note">Settling pays the pool to whoever had coin on the answer. Everyone sees it.</div>';
     }
     return html + '</div>';
   }
@@ -3812,6 +3812,59 @@
     }
     return html;
   }
+  // ---- The gift shop: somewhere to spend Terry coin ----
+  // Digital goods for now (flair and a title next to your name on the floor, Terry's services, a round for the wall);
+  // real merch is listed as coming soon. Every purchase comes out of your bank and goes into Terry's, like a table loss.
+  var SHOP = [
+    { id: 'crown', kind: 'flair', name: 'Crown', emoji: '👑', price: 250, blurb: 'Sits next to your name on the floor. Royalty.' },
+    { id: 'gem', kind: 'flair', name: 'Diamond hands', emoji: '💎', price: 150, blurb: 'You never sold. Everyone will know.' },
+    { id: 'fire', kind: 'flair', name: 'Heater', emoji: '🔥', price: 75, blurb: 'For when you’re running hot.' },
+    { id: 'goat', kind: 'flair', name: 'GOAT', emoji: '🐐', price: 120, blurb: 'Self-awarded, like all the best ones.' },
+    { id: 'beer', kind: 'flair', name: 'Banquet', emoji: '🍺', price: 30, blurb: 'One sip of Banquet, pinned to your name.' },
+    { id: 'clown', kind: 'flair', name: 'Clown', emoji: '🤡', price: 15, blurb: 'Cheap. Honest.' },
+    { id: 'highroller', kind: 'title', name: 'High Roller', price: 200, blurb: 'A title under your name on the floor.' },
+    { id: 'whale', kind: 'title', name: 'Whale', price: 400, blurb: 'The floor parts when you walk in.' },
+    { id: 'degen', kind: 'title', name: 'Degenerate', price: 50, blurb: 'Affordable. Accurate.' },
+    { id: 'fav', kind: 'title', name: 'Terry’s Favorite', price: 500, blurb: 'Buys exactly what it says.' },
+    { id: 'baddest', kind: 'title', name: 'Baddest in Town', price: 1, only: ['Kelly', 'Liv'], othersPrice: 5000, blurb: 'One coin for Kelly and Liv. Five thousand for anyone else with the nerve.' },
+    { id: 'repay', kind: 'repay', name: 'Repay a loan', price: 55, blurb: 'Clears one loan off your record. Terry keeps the five.' },
+    { id: 'round', kind: 'round', name: 'A round for the wall', price: 40, blurb: 'Posts a round of Banquets on the wall in your name.' },
+    { id: 'tee', kind: 'merch', name: 'Terry’s Casino tee', price: 1500, soon: true, blurb: 'Real cotton. Coming soon.' },
+    { id: 'hat', kind: 'merch', name: 'Terry coin snapback', price: 1200, soon: true, blurb: 'Real hat. Coming soon.' }
+  ];
+  var SHOP_KINDS = [['flair', 'Flair', 'Next to your name on the floor. One at a time.'], ['title', 'Titles', 'Under your name. One at a time.'], ['repay', 'Terry’s services', ''], ['round', '', ''], ['merch', 'Merch', 'The real stuff. Not yet.']];
+  function shopPrice(it) { return it.only && it.only.indexOf(me) < 0 ? it.othersPrice : it.price; }
+  function shopLook(n) { var d = casino[n] || {}; return (d.flair ? ' <span class="flair">' + d.flair + '</span>' : '') + (d.title ? ' <em class="ttl">' + esc(d.title) + '</em>' : ''); }
+  function shopBuy(id) {
+    var it = SHOP.filter(function (x) { return x.id === id; })[0]; if (!it || it.soon) return;
+    var b = myBank(), price = shopPrice(it);
+    if (it.kind === 'repay' && !(b.loans > 0)) { toast('You don’t owe Terry anything. Yet.'); return; }
+    if (price > myBal()) { toast('You don’t have ' + tcText(price) + '.'); return; }
+    if (!window.confirm((it.kind === 'repay' ? 'Repay one loan' : 'Buy ' + it.name) + ' for ' + price + ' Terry coin? It goes straight to Terry.')) return;
+    var patch = { bal: b.bal - price, house: (b.house || 0) + price, buys: ((b.buys || []).concat([{ id: id, n: price, at: new Date().toISOString() }])).slice(-100) };
+    if (it.kind === 'flair') patch.flair = it.emoji; if (it.kind === 'title') patch.title = it.name; if (it.kind === 'repay') patch.loans = b.loans - 1;
+    bankWrite(patch); buzz([20, 30, 20]); renderCasino();
+    if (it.kind === 'round') { var line = '🍻 ' + me + ' bought a round for the whole wall. Banquets on ' + (me === 'Terry' ? 'Terry, obviously' : me) + '.'; comments.push({ question_id: WALL, author: me, text: line, created_at: new Date().toISOString() }); renderWall(); store.comment(WALL, me, line).catch(function (e) { toast('The round didn’t post: ' + ((e && e.message) || e)); }); }
+    toast(it.kind === 'repay' ? 'One loan cleared. Terry nods.' : it.kind === 'round' ? 'Round’s on you. It’s on the wall.' : it.name + ': yours.');
+  }
+  function shopOff(kind) { var patch = {}; patch[kind] = ''; bankWrite(patch); renderCasino(); }
+  function shopHtml(b) {
+    var d = myBank(), bal = b.bal;
+    var html = '<div class="cas-rules">The gift shop · spend Terry coin on flair, titles and Terry’s services · every purchase goes straight to Terry’s bank · real merch coming soon</div>';
+    html += '<div class="shop-you"><span class="lbl">On the floor you’re</span><b>' + esc(me) + shopLook(me) + '</b>' + (d.flair ? '<button type="button" class="linkbtn" data-shop-off="flair">Drop the flair</button>' : '') + (d.title ? '<button type="button" class="linkbtn" data-shop-off="title">Drop the title</button>' : '') + '</div>';
+    SHOP_KINDS.forEach(function (k) {
+      var items = SHOP.filter(function (it) { return it.kind === k[0]; }); if (!items.length) return;
+      if (k[1]) html += '<div class="shop-head">' + k[1] + (k[2] ? '<small>' + k[2] + '</small>' : '') + '</div>';
+      html += '<div class="shop-grid">' + items.map(function (it) {
+        var price = shopPrice(it), wearing = (it.kind === 'flair' && d.flair === it.emoji) || (it.kind === 'title' && d.title === it.name), can = !it.soon && !wearing && price <= bal && !(it.kind === 'repay' && !(d.loans > 0));
+        return '<div class="shop-item' + (it.soon ? ' soon' : '') + (wearing ? ' wearing' : '') + '"><div class="ico">' + (it.emoji || (it.kind === 'title' ? '🏷️' : it.kind === 'repay' ? '🏦' : it.kind === 'round' ? '🍻' : it.id === 'tee' ? '👕' : '🧢')) + '</div><div class="nm">' + esc(it.name) + '</div><div class="blurb">' + esc(it.blurb || '') + (it.kind === 'repay' && d.loans ? ' You owe ' + d.loans + '.' : '') + '</div>' +
+          '<button type="button" class="btn" data-shop-buy="' + it.id + '"' + (can ? '' : ' disabled') + '>' + (it.soon ? 'Coming soon' : wearing ? 'Wearing it' : (it.kind === 'repay' ? 'Repay' : 'Buy') + ' · ' + tc(price)) + '</button></div>';
+      }).join('') + '</div>';
+    });
+    var buys = (d.buys || []).slice(-5).reverse();
+    if (buys.length) html += '<div class="deal-sum">Your receipts: ' + buys.map(function (x) { var it = SHOP.filter(function (y) { return y.id === x.id; })[0]; return esc(it ? it.name : x.id) + ' ' + tcText(x.n); }).join(' · ') + '</div>';
+    return html;
+  }
   function renderCasino() {
     var body = $('casino-body'), status = $('casino-status'); if (!body) return;
     if (!casinoLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
@@ -3845,7 +3898,7 @@
       var fin = NAMES.filter(function (n) { return casino[n] || (n === HOUSE && take) || sbPlayed(n); }).map(function (n) { return { by: n, bal: effBal(n), d: casino[n] || {} }; }).concat([{ by: csf.by, bal: csf.bal, d: csf }]).sort(function (x, y) { return y.bal - x.bal; });
       var loans = fin.filter(function (r) { return r.d.loans; }).sort(function (x, y) { return y.d.loans - x.d.loans; });
       html += '<div class="cas-closed"><div class="bell">\uD83D\uDD14</div><div class="wtitle">Closing bell</div><div class="wsub">The floor closed ' + esc(agoText(casClosed.at)) + (casClosed.by ? ', rung by ' + esc(casClosed.by) : '') + '. Final standings.</div></div>';
-      html += '<div class="cas-board final"><div class="rl-head">Final standings <span class="info-sub">· the house finished ' + (take > 0 ? 'up ' : take < 0 ? 'down ' : 'even') + (take ? Math.abs(Math.round(take)).toLocaleString() : '') + '</span></div>' + fin.map(function (r, i) { return '<div class="row' + (r.by === me ? ' me' : '') + (i === 0 ? ' top' : '') + '"><span class="pos">' + (i === 0 ? '\uD83C\uDFC6' : i + 1) + '</span><span class="nm">' + esc(r.by === me ? 'You' : r.by) + (r.by === HOUSE ? ' <em>the house</em>' : '') + (r.d.hands ? ' <small class="k">' + r.d.hands + ' hands · net ' + (r.d.net > 0 ? '+' : '') + Math.round(r.d.net || 0) + '</small>' : '') + '</span><span class="bal">' + tc(r.bal) + '</span></div>'; }).join('') + '</div>';
+      html += '<div class="cas-board final"><div class="rl-head">Final standings <span class="info-sub">· the house finished ' + (take > 0 ? 'up ' : take < 0 ? 'down ' : 'even') + (take ? Math.abs(Math.round(take)).toLocaleString() : '') + '</span></div>' + fin.map(function (r, i) { return '<div class="row' + (r.by === me ? ' me' : '') + (i === 0 ? ' top' : '') + '"><span class="pos">' + (i === 0 ? '\uD83C\uDFC6' : i + 1) + '</span><span class="nm">' + esc(r.by === me ? 'You' : r.by) + shopLook(r.by) + (r.by === HOUSE ? ' <em>the house</em>' : '') + (r.d.hands ? ' <small class="k">' + r.d.hands + ' hands · net ' + (r.d.net > 0 ? '+' : '') + Math.round(r.d.net || 0) + '</small>' : '') + '</span><span class="bal">' + tc(r.bal) + '</span></div>'; }).join('') + '</div>';
       if (loans.length) html += '<div class="cas-loans"><b>Owes Terry:</b> ' + loans.map(function (r) { return esc(r.by) + ' ' + tc(r.d.loans * TC_LOAN) + ' (' + r.d.loans + ' loan' + (r.d.loans === 1 ? '' : 's') + ')'; }).join(' · ') + '</div>';
       // the weekend in one place: the predictions favourites and the photo wall
       var favs = QUESTIONS.map(function (q) { var t = tallyFor(q); return t.rows.length ? { q: q.text, pick: t.rows[0].pick, n: t.rows[0].n, of: t.voted } : null; }).filter(Boolean);
@@ -3862,6 +3915,8 @@
       html += smashBookHtml(b);
     } else if (casGame === 'fights') {
       html += fightHtml(b);
+    } else if (casGame === 'shop') {
+      html += shopHtml(b);
     } else if (casGame === 'blackjack') {
       html += '<div class="cas-rules">Dealer stands on 17 · blackjack pays 3 to 2 · double on any two</div>';
       if (bj) {
@@ -3938,7 +3993,7 @@
     }
     var cs = claudeSeat();
     var board = NAMES.filter(function (n) { return casino[n] || (n === HOUSE && take) || sbPlayed(n); }).map(function (n) { return { by: n, bal: effBal(n), loans: (casino[n] || {}).loans || 0 }; }).concat([{ by: cs.by, bal: cs.bal, loans: 0 }]).sort(function (x, y) { return y.bal - x.bal; });
-    html += '<div class="cas-board"><div class="rl-head">The floor <span class="info-sub">· the house is ' + (take > 0 ? 'up ' : take < 0 ? 'down ' : 'even') + (take ? Math.abs(Math.round(take)).toLocaleString() : '') + '</span></div>' + (board.length ? board.map(function (r, i) { return '<div class="row' + (r.by === me ? ' me' : '') + '"><span class="pos">' + (i + 1) + '</span><span class="nm">' + esc(r.by === me ? 'You' : r.by) + (r.by === HOUSE ? ' <em>the house</em>' : '') + (r.loans ? ' <small>owes ' + tc(r.loans * TC_LOAN) + '</small>' : '') + '</span><span class="bal">' + tc(r.bal) + '</span></div>'; }).join('') : '<div class="info-sub">Nobody has sat down yet.</div>') + '</div>';
+    html += '<div class="cas-board"><div class="rl-head">The floor <span class="info-sub">· the house is ' + (take > 0 ? 'up ' : take < 0 ? 'down ' : 'even') + (take ? Math.abs(Math.round(take)).toLocaleString() : '') + '</span></div>' + (board.length ? board.map(function (r, i) { return '<div class="row' + (r.by === me ? ' me' : '') + '"><span class="pos">' + (i + 1) + '</span><span class="nm">' + esc(r.by === me ? 'You' : r.by) + shopLook(r.by) + (r.by === HOUSE ? ' <em>the house</em>' : '') + (r.loans ? ' <small>owes ' + tc(r.loans * TC_LOAN) + '</small>' : '') + '</span><span class="bal">' + tc(r.bal) + '</span></div>'; }).join('') : '<div class="info-sub">Nobody has sat down yet.</div>') + '</div>';
     if (CAS_BOSSES.indexOf(me) >= 0 && !inHand) html += '<div class="mafia-actions"><button type="button" class="linkbtn" id="cas-close">\uD83D\uDD14 Ring the closing bell</button></div>';
     body.innerHTML = html;
   }
@@ -3989,6 +4044,8 @@
     var ff = e.target.closest('[data-fighter]'); if (ff) { fightPick = +ff.getAttribute('data-fighter'); buzz(6); renderCasino(); return; }
     var fs0 = e.target.closest('[data-fight-side]'); if (fs0) { fightSide = fs0.getAttribute('data-fight-side'); buzz(6); renderCasino(); return; }
     if (e.target.closest('#fight-go')) { fightStart(); return; }
+    var sb0 = e.target.closest('[data-shop-buy]'); if (sb0) { shopBuy(sb0.getAttribute('data-shop-buy')); return; }
+    var so = e.target.closest('[data-shop-off]'); if (so) { shopOff(so.getAttribute('data-shop-off')); return; }
     if (e.target.closest('#race-go')) { raceStart(); return; }
     var mt = e.target.closest('[data-mkt-tranche]'); if (mt) { mktTranche = mt.getAttribute('data-mkt-tranche'); buzz(6); renderCasino(); return; }
     var mq = e.target.closest('[data-mkt-qty]'); if (mq) { mktQty = Math.max(1, Math.min(99, mktQty + (+mq.getAttribute('data-mkt-qty')))); var qb = document.querySelector('.mkt-qty > .stepper > b'); if (qb) qb.textContent = mktQty; marketTick(); buzz(4); return; }
@@ -4144,8 +4201,17 @@
     { id: 'traffic', text: 'Who gets stuck in I-70 traffic the longest?', type: 'person' },
     { id: 'hottub', text: 'First into the hot tub', type: 'person' },
     { id: 'shots', text: 'Who\'s most likely to start shots?', type: 'person' },
-    { id: 'cocktail', text: 'Who will make the best cocktail this weekend?', type: 'person' }
+    { id: 'cocktail', text: 'Who will make the best cocktail this weekend?', type: 'person' },
+    { id: 'denver', text: 'First one back in Denver', type: 'person' },
+    { id: 'lastout', text: 'Last to leave the cabin', type: 'person' },
+    { id: 'hungover', text: 'Roughest Sunday morning', type: 'person' },
+    { id: 'carnap', text: 'Who falls asleep on the drive home?', type: 'person' },
+    { id: 'leftbehind', text: 'Who leaves something at the cabin?', type: 'person' },
+    { id: 'broncos', text: 'Broncos at Cardinals, Sunday: who wins?', type: 'options', options: ['Broncos', 'Cardinals'] },
+    { id: 'margin', text: 'Broncos at Cardinals: by how much?', type: 'options', options: ['Broncos by 7+', 'Broncos by 1–6', 'Cardinals by 1–6', 'Cardinals by 7+'] },
+    { id: 'fantasy', text: 'Whose fantasy team has the worst Sunday?', type: 'person' }
   ];
+  function qOptions(q) { return q.options || (q.type === 'couple' ? COUPLES : NAMES); }   // what a market can be settled on
   var COUPLES = PARTIES.filter(function (p) { return p.length === 2; }).map(function (p) { return p.join(' & '); });
   var votes = [], qsim = null, qIndex = 0, predSub = false, expanded = null, comments = [], draft = '', reactions = [], pickerFor = null;
   var EMOJI = ['\uD83D\uDE02', '\uD83D\uDD25', '\uD83D\uDC80', '\uD83D\uDC40', '\uD83E\uDD21'];
@@ -4188,8 +4254,8 @@
     if (skipIntro) { $('q-intro').hidden = true; $('q-wrap').hidden = false; showQuestion(false); return; }
     $('q-wrap').hidden = true; $('q-intro').hidden = false;
     var subText = plainPicks()
-      ? (answeredCount() ? 'You\'ve answered ' + answeredCount() + ' of ' + QUESTIONS.length + '. Pick up where you left off.' : 'Six quick calls. Everyone sees the tally and who picked who, so make them good.')
-      : (answeredCount() ? 'You\'ve got ' + answeredCount() + ' of ' + QUESTIONS.length + ' on your slip. Pick up where you left off.' : 'Six quick calls, no stake. Everyone sees the board and who bet what, so make them good.');
+      ? (answeredCount() ? 'You\'ve answered ' + answeredCount() + ' of ' + QUESTIONS.length + '. Pick up where you left off.' : QUESTIONS.length + ' quick calls. Everyone sees the tally and who picked who, so make them good.')
+      : (answeredCount() ? 'You\'ve got ' + answeredCount() + ' of ' + QUESTIONS.length + ' on your slip. Pick up where you left off.' : QUESTIONS.length + ' markets, Terry coin optional. Everyone sees the board and who bet what, so make them good.');
     var qsub = $('q-intro-sub'); if (qsub) qsub.textContent = subText;
     var ps = $('q-intro-plain'); if (ps) ps.textContent = subText;
     var qs = $('q-start'); if (qs) qs.textContent = plainPicks() ? 'Make my picks' : 'Build my slip';
@@ -4209,15 +4275,15 @@
     $('q-progress').textContent = (plain ? 'Question ' : 'Market ') + (qIndex + 1) + ' of ' + QUESTIONS.length;
     $('q-text').textContent = q.text;
     $('q-current').textContent = plain
-      ? (mine ? 'Your pick: ' + mine + '. Tap another to change it.' : (q.type === 'couple' ? 'Tap a couple.' : 'Tap a name. Yes, you can pick yourself.'))
-      : (mine ? 'On your slip: ' + mine + '. Tap another to swap it.' : (q.type === 'couple' ? 'Tap a couple to add them to your slip.' : 'Tap a name to add them to your slip. Yes, you can bet on yourself.'));
+      ? (mine ? 'Your pick: ' + mine + '. Tap another to change it.' : (q.options ? 'Tap one.' : q.type === 'couple' ? 'Tap a couple.' : 'Tap a name. Yes, you can pick yourself.'))
+      : (mine ? 'On your slip: ' + mine + '. Tap another to swap it.' : (q.options ? 'Tap one to add it to your slip.' : q.type === 'couple' ? 'Tap a couple to add them to your slip.' : 'Tap a name to add them to your slip. Yes, you can bet on yourself.'));
     var bar = $('q-progress-bar'); if (bar) bar.innerHTML = QUESTIONS.map(function (qq, k) { return '<i class="' + (k < qIndex ? 'done' : k === qIndex ? 'now' : '') + '"></i>'; }).join('');
     var slip = $('q-slip'); if (slip) slip.textContent = answeredCount() + '/' + QUESTIONS.length;
     var t = tallyFor(q), total = t.rows.reduce(function (a, r) { return a + r.n; }, 0), byPick = {};
     t.rows.forEach(function (r) { byPick[r.pick] = r.n; });
     var wrap = $('q-wrap');
     if (animate) { wrap.classList.remove('slide'); void wrap.offsetWidth; wrap.classList.add('slide'); }
-    var names = q.type === 'couple' ? COUPLES : NAMES.slice().sort();
+    var names = q.options ? q.options : q.type === 'couple' ? COUPLES : NAMES.slice().sort();
     $('q-grid').innerHTML = names.map(function (n) {
       return '<button type="button" class="pickbtn" data-pick="' + esc(n) + '" aria-pressed="' + (mine === n) + '"><span class="nm">' + esc(n) + '</span>' + (plain ? '' : '<span class="odds">' + oddsForQ(q, byPick[n] || 0) + '</span>') + (mine === n ? '<span class="tick">\u2713' + (plain ? ' Your pick' : ' On slip') + '</span>' : '') + '</button>';
     }).join('');
@@ -4265,7 +4331,7 @@
     a = Math.round(a / 5) * 5;
     return (a > 0 ? '+' : '') + a;
   }
-  function oddsForQ(q, n) { var t = tallyFor(q); return oddsFor(n, t.rows, q.type === 'couple' ? COUPLES.length : NAMES.length); }
+  function oddsForQ(q, n) { var t = tallyFor(q); return oddsFor(n, t.rows, qOptions(q).length); }
   function reactionsFor(cid) {
     var out = {}; if (!cid) return out;
     reactions.forEach(function (r) { if (r.comment_id === cid) (out[r.emoji] = out[r.emoji] || []).push(r.reactor); });
@@ -4301,8 +4367,8 @@
     var html = casinoLoaded ? pmBankHtml() : '';
     var slip = $('dk-slip'); if (slip) slip.textContent = (QUESTIONS.length - left) + '/' + QUESTIONS.length;
     var allIn = QUESTIONS.every(function (q) { return tallyFor(q).voted >= NAMES.length; });   // every slip is in: the board reads as results
-    if (left && plainPicks()) html += '<div class="pred-banner"><div><b>' + (left === QUESTIONS.length ? 'You haven\u2019t picked yet' : left + ' still to pick') + '</b><span>Six quick questions. Takes a minute.</span></div><button type="button" class="btn primary" id="pred-open">Make my picks</button></div>';
-    else if (left) html += '<div class="pred-banner"><div><b>' + (left === QUESTIONS.length ? 'Your bet slip is empty' : left + ' open ' + (left === 1 ? 'market' : 'markets') + ' on your slip') + '</b><span>Six markets, no stake, pure trash talk.</span></div><button type="button" class="nudge" id="pred-open">Make my picks</button></div>';
+    if (left && plainPicks()) html += '<div class="pred-banner"><div><b>' + (left === QUESTIONS.length ? 'You haven\u2019t picked yet' : left + ' still to pick') + '</b><span>' + QUESTIONS.length + ' quick questions. A couple of minutes.</span></div><button type="button" class="btn primary" id="pred-open">Make my picks</button></div>';
+    else if (left) html += '<div class="pred-banner"><div><b>' + (left === QUESTIONS.length ? 'Your bet slip is empty' : left + ' open ' + (left === 1 ? 'market' : 'markets') + ' on your slip') + '</b><span>' + QUESTIONS.length + ' markets, Terry coin optional, pure trash talk.</span></div><button type="button" class="nudge" id="pred-open">Make my picks</button></div>';
     else if (allIn) html += '<div class="pred-head"><span class="pred-count">All ' + NAMES.length + ' slips in</span><button type="button" class="linkbtn" id="pred-open">' + (plainPicks() ? 'Change my picks' : 'Edit my slip') + '</button></div>';
     else if (plainPicks()) html += '<div class="pred-head"><span class="pred-count">\u2713 All ' + QUESTIONS.length + ' picked</span><button type="button" class="linkbtn" id="pred-open">Change my picks</button></div>';
     else html += '<div class="pred-head"><span class="pred-count">\u2713 Slip placed \u00b7 ' + QUESTIONS.length + ' of ' + QUESTIONS.length + '</span><button type="button" class="linkbtn" id="pred-open">Edit my slip</button></div>';
@@ -4337,7 +4403,7 @@
         return;
       }
       var rows = t.rows.slice(0, 3);
-      if (!rows.length) rows = NAMES.filter(function (n) { return n !== me; }).slice(0, 3).map(function (n) { return { pick: n, n: 0 }; });
+      if (!rows.length) rows = qOptions(q).filter(function (n) { return n !== me; }).slice(0, 3).map(function (n) { return { pick: n, n: 0 }; });
       if (my && !rows.some(function (r) { return r.pick === my; })) rows.push({ pick: my, n: (t.rows.filter(function (r) { return r.pick === my; })[0] || { n: 0 }).n });
       var hot = cc >= 2, top = t.rows.length ? t.rows[0].n : 0;
       html += '<button type="button" class="pred-card dk' + (nu ? ' has-new' : '') + '" data-q="' + i + '">' +
