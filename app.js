@@ -4791,10 +4791,16 @@
         });
       });
     }, Promise.resolve()).then(function () {
-      var blob = makeZip(files), url = URL.createObjectURL(blob), a = document.createElement('a');
-      a.href = url; a.download = 'cabin-haul-photos.zip'; document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
-      toast(files.length + ' photos packed. Check Files, or the share sheet.'); buzz(8);
+      var blob = makeZip(files);
+      // the claude.ai prototype hands files over through its own save prompt; the live site uses a plain download
+      var viaClaude = window.claude && window.claude.use ? window.claude.use('downloads').catch(function () { return null; }) : Promise.resolve(null);
+      return viaClaude.then(function (dl) {
+        if (dl) return dl.save({ filename: 'cabin-haul-photos.zip', data: blob }).then(function () { toast(files.length + ' photos packed and saved.'); buzz(8); }, function (err) { if (!err || err.code !== 'declined') throw err; });
+        var url = URL.createObjectURL(blob), a = document.createElement('a');
+        a.href = url; a.download = 'cabin-haul-photos.zip'; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+        toast(files.length + ' photos packed. Check Files, or the share sheet.'); buzz(8);
+      });
     }).catch(function (e) { toast('Couldn\u2019t pack the photos: ' + ((e && e.message) || e)); })
       .then(function () { zipping = false; btn.disabled = false; btn.textContent = '\u2B07 Save all'; });
   });
