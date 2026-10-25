@@ -3221,8 +3221,8 @@
   // comes out of it. Each player's own document carries the house's running take from them (no two phones ever write
   // the same document), and Terry's bank is his own balance plus the sum of those.
   function houseTake() { var t = 0; Object.keys(casino).forEach(function (n) { if (n !== HOUSE) t += (casino[n].house || 0); }); return t; }
-  function effBal(n) { var d = casino[n]; return (d ? d.bal : TC_START) + stimIssued() + dividendsIssued() + grantsFor(n) + (n === HOUSE ? houseTake() : 0) + markPositions(d && d.pos); }
-  var CAS_GAMES = [['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs'], ['market', '📈 Derivatives']];
+  function effBal(n) { var d = casino[n]; return (d ? d.bal : TC_START) + stimIssued() + dividendsIssued() + grantsFor(n) + (n === HOUSE ? houseTake() : 0) + markPositions(d && d.pos) + sbNetFor(n); }
+  var CAS_GAMES = [['smash', '🎮 Smash book'], ['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs'], ['market', '📈 Derivatives']];
   var CAS_BOSSES = ['Terry', 'Mitch'], casClosed = null;
   // Who sees the Reserve's books (grants, escrow, seizures): the chairman's circle. Everyone else sees the public face.
   var RESERVE_INSIDERS = ['Mitch', 'Terry', 'Joe'];
@@ -3253,13 +3253,15 @@
     reserve = rs; renderCasino(); toast(note); buzz([20, 40, 20]);
     store.setGame('casinoreserve', rs).catch(function (err) { toast('The vault stuck: ' + ((err && err.message) || err)); });
   }
-  function moneySupply() { return NAMES.filter(function (n) { return casino[n] || n === HOUSE; }).reduce(function (t, n) { return t + effBal(n); }, 0); }
+  function moneySupply() { return NAMES.filter(function (n) { return casino[n] || n === HOUSE || sbPlayed(n); }).reduce(function (t, n) { return t + effBal(n); }, 0); }
   function reserveValue() { return RESERVE_ASSETS.reduce(function (t, a) { return t + a[2]; }, 0); }
-  var casino = {}, casinoLoaded = false, casinoSub = false, casGame = 'blackjack', casBet = 10, bj = null, craps = null, holdem = null, slots = null, wheel = null, casAnim = null, fieldOn = false, wheelBet = { kind: 'red', n: 17 };
+  var casino = {}, casinoLoaded = false, casinoSub = false, casGame = 'smash', casBet = 10, bj = null, craps = null, holdem = null, slots = null, wheel = null, casAnim = null, fieldOn = false, wheelBet = { kind: 'red', n: 17 };
   function subscribeCasino() {
     if (casinoSub || !store || !store.games) { casinoLoaded = true; return; }
     casinoSub = true;
     subscribeMarket();
+    store.game('casinosmash', function (doc) { var same = sameDoc(doc, smashBook); smashBook = doc; if (!same) renderCasino(); });
+    store.games('smashbet-', function (rows) { var next = {}; rows.forEach(function (r) { if (r.doc && r.doc.by) next[r.doc.by] = r.doc; }); var same = sameDoc(next, smashBets); smashBets = next; if (!same) renderCasino(); });
     store.game('casinoreserve', function (doc) { var same = sameDoc(doc, reserve); reserve = doc; if (!same) renderCasino(); });
     store.game('casinoclose', function (doc) { var same = sameDoc(doc, casClosed); casClosed = doc && doc.closed ? doc : null; if (!same) { renderCasino(); renderAwards(); } });
     store.games('casino-', function (rows) {
@@ -3612,6 +3614,78 @@
   }
   function dieHtml(n) { return '<span class="die d' + n + '" aria-label="' + n + '">' + '<i></i>'.repeat(n) + '</span>'; }
   function resultHtml(r, win, inn) { return '<div class="cas-result' + (win > inn ? ' win' : win ? '' : ' lose') + '">' + esc(r) + (win ? ' <b>+' + Math.round(win).toLocaleString() + '</b>' : '') + '</div>'; }
+  // ---- The Smash book: parimutuel betting on the real-life Super Smash Bros. matches ----
+  // One shared doc, casinosmash { matches: [{ id, a, b, by, at, result, called_by, called_at, void, void_by }] }, written
+  // only when a match is opened, called or voided. Every bettor keeps their own doc, smashbet-<name> { by, bets: [{ m, on,
+  // n, at }] }, so two phones betting at once never overwrite each other. Nothing writes to anyone's bank: a stake is held
+  // out of your balance while the book is open, and when the match is called the whole pool is split among the winning
+  // side in proportion to stake, after each fighter takes a 1.5% royalty off the top (they did the fighting). Nobody backed
+  // the winner: everyone gets their stake back and no royalty is paid. Voided: everyone refunded.
+  var SB_ROYALTY = 0.015, smashBook = null, smashBets = {}, sbA = 'Mitch', sbB = 'Luke', sbPick = {};   // sbPick: match id -> the fighter picked on this phone
+  function sbMatches() { return (smashBook && smashBook.matches) || []; }
+  function sbBetsOn(id) { var out = []; Object.keys(smashBets).forEach(function (n) { (smashBets[n].bets || []).forEach(function (b) { if (b.m === id) out.push({ by: n, on: b.on, n: +b.n || 0, at: b.at }); }); }); return out; }
+  function sbPools(m) {   // the pool on each side, who put what where, and the total
+    var bets = sbBetsOn(m.id), pool = {}, who = {}; pool[m.a] = 0; pool[m.b] = 0; who[m.a] = {}; who[m.b] = {};
+    bets.forEach(function (b) { if (pool[b.on] == null) return; pool[b.on] += b.n; who[b.on][b.by] = (who[b.on][b.by] || 0) + b.n; });
+    return { bets: bets, pool: pool, who: who, total: pool[m.a] + pool[m.b] };
+  }
+  function sbStake(ps, m, name) { return ((ps.who[m.a] || {})[name] || 0) + ((ps.who[m.b] || {})[name] || 0); }
+  function sbPayout(ps, m, name) {   // coins back on a called match, stake included (0 when the player lost)
+    var w = ps.pool[m.result] || 0, s = (ps.who[m.result] || {})[name] || 0; if (!w) return sbStake(ps, m, name); return s ? s * sbPurse(ps) / w : 0;
+  }
+  function sbPurse(ps) { return ps.total * (1 - 2 * SB_ROYALTY); }   // what the winning side shares once both fighters are paid
+  function sbRoyalty(ps, m, name) { return m.result && (ps.pool[m.result] || 0) && (name === m.a || name === m.b) ? ps.total * SB_ROYALTY : 0; }
+  function sbNetFor(name) {   // what the book is holding for, or has paid, one player across every match
+    var t = 0;
+    sbMatches().forEach(function (m) { if (m.void) return; var ps = sbPools(m), mine = sbStake(ps, m, name); t += sbRoyalty(ps, m, name); if (!mine) return; t += m.result ? sbPayout(ps, m, name) - mine : -mine; });
+    return t;
+  }
+  function sbPlayed(n) { return !!(smashBets[n] && (smashBets[n].bets || []).length) || sbNetFor(n) !== 0; }   // on the floor through the book alone
+  function sbSide(id, name) { var bets = sbBetsOn(id).filter(function (b) { return b.by === name; }); return bets.length ? bets[0].on : null; }
+  function sbWrite(matches, msg) {
+    var doc = { matches: matches.slice(-60), updated_at: new Date().toISOString() }; smashBook = doc; renderCasino(); if (msg) toast(msg);
+    store.setGame('casinosmash', doc).catch(function (e) { toast('The book didn’t take that: ' + ((e && e.message) || e)); });
+  }
+  function sbBet(id) {
+    var m = sbMatches().filter(function (x) { return x.id === id; })[0]; if (!m) return;
+    if (m.result || m.void) { toast('The book is closed on that one.'); return; }
+    var have = sbSide(id, me), on = have || sbPick[id];
+    if (!on) { toast('Pick a fighter first.'); return; }
+    if (have && sbPick[id] && sbPick[id] !== have) { toast('You’re already on ' + have + '. No hedging.'); return; }
+    var n = casBet; if (n > myBal()) { toast('You don’t have ' + tcText(n) + '.'); return; }
+    var mine = Object.assign({ by: me, bets: [] }, smashBets[me] || {}); mine.bets = (mine.bets || []).concat([{ m: id, on: on, n: n, at: new Date().toISOString() }]).slice(-200); mine.at = new Date().toISOString();
+    smashBets = Object.assign({}, smashBets); smashBets[me] = mine; renderCasino(); buzz([20, 30, 20]);
+    toast(tcText(n) + ' on ' + on + '.');
+    store.setGame('smashbet-' + me, mine).catch(function (e) { toast('The bet didn’t land: ' + ((e && e.message) || e)); });
+  }
+  function sbMatchHtml(m) {
+    var ps = sbPools(m), mySide = sbSide(m.id, me), pick = mySide || sbPick[m.id] || '', open = !m.result && !m.void;
+    var html = '<div class="sb-match' + (open ? '' : ' done') + '"><div class="sb-title"><b>' + esc(m.a) + ' <span>vs</span> ' + esc(m.b) + '</b><small>' + (m.void ? 'voided by ' + esc(m.void_by || '?') : m.result ? esc(m.result) + ' won · called by ' + esc(m.called_by || '?') : 'opened by ' + esc(m.by === me ? 'you' : m.by)) + ' ' + esc(agoText(m.called_at || m.at)) + '</small></div>';
+    html += '<div class="sb-sides">' + [m.a, m.b].map(function (f) {
+      var p = ps.pool[f], backers = Object.keys(ps.who[f]).length, mine = ps.who[f][me] || 0, won = m.result === f;
+      var pays = p ? (sbPurse(ps) / p) : 0;
+      return '<button type="button" data-sb-side="' + esc(m.id) + '|' + esc(f) + '" aria-pressed="' + (pick === f) + '"' + (open ? '' : ' disabled') + ' class="' + (won ? 'won' : m.result ? 'lost' : '') + '"><span class="nm">' + esc(f) + (won ? ' 🏆' : '') + '</span><b>' + tc(p) + '</b><small>' + (backers ? backers + ' backer' + (backers === 1 ? '' : 's') + ' · pays ' + pays.toFixed(2) + '×' : 'no backers yet') + '</small>' + (mine ? '<em>you: ' + tc(mine) + (m.result ? (won ? ' → ' + tc(sbPayout(ps, m, me)) : ' → 0') : '') + '</em>' : '') + '</button>';
+    }).join('') + '</div>';
+    if (open) {
+      html += '<div class="sb-pool">Pool ' + tc(ps.total) + ' · ' + ps.bets.length + ' bet' + (ps.bets.length === 1 ? '' : 's') + (mySide ? ' · you’re on ' + esc(mySide) : '') + '</div>';
+      html += '<div class="mafia-actions"><button type="button" class="big-btn" data-sb-bet="' + esc(m.id) + '"' + (!pick || casBet > myBal() ? ' disabled' : '') + '>' + (pick ? 'Back ' + esc(pick) + ' · ' + tc(casBet) : 'Pick a fighter') + '</button></div>';
+      html += '<div class="sb-call"><span>Match over?</span><button type="button" class="btn" data-sb-won="' + esc(m.id) + '|' + esc(m.a) + '">' + esc(m.a) + ' won</button><button type="button" class="btn" data-sb-won="' + esc(m.id) + '|' + esc(m.b) + '">' + esc(m.b) + ' won</button>' + (CAS_BOSSES.indexOf(me) >= 0 ? '<button type="button" class="btn warn" data-sb-void="' + esc(m.id) + '">Void</button>' : '') + '</div>';
+    } else if (m.result) {
+      var w = ps.pool[m.result] || 0, winners = Object.keys(ps.who[m.result] || {}).map(function (n) { return { n: n, d: sbPayout(ps, m, n) - sbStake(ps, m, n) }; }).sort(function (x, y) { return y.d - x.d; });
+      html += '<div class="sb-pool">' + (!ps.total ? 'No bets.' : !w ? 'Nobody backed ' + esc(m.result) + ', so every stake went back.' : 'Pool ' + tc(ps.total) + ' · ' + esc(m.a) + ' and ' + esc(m.b) + ' each took ' + tc(ps.total * SB_ROYALTY) + ' in royalties · ' + winners.map(function (x) { return esc(x.n === me ? 'you' : x.n) + ' +' + Math.round(x.d).toLocaleString(); }).join(', ')) + '</div>';
+    } else html += '<div class="sb-pool">Every stake went back.</div>';
+    return html + '</div>';
+  }
+  function smashBookHtml(b) {
+    var ms = sbMatches().slice().reverse(), open = ms.filter(function (m) { return !m.result && !m.void; }), done = ms.filter(function (m) { return m.result || m.void; }).slice(0, 6);
+    var html = '<div class="cas-rules">Real Smash, real stakes · pick a fighter, back them with Terry coin · the two fighters take 1.5% each off the top, the winning side splits the rest by stake · nobody on the winner, everyone’s money comes back</div>';
+    html += '<div class="sb-new"><select id="sb-a" aria-label="Fighter one">' + NAMES.map(function (n) { return '<option' + (n === sbA ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select><span>vs</span><select id="sb-b" aria-label="Fighter two">' + NAMES.map(function (n) { return '<option' + (n === sbB ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select><button type="button" class="btn" id="sb-open">Open the book</button></div>';
+    html += open.length ? open.map(sbMatchHtml).join('') : '<div class="deal-sum">No match on the board. Open the book on the next one and the whole cabin can bet.</div>';
+    if (done.length) html += '<div class="rl-head sb-head">Called</div>' + done.map(sbMatchHtml).join('');
+    var held = 0, won = 0; sbMatches().forEach(function (m) { if (m.void) return; var ps = sbPools(m), mine = sbStake(ps, m, me); if (!m.result) { held += mine; return; } won += sbPayout(ps, m, me) - mine + sbRoyalty(ps, m, me); });
+    if (held || won) html += '<div class="deal-sum">' + (held ? 'The book is holding ' + tc(held) + ' of yours on open matches. ' : '') + (won ? 'Called matches have ' + (won > 0 ? 'paid you ' + tc(won) : 'cost you ' + tc(-won)) + ' net.' : '') + '</div>';
+    return html;
+  }
   function renderCasino() {
     var body = $('casino-body'), status = $('casino-status'); if (!body) return;
     if (!casinoLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
@@ -3642,7 +3716,7 @@
     var inHand = casInHand();
     if (casClosed) {   // the closing bell: final standings, no more bets
       var csf = claudeSeat();
-      var fin = NAMES.filter(function (n) { return casino[n] || (n === HOUSE && take); }).map(function (n) { return { by: n, bal: effBal(n), d: casino[n] || {} }; }).concat([{ by: csf.by, bal: csf.bal, d: csf }]).sort(function (x, y) { return y.bal - x.bal; });
+      var fin = NAMES.filter(function (n) { return casino[n] || (n === HOUSE && take) || sbPlayed(n); }).map(function (n) { return { by: n, bal: effBal(n), d: casino[n] || {} }; }).concat([{ by: csf.by, bal: csf.bal, d: csf }]).sort(function (x, y) { return y.bal - x.bal; });
       var loans = fin.filter(function (r) { return r.d.loans; }).sort(function (x, y) { return y.d.loans - x.d.loans; });
       html += '<div class="cas-closed"><div class="bell">\uD83D\uDD14</div><div class="wtitle">Closing bell</div><div class="wsub">The floor closed ' + esc(agoText(casClosed.at)) + (casClosed.by ? ', rung by ' + esc(casClosed.by) : '') + '. Final standings.</div></div>';
       html += '<div class="cas-board final"><div class="rl-head">Final standings <span class="info-sub">· the house finished ' + (take > 0 ? 'up ' : take < 0 ? 'down ' : 'even') + (take ? Math.abs(Math.round(take)).toLocaleString() : '') + '</span></div>' + fin.map(function (r, i) { return '<div class="row' + (r.by === me ? ' me' : '') + (i === 0 ? ' top' : '') + '"><span class="pos">' + (i === 0 ? '\uD83C\uDFC6' : i + 1) + '</span><span class="nm">' + esc(r.by === me ? 'You' : r.by) + (r.by === HOUSE ? ' <em>the house</em>' : '') + (r.d.hands ? ' <small class="k">' + r.d.hands + ' hands · net ' + (r.d.net > 0 ? '+' : '') + Math.round(r.d.net || 0) + '</small>' : '') + '</span><span class="bal">' + tc(r.bal) + '</span></div>'; }).join('') + '</div>';
@@ -3658,7 +3732,9 @@
       html += '<div class="cas-chips">' + TC_CHIPS.map(function (c) { return '<button type="button" class="chip' + (c === casBet ? ' on' : '') + (c > b.bal ? ' off' : '') + '" data-cas-bet="' + c + '">' + c + '</button>'; }).join('') + '</div>';
       if (b.bal < TC_CHIPS[0]) html += '<div class="mafia-actions"><button type="button" class="big-btn" id="cas-loan">🏦 Take Terry’s ' + tc(TC_LOAN) + ' loan</button></div><div class="deal-sum">You’re broke. The loan goes on your record.</div>';
     }
-    if (casGame === 'blackjack') {
+    if (casGame === 'smash') {
+      html += smashBookHtml(b);
+    } else if (casGame === 'blackjack') {
       html += '<div class="cas-rules">Dealer stands on 17 · blackjack pays 3 to 2 · double on any two</div>';
       if (bj) {
         var yv = handVal(bj.you), dv = handVal(bj.dealer);
@@ -3733,13 +3809,13 @@
       }
     }
     var cs = claudeSeat();
-    var board = NAMES.filter(function (n) { return casino[n] || (n === HOUSE && take); }).map(function (n) { return { by: n, bal: effBal(n), loans: (casino[n] || {}).loans || 0 }; }).concat([{ by: cs.by, bal: cs.bal, loans: 0 }]).sort(function (x, y) { return y.bal - x.bal; });
+    var board = NAMES.filter(function (n) { return casino[n] || (n === HOUSE && take) || sbPlayed(n); }).map(function (n) { return { by: n, bal: effBal(n), loans: (casino[n] || {}).loans || 0 }; }).concat([{ by: cs.by, bal: cs.bal, loans: 0 }]).sort(function (x, y) { return y.bal - x.bal; });
     html += '<div class="cas-board"><div class="rl-head">The floor <span class="info-sub">· the house is ' + (take > 0 ? 'up ' : take < 0 ? 'down ' : 'even') + (take ? Math.abs(Math.round(take)).toLocaleString() : '') + '</span></div>' + (board.length ? board.map(function (r, i) { return '<div class="row' + (r.by === me ? ' me' : '') + '"><span class="pos">' + (i + 1) + '</span><span class="nm">' + esc(r.by === me ? 'You' : r.by) + (r.by === HOUSE ? ' <em>the house</em>' : '') + (r.loans ? ' <small>owes ' + tc(r.loans * TC_LOAN) + '</small>' : '') + '</span><span class="bal">' + tc(r.bal) + '</span></div>'; }).join('') : '<div class="info-sub">Nobody has sat down yet.</div>') + '</div>';
     if (CAS_BOSSES.indexOf(me) >= 0 && !inHand) html += '<div class="mafia-actions"><button type="button" class="linkbtn" id="cas-close">\uD83D\uDD14 Ring the closing bell</button></div>';
     body.innerHTML = html;
   }
   setInterval(function () { if ($('casino-body') && !$('casino-body').hidden && !casInHand()) renderCasino(); }, 300000);
-  listen('casino-body', 'change', function (e) { if (e.target.id === 'res-who') resWho = e.target.value; if (e.target.id === 'res-amt') resAmt = e.target.value; });
+  listen('casino-body', 'change', function (e) { if (e.target.id === 'res-who') resWho = e.target.value; if (e.target.id === 'res-amt') resAmt = e.target.value; if (e.target.id === 'sb-a') sbA = e.target.value; if (e.target.id === 'sb-b') sbB = e.target.value; });
   listen('casino-body', 'toggle', function (e) { if (e.target.classList && e.target.classList.contains('reserve')) resOpen = e.target.open; }, true);
   listen('casino-body', 'click', function (e) {
     var rb = e.target.closest('[data-rate]');
@@ -3762,6 +3838,11 @@
     var c = e.target.closest('[data-cas-bet]'); if (c) { casBet = +c.getAttribute('data-cas-bet'); buzz(6); renderCasino(); return; }
     var wb = e.target.closest('[data-wheel-bet]'); if (wb) { wheelBet.kind = wb.getAttribute('data-wheel-bet'); buzz(6); renderCasino(); return; }
     var wn = e.target.closest('[data-wheel-num]'); if (wn) { wheelBet.n = +wn.getAttribute('data-wheel-num'); buzz(6); renderCasino(); return; }
+    var sbs = e.target.closest('[data-sb-side]'); if (sbs) { var kv = sbs.getAttribute('data-sb-side').split('|'); sbPick[kv[0]] = kv[1]; buzz(6); renderCasino(); return; }
+    var sbb = e.target.closest('[data-sb-bet]'); if (sbb) { sbBet(sbb.getAttribute('data-sb-bet')); return; }
+    if (e.target.closest('#sb-open')) { if (sbA === sbB) { toast('Two different fighters.'); return; } if (sbMatches().some(function (m) { return !m.result && !m.void && ((m.a === sbA && m.b === sbB) || (m.a === sbB && m.b === sbA)); })) { toast('That book is already open.'); return; } sbWrite(sbMatches().concat([{ id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), a: sbA, b: sbB, by: me, at: new Date().toISOString() }]), 'The book is open on ' + sbA + ' vs ' + sbB + '.'); buzz([20, 30, 20]); return; }
+    var sbw = e.target.closest('[data-sb-won]'); if (sbw) { var kw = sbw.getAttribute('data-sb-won').split('|'); if (!window.confirm(kw[1] + ' won? This pays out the pool and closes the book.')) return; sbWrite(sbMatches().map(function (m) { return m.id === kw[0] ? Object.assign({}, m, { result: kw[1], called_by: me, called_at: new Date().toISOString() }) : m; }), kw[1] + ' wins. The pool is paid.'); buzz([20, 40, 20, 40, 60]); return; }
+    var sbv = e.target.closest('[data-sb-void]'); if (sbv && CAS_BOSSES.indexOf(me) >= 0) { if (!window.confirm('Void this match and refund every stake?')) return; sbWrite(sbMatches().map(function (m) { return m.id === sbv.getAttribute('data-sb-void') ? Object.assign({}, m, { void: true, void_by: me, called_at: new Date().toISOString() }) : m; }), 'Voided. Everyone gets their stake back.'); return; }
     if (e.target.closest('#cas-loan')) { var bk = myBank(); bankWrite({ bal: bk.bal + TC_LOAN, loans: (bk.loans || 0) + 1 }); toast('Terry fronts you ' + tcText(TC_LOAN) + '. He remembers.'); buzz([30, 40, 30]); renderCasino(); return; }
     if (e.target.closest('#bj-deal')) { bjDeal(); return; }
     if (e.target.closest('#bj-hit')) { bjHit(); return; }
