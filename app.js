@@ -3221,13 +3221,22 @@
   // comes out of it. Each player's own document carries the house's running take from them (no two phones ever write
   // the same document), and Terry's bank is his own balance plus the sum of those.
   function houseTake() { var t = 0; Object.keys(casino).forEach(function (n) { if (n !== HOUSE) t += (casino[n].house || 0); }); return t; }
-  function effBal(n) { var d = casino[n]; return (d ? d.bal : TC_START) + (n === HOUSE ? houseTake() : 0); }
+  function effBal(n) { var d = casino[n]; return (d ? d.bal : TC_START) + stimIssued() + (n === HOUSE ? houseTake() : 0); }
   var CAS_GAMES = [['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs']];
   var CAS_BOSSES = ['Terry', 'Mitch'], casClosed = null;
+  // The Terry Reserve: what backs the coin, and the printing press. Reserve assets are valued in Terry coin; the money
+  // supply is every bank added up (loans and stimulus mint new coin, table play only moves it). Stimulus is one shared
+  // document (casinoreserve): the total issued per person, which every bank includes.
+  var RESERVE_ASSETS = [['\uD83C\uDF7A', '24 Coors Banquet', 240], ['\uD83D\uDEC1', 'One hot tub, heated', 500], ['\uD83C\uDF64', 'Mitch’s hibachi plate', 65], ['\uD83D\uDC08\u200D\u2B1B', 'One Kyrkat (priceless, booked at)', 1000], ['\uD83D\uDD11', 'The door code', 300]];
+  var reserve = null, TC_STIM = 25;
+  function stimIssued() { return (reserve && reserve.issued) || 0; }
+  function moneySupply() { return NAMES.filter(function (n) { return casino[n] || n === HOUSE; }).reduce(function (t, n) { return t + effBal(n); }, 0); }
+  function reserveValue() { return RESERVE_ASSETS.reduce(function (t, a) { return t + a[2]; }, 0); }
   var casino = {}, casinoLoaded = false, casinoSub = false, casGame = 'blackjack', casBet = 10, bj = null, craps = null, holdem = null, slots = null, wheel = null, casAnim = null, fieldOn = false, wheelBet = { kind: 'red', n: 17 };
   function subscribeCasino() {
     if (casinoSub || !store || !store.games) { casinoLoaded = true; return; }
     casinoSub = true;
+    store.game('casinoreserve', function (doc) { var same = sameDoc(doc, reserve); reserve = doc; if (!same) renderCasino(); });
     store.game('casinoclose', function (doc) { var same = sameDoc(doc, casClosed); casClosed = doc && doc.closed ? doc : null; if (!same) { renderCasino(); renderAwards(); } });
     store.games('casino-', function (rows) {
       var next = {}; rows.forEach(function (r) { if (r.doc && r.doc.by) next[r.doc.by] = r.doc; });
@@ -3473,6 +3482,16 @@
     status.textContent = tc(b.bal);
     html += '<div class="cas-welcome"><div class="lights" aria-hidden="true"></div><div class="wtitle">Welcome to Terry’s Casino</div><div class="wsub">Terry’s house, Terry’s rules, Terry coin. Everyone starts with ' + tc(TC_START) + '. Go broke and Terry lends you ' + tc(TC_LOAN) + ', and everyone sees the loan. The house is Terry: whatever the tables win goes straight into his bank, and whatever they pay out comes out of it.</div></div>';
     html += '<div class="cas-warn"><b>Please gamble responsibly.</b> Terry coin is worth nothing and the house always wins. If gambling is a problem for you or someone you know, call or text the National Problem Gambling Helpline, <a href="tel:18004262537">1-800-GAMBLER</a>, 24 hours a day, free and confidential.</div>';
+    var supply = moneySupply(), rv = reserveValue(), ratio = supply ? rv / supply : 0;
+    html += '<details class="reserve"><summary><span class="seal">\uD83C\uDFDB\uFE0F</span><span><b>The Terry Reserve</b><small>Terry coin is ' + Math.round(ratio * 100) + '% backed</small></span></summary>' +
+      '<div class="res-body"><div class="res-row"><span>Coin in circulation</span><b>' + tc(supply) + '</b></div><div class="res-row"><span>Reserve assets</span><b>' + tc(rv) + '</b></div>' +
+      '<div class="res-assets">' + RESERVE_ASSETS.map(function (a) { return '<div><span>' + a[0] + ' ' + esc(a[1]) + '</span><b>' + tc(a[2]) + '</b></div>'; }).join('') + '</div>' +
+      '<div class="res-row"><span>Backing</span><b>' + Math.round(ratio * 100) + '%' + (ratio >= 1 ? ' · fully backed' : ratio >= 0.5 ? ' · fractional' : ' · fiat, basically') + '</b></div>' +
+      '<div class="res-row"><span>Peg</span><b>1 TC = 1 sip of Banquet</b></div><div class="res-row"><span>Chairman</span><b>Terry</b></div>' +
+      (stimIssued() ? '<div class="res-row"><span>Stimulus to date</span><b>' + tc(stimIssued()) + ' per citizen</b></div>' : '') +
+      ((reserve && reserve.log && reserve.log.length) ? '<div class="res-log">' + reserve.log.slice(-3).reverse().map(function (e) { return '<div>' + esc(e.by) + ' printed ' + tc(e.n) + ' for everyone ' + esc(agoText(e.at)) + '</div>'; }).join('') + '</div>' : '') +
+      (CAS_BOSSES.indexOf(me) >= 0 && !casClosed ? '<div class="mafia-actions"><button type="button" class="btn" id="res-print">\uD83D\uDDA8\uFE0F Print ' + tc(TC_STIM) + ' for everyone</button></div><div class="deal-sum">Quantitative easing. Backing drops; everyone cheers anyway.</div>' : '') +
+      '<div class="res-fine">Backed by the full faith and credit of Terry. Not legal tender. Not redeemable. Do not eat.</div></div></details>';
     html += '<div class="cas-bank"><div><span class="lbl">Your bank</span><b>' + tc(b.bal) + '</b></div>' + (me === HOUSE ? '<div><span class="lbl">House take</span><b class="' + (take > 0 ? 'up' : take < 0 ? 'down' : '') + '">' + (take > 0 ? '+' : '') + Math.round(take).toLocaleString() + '</b></div>' : '') + '<div><span class="lbl">Net</span><b class="' + (b.net > 0 ? 'up' : b.net < 0 ? 'down' : '') + '">' + (b.net > 0 ? '+' : '') + Math.round(b.net || 0).toLocaleString() + '</b></div><div><span class="lbl">Hands</span><b>' + (b.hands || 0) + '</b></div>' + (b.loans ? '<div><span class="lbl">Loans</span><b class="down">' + b.loans + '</b></div>' : '') + '</div>';
     var inHand = casInHand();
     if (casClosed) {   // the closing bell: final standings, no more bets
@@ -3559,6 +3578,7 @@
     body.innerHTML = html;
   }
   listen('casino-body', 'click', function (e) {
+    if (e.target.closest('#res-print') && CAS_BOSSES.indexOf(me) >= 0) { if (!window.confirm('Print ' + TC_STIM + ' Terry coin for every citizen?')) return; var rs = { issued: stimIssued() + TC_STIM, log: ((reserve && reserve.log) || []).slice(-19).concat([{ n: TC_STIM, by: me, at: new Date().toISOString() }]) }; reserve = rs; renderCasino(); toast('The presses are running. Everyone just got ' + tc(TC_STIM) + '.'); buzz([20, 40, 20]); store.setGame('casinoreserve', rs).catch(function (err) { toast('The press jammed: ' + ((err && err.message) || err)); }); return; }
     if (e.target.closest('#cas-close') && CAS_BOSSES.indexOf(me) >= 0) { if (!window.confirm('Close the floor for everyone and post final standings?')) return; var cl = { closed: true, by: me, at: new Date().toISOString() }; casClosed = cl; renderCasino(); store.setGame('casinoclose', cl).catch(function (err) { toast('Couldn’t close: ' + ((err && err.message) || err)); }); return; }
     if (e.target.closest('#cas-reopen') && CAS_BOSSES.indexOf(me) >= 0) { var op = { closed: false, by: me, at: new Date().toISOString() }; casClosed = null; renderCasino(); store.setGame('casinoclose', op).catch(function (err) { toast('Couldn’t reopen: ' + ((err && err.message) || err)); }); return; }
     if (casClosed) return;
@@ -4448,7 +4468,7 @@
       var recs = Object.keys(by).map(function (n) { return n + ' ' + (by[n].w || 0) + '-' + (by[n].l || 0); });
       lines.push('Air hockey right now: humans ' + h + ', Claude ' + c + (recs.length ? '. Records (wins-losses vs Claude): ' + recs.join(', ') : '') + '. You lose a lot at air hockey and own it.');
       var casRows = NAMES.filter(function (n) { return casino[n] || (n === HOUSE && houseTake()); }).map(function (n) { return { n: n, bal: effBal(n), d: casino[n] || {} }; }).sort(function (x, y) { return y.bal - x.bal; });
-      if (casRows.length) lines.push('Terry’s Casino (Terry is the house: table winnings go into his bank), Terry coin banks right now: ' + casRows.map(function (r) { return r.n + ' ' + Math.round(r.bal) + (r.d.hands ? ' (' + r.d.hands + ' hands, net ' + (r.d.net > 0 ? '+' : '') + Math.round(r.d.net || 0) + ')' : '') + (r.d.loans ? ', ' + r.d.loans + ' loan' + (r.d.loans === 1 ? '' : 's') + ' from Terry' : ''); }).join('; ') + '. The house is ' + (houseTake() > 0 ? 'up ' + Math.round(houseTake()) : houseTake() < 0 ? 'down ' + Math.abs(Math.round(houseTake())) : 'even') + '.' + (casClosed ? ' The floor is closed for the weekend; these are the final standings.' : '') + ' Fair game: whoever is deepest in Terry’s debt, and anyone up big.');
+      if (casRows.length) lines.push('Terry’s Casino (Terry is the house: table winnings go into his bank), Terry coin banks right now: ' + casRows.map(function (r) { return r.n + ' ' + Math.round(r.bal) + (r.d.hands ? ' (' + r.d.hands + ' hands, net ' + (r.d.net > 0 ? '+' : '') + Math.round(r.d.net || 0) + ')' : '') + (r.d.loans ? ', ' + r.d.loans + ' loan' + (r.d.loans === 1 ? '' : 's') + ' from Terry' : ''); }).join('; ') + '. The house is ' + (houseTake() > 0 ? 'up ' + Math.round(houseTake()) : houseTake() < 0 ? 'down ' + Math.abs(Math.round(houseTake())) : 'even') + '.' + (casClosed ? ' The floor is closed for the weekend; these are the final standings.' : '') + ' Fair game: whoever is deepest in Terry’s debt, and anyone up big. Terry coin is backed by the Terry Reserve (a case of Banquet, the hot tub, Mitch’s plate, one Kyrkat, the door code), currently ' + Math.round((moneySupply() ? reserveValue() / moneySupply() : 0) * 100) + '% backed' + (stimIssued() ? ', after ' + stimIssued() + ' coin of stimulus printed per person' : '') + '.');
       var mc = smashCounts(SMASH_MAIN), allWins = {}; smashLog().forEach(function (e) { allWins[e.w] = (allWins[e.w] || 0) + 1; });
       lines.push('Mitch vs Luke Smash tally: Mitch ' + mc.Mitch + ', Luke ' + mc.Luke + (Object.keys(allWins).length ? '. All Smash wins: ' + Object.keys(allWins).map(function (n) { return n + ' ' + allWins[n]; }).join(', ') : '') + '.');
       // Time on the courses: what the clock recorded, plus an estimate for the rounds played before the clock went in.
