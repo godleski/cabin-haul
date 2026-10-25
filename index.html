@@ -92,6 +92,7 @@
         <div class="photo-tools">
           <button type="button" class="big-btn photo-add" id="add-photos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1.5 2H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5zm3 4.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg>Add photos</button>
           <span class="photo-summary" id="photo-summary"></span>
+          <button type="button" class="btn photo-save" id="save-photos" hidden>⬇ Save all</button>
           <input type="file" id="photo-input" accept="image/*" multiple hidden>
         </div>
       </div>
@@ -240,6 +241,10 @@
         </div><div class="bc-sub" id="golfboard-status" hidden></div></div>
       </div>
       <p class="lede section-lede">Stuff to play once the drinks are poured.</p>
+      <div class="game-card" id="awards">
+        <div class="game-head" role="button" tabindex="0" aria-expanded="false" aria-controls="awards-body"><span class="gi" aria-hidden="true">🏆</span><h2>Weekend awards</h2><span class="k" id="awards-status"></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div id="awards-body" hidden><p class="skeleton">Loading…</p></div>
+      </div>
       <div class="game-card" id="casino">
         <div class="game-head" role="button" tabindex="0" aria-expanded="false" aria-controls="casino-body"><span class="gi" aria-hidden="true">🎰</span><h2>Terry’s Casino</h2><span class="k" id="casino-status"></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
         <div id="casino-body" hidden><p class="skeleton">Loading…</p></div>

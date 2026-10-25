@@ -317,6 +317,7 @@
   #spyfall { --ac: #6d4de0; --ac-soft: rgba(109, 77, 224, 0.14); }
   #fishbowl { --ac: #1a8fd6; --ac-soft: rgba(26, 143, 214, 0.14); }
   #offtopic { --ac: #ffd60a; --ac-soft: rgba(255, 214, 10, 0.14); }
+  #awards { --ac: #ffd60a; --ac-soft: rgba(255, 214, 10, 0.14); }
   #casino { --ac: #e8c547; --ac-soft: rgba(232, 197, 71, 0.14); }
   .section-lede { margin-top: 24px; font-weight: 600; color: var(--fg); }
   .boards { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 16px; }   /* one board above the other, each the full width */
@@ -685,6 +686,12 @@
   .horse-list button .num { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 800 0.7rem var(--mono); color: #111; flex: none; } .horse-list button .nm { flex: 1; } .horse-list button .odds { font: 700 0.8rem var(--mono); color: var(--muted); } .horse-list button[aria-pressed="true"] { border-color: #e8c547; background: var(--ac-soft); } .horse-list button[aria-pressed="true"] .odds { color: #e8c547; }
   .cas-tabs.small button { flex: 1; }
   @media (prefers-reduced-motion: reduce) { .downs .horse.run .leg.a, .downs .horse.run .leg.b, .downs .horse.run .hs { animation: none; } }
+  .cas-closed { margin-top: 10px; border-radius: 14px; padding: 16px 14px; text-align: center; background: linear-gradient(135deg, #4a2c17, #1d1033); border: 3px solid #e8c547; color: #fff; } .cas-closed .bell { font-size: 2.2rem; line-height: 1; } .cas-closed .wtitle { margin-top: 6px; font: 900 1.3rem var(--display); text-transform: uppercase; letter-spacing: 0.06em; color: #e8c547; } .cas-closed .wsub { margin-top: 4px; font-size: 0.82rem; opacity: 0.85; }
+  .cas-board.final .row.top { background: rgba(232, 197, 71, 0.18); } .cas-board .nm .k { display: block; font-size: 0.68rem; color: var(--muted); font-weight: 500; margin: 0; }
+  .cas-loans { margin-top: 10px; font-size: 0.82rem; color: var(--muted); line-height: 1.5; } .cas-loans b { color: #ff4757; }
+  .cas-wrap { margin-top: 14px; } .cas-wrap .rl-head { font: 700 0.95rem var(--display); margin-bottom: 6px; } .cas-wrap .row { display: flex; justify-content: space-between; gap: 10px; padding: 6px 8px; border-top: 1px solid var(--line); font-size: 0.85rem; } .cas-wrap .q { color: var(--muted); min-width: 0; } .cas-wrap .a { font-weight: 700; white-space: nowrap; } .cas-wrap .a small { color: var(--muted); font-weight: 500; }
+  .awards { display: grid; gap: 8px; margin-top: 8px; } .award { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); } .award .ai { font-size: 1.6rem; line-height: 1; } .award .at { display: grid; min-width: 0; } .award .al { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); } .award b { font: 800 1.05rem var(--display); } .award small { font-size: 0.78rem; color: var(--muted); }
+  .photo-save { margin-left: auto; background: var(--pine-soft); color: var(--pine); }
   .cas-rules { margin-top: 10px; font-size: 0.74rem; color: var(--muted); text-align: center; line-height: 1.4; }
   .cas-btns.two { grid-template-columns: 1fr auto; } .cas-btns .btn.field { background: var(--surface); border: 1.5px solid var(--line); color: var(--muted); } .cas-btns .btn.field.on { background: #e8c547; color: #111; border-color: #e8c547; }
   .craps-table.bubble { padding-top: 10px; } .craps-table .dome { position: relative; width: 170px; height: 170px; margin: 0 auto; border-radius: 50%; background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.06) 45%, rgba(0, 0, 0, 0.25)); box-shadow: inset 0 -14px 30px rgba(0, 0, 0, 0.35), 0 10px 24px rgba(0, 0, 0, 0.35); display: grid; place-items: center; overflow: hidden; }

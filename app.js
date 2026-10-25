@@ -3223,13 +3223,15 @@
   function houseTake() { var t = 0; Object.keys(casino).forEach(function (n) { if (n !== HOUSE) t += (casino[n].house || 0); }); return t; }
   function effBal(n) { var d = casino[n]; return (d ? d.bal : TC_START) + (n === HOUSE ? houseTake() : 0); }
   var CAS_GAMES = [['blackjack', '🃏 Blackjack'], ['craps', '🫧 Bubble craps'], ['holdem', '♠️ Hold ’em'], ['slots', '🏔️ Slots'], ['wheel', '🐈‍⬛ Kyrkat’s wheel'], ['horses', '🏇 Churchill Downs']];
+  var CAS_BOSSES = ['Terry', 'Mitch'], casClosed = null;
   var casino = {}, casinoLoaded = false, casinoSub = false, casGame = 'blackjack', casBet = 10, bj = null, craps = null, holdem = null, slots = null, wheel = null, casAnim = null, fieldOn = false, wheelBet = { kind: 'red', n: 17 };
   function subscribeCasino() {
     if (casinoSub || !store || !store.games) { casinoLoaded = true; return; }
     casinoSub = true;
+    store.game('casinoclose', function (doc) { var same = sameDoc(doc, casClosed); casClosed = doc && doc.closed ? doc : null; if (!same) { renderCasino(); renderAwards(); } });
     store.games('casino-', function (rows) {
       var next = {}; rows.forEach(function (r) { if (r.doc && r.doc.by) next[r.doc.by] = r.doc; });
-      var same = casinoLoaded && sameDoc(next, casino); casino = next; casinoLoaded = true; if (!same) renderCasino();
+      var same = casinoLoaded && sameDoc(next, casino); casino = next; casinoLoaded = true; if (!same) { renderCasino(); renderAwards(); }
     });
   }
   function tc(n) { return '🪙 ' + Math.round(n).toLocaleString(); }
@@ -3473,6 +3475,18 @@
     html += '<div class="cas-warn"><b>Please gamble responsibly.</b> Terry coin is worth nothing and the house always wins. If gambling is a problem for you or someone you know, call or text the National Problem Gambling Helpline, <a href="tel:18004262537">1-800-GAMBLER</a>, 24 hours a day, free and confidential.</div>';
     html += '<div class="cas-bank"><div><span class="lbl">Your bank</span><b>' + tc(b.bal) + '</b></div>' + (me === HOUSE ? '<div><span class="lbl">House take</span><b class="' + (take > 0 ? 'up' : take < 0 ? 'down' : '') + '">' + (take > 0 ? '+' : '') + Math.round(take).toLocaleString() + '</b></div>' : '') + '<div><span class="lbl">Net</span><b class="' + (b.net > 0 ? 'up' : b.net < 0 ? 'down' : '') + '">' + (b.net > 0 ? '+' : '') + Math.round(b.net || 0).toLocaleString() + '</b></div><div><span class="lbl">Hands</span><b>' + (b.hands || 0) + '</b></div>' + (b.loans ? '<div><span class="lbl">Loans</span><b class="down">' + b.loans + '</b></div>' : '') + '</div>';
     var inHand = casInHand();
+    if (casClosed) {   // the closing bell: final standings, no more bets
+      var fin = NAMES.filter(function (n) { return casino[n] || (n === HOUSE && take); }).map(function (n) { return { by: n, bal: effBal(n), d: casino[n] || {} }; }).sort(function (x, y) { return y.bal - x.bal; });
+      var loans = fin.filter(function (r) { return r.d.loans; }).sort(function (x, y) { return y.d.loans - x.d.loans; });
+      html += '<div class="cas-closed"><div class="bell">\uD83D\uDD14</div><div class="wtitle">Closing bell</div><div class="wsub">The floor closed ' + esc(agoText(casClosed.at)) + (casClosed.by ? ', rung by ' + esc(casClosed.by) : '') + '. Final standings.</div></div>';
+      html += '<div class="cas-board final"><div class="rl-head">Final standings <span class="info-sub">· the house finished ' + (take > 0 ? 'up ' : take < 0 ? 'down ' : 'even') + (take ? Math.abs(Math.round(take)).toLocaleString() : '') + '</span></div>' + fin.map(function (r, i) { return '<div class="row' + (r.by === me ? ' me' : '') + (i === 0 ? ' top' : '') + '"><span class="pos">' + (i === 0 ? '\uD83C\uDFC6' : i + 1) + '</span><span class="nm">' + esc(r.by === me ? 'You' : r.by) + (r.by === HOUSE ? ' <em>the house</em>' : '') + (r.d.hands ? ' <small class="k">' + r.d.hands + ' hands · net ' + (r.d.net > 0 ? '+' : '') + Math.round(r.d.net || 0) + '</small>' : '') + '</span><span class="bal">' + tc(r.bal) + '</span></div>'; }).join('') + '</div>';
+      if (loans.length) html += '<div class="cas-loans"><b>Owes Terry:</b> ' + loans.map(function (r) { return esc(r.by) + ' ' + tc(r.d.loans * TC_LOAN) + ' (' + r.d.loans + ' loan' + (r.d.loans === 1 ? '' : 's') + ')'; }).join(' · ') + '</div>';
+      // the weekend in one place: the predictions favourites and the photo wall
+      var favs = QUESTIONS.map(function (q) { var t = tallyFor(q); return t.rows.length ? { q: q.text, pick: t.rows[0].pick, n: t.rows[0].n, of: t.voted } : null; }).filter(Boolean);
+      html += '<div class="cas-wrap"><div class="rl-head">The weekend</div>' + favs.map(function (f) { return '<div class="row"><span class="q">' + esc(f.q) + '</span><span class="a">' + esc(f.pick) + ' <small>' + f.n + ' of ' + f.of + '</small></span></div>'; }).join('') + '<div class="row"><span class="q">Photos on the wall</span><span class="a">' + photos.length + '</span></div></div>';
+      if (CAS_BOSSES.indexOf(me) >= 0) html += '<div class="mafia-actions"><button type="button" class="btn" id="cas-reopen">Reopen the floor</button></div>';
+      body.innerHTML = html; return;
+    }
     html += '<div class="cas-tabs" role="tablist">' + CAS_GAMES.map(function (g) { return '<button type="button" data-cas-game="' + g[0] + '" aria-pressed="' + (casGame === g[0]) + '"' + (inHand ? ' disabled' : '') + '>' + g[1] + '</button>'; }).join('') + '</div>';
     if (!inHand) {
       html += '<div class="cas-chips">' + TC_CHIPS.map(function (c) { return '<button type="button" class="chip' + (c === casBet ? ' on' : '') + (c > b.bal ? ' off' : '') + '" data-cas-bet="' + c + '">' + c + '</button>'; }).join('') + '</div>';
@@ -3541,9 +3555,13 @@
     }
     var board = NAMES.filter(function (n) { return casino[n] || (n === HOUSE && take); }).map(function (n) { return { by: n, bal: effBal(n), loans: (casino[n] || {}).loans || 0 }; }).sort(function (x, y) { return y.bal - x.bal; });
     html += '<div class="cas-board"><div class="rl-head">The floor <span class="info-sub">· the house is ' + (take > 0 ? 'up ' : take < 0 ? 'down ' : 'even') + (take ? Math.abs(Math.round(take)).toLocaleString() : '') + '</span></div>' + (board.length ? board.map(function (r, i) { return '<div class="row' + (r.by === me ? ' me' : '') + '"><span class="pos">' + (i + 1) + '</span><span class="nm">' + esc(r.by === me ? 'You' : r.by) + (r.by === HOUSE ? ' <em>the house</em>' : '') + (r.loans ? ' <small>' + r.loans + ' loan' + (r.loans === 1 ? '' : 's') + '</small>' : '') + '</span><span class="bal">' + tc(r.bal) + '</span></div>'; }).join('') : '<div class="info-sub">Nobody has sat down yet.</div>') + '</div>';
+    if (CAS_BOSSES.indexOf(me) >= 0 && !inHand) html += '<div class="mafia-actions"><button type="button" class="linkbtn" id="cas-close">\uD83D\uDD14 Ring the closing bell</button></div>';
     body.innerHTML = html;
   }
   listen('casino-body', 'click', function (e) {
+    if (e.target.closest('#cas-close') && CAS_BOSSES.indexOf(me) >= 0) { if (!window.confirm('Close the floor for everyone and post final standings?')) return; var cl = { closed: true, by: me, at: new Date().toISOString() }; casClosed = cl; renderCasino(); store.setGame('casinoclose', cl).catch(function (err) { toast('Couldn’t close: ' + ((err && err.message) || err)); }); return; }
+    if (e.target.closest('#cas-reopen') && CAS_BOSSES.indexOf(me) >= 0) { var op = { closed: false, by: me, at: new Date().toISOString() }; casClosed = null; renderCasino(); store.setGame('casinoclose', op).catch(function (err) { toast('Couldn’t reopen: ' + ((err && err.message) || err)); }); return; }
+    if (casClosed) return;
     var g = e.target.closest('[data-cas-game]'); if (g && !g.disabled) { casGame = g.getAttribute('data-cas-game'); buzz(6); renderCasino(); return; }
     var c = e.target.closest('[data-cas-bet]'); if (c) { casBet = +c.getAttribute('data-cas-bet'); buzz(6); renderCasino(); return; }
     var wb = e.target.closest('[data-wheel-bet]'); if (wb) { wheelBet.kind = wb.getAttribute('data-wheel-bet'); buzz(6); renderCasino(); return; }
@@ -3566,6 +3584,32 @@
     if (e.target.closest('#race-go')) { raceStart(); return; }
     if (e.target.closest('#race-field')) { field = null; race = null; racePick = 0; buzz(6); renderCasino(); return; }
   });
+
+  // ---- Weekend awards ----
+  // Pulled live from what the app already knows: the casino banks, the mini golf boards, air hockey against Claude, the
+  // Smash tally, the photo wall. Each award names whoever leads it right now.
+  function renderAwards() {
+    var body = $('awards-body'), status = $('awards-status'); if (!body) return;
+    var out = [];
+    function top(list, fmt, label, icon) { var best = list.filter(function (r) { return r.v > 0; }).sort(function (a, b) { return b.v - a.v; })[0]; if (best) out.push({ icon: icon, label: label, who: best.n, val: fmt(best.v) }); }
+    var casN = NAMES.filter(function (n) { return casino[n]; });
+    top(casN.map(function (n) { return { n: n, v: casino[n].hands || 0 }; }), function (v) { return v + ' hands'; }, 'Most time at the tables', '\uD83C\uDFB0');
+    top(casN.map(function (n) { return { n: n, v: casino[n].best || 0 }; }), function (v) { return '+' + Math.round(v) + ' on one hand'; }, 'Biggest single win', '\uD83D\uDCB0');
+    top(casN.map(function (n) { return { n: n, v: -(casino[n].net || 0) }; }), function (v) { return Math.round(v) + ' down'; }, 'Deepest in Terry’s debt', '\uD83D\uDCB8');
+    top(casN.map(function (n) { return { n: n, v: casino[n].loans || 0 }; }), function (v) { return v + ' loan' + (v === 1 ? '' : 's'); }, 'Most loans from Terry', '\uD83C\uDFE6');
+    var rounds = {}; GOLF_SETS.forEach(function (st) { var gb = (golfScores[st.id] && golfScores[st.id].by) || {}; Object.keys(gb).forEach(function (n) { rounds[n] = (rounds[n] || 0) + (gb[n].rounds || 0); }); });
+    top(Object.keys(rounds).map(function (n) { return { n: n, v: rounds[n] }; }), function (v) { return v + ' rounds'; }, 'Most mini golf', '\u26F3');
+    var by = (scores && scores.by) || {};
+    top(Object.keys(by).map(function (n) { return { n: n, v: by[n].l || 0 }; }), function (v) { return v + ' losses'; }, 'Most air hockey losses to Claude', '\uD83D\uDE05');
+    top(Object.keys(by).map(function (n) { return { n: n, v: by[n].w || 0 }; }), function (v) { return v + ' wins'; }, 'Most air hockey wins over Claude', '\uD83C\uDFD2');
+    var sw = {}; smashLog().forEach(function (e) { sw[e.w] = (sw[e.w] || 0) + 1; });
+    top(Object.keys(sw).map(function (n) { return { n: n, v: sw[n] }; }), function (v) { return v + ' wins'; }, 'Smash champion', '\uD83C\uDFAE');
+    var pb = {}; photos.forEach(function (ph) { pb[ph.uploader] = (pb[ph.uploader] || 0) + 1; });
+    top(Object.keys(pb).map(function (n) { return { n: n, v: pb[n] }; }), function (v) { return v + ' photos'; }, 'Wall of evidence MVP', '\uD83D\uDCF8');
+    status.textContent = out.length ? out.length + ' awards' : 'Nothing to hand out yet';
+    body.innerHTML = out.length ? '<div class="awards">' + out.map(function (a) { return '<div class="award"><span class="ai">' + a.icon + '</span><div class="at"><span class="al">' + esc(a.label) + '</span><b>' + esc(a.who === me ? 'You' : a.who) + '</b><small>' + esc(a.val) + '</small></div></div>'; }).join('') + '</div>' : '<div class="info-sub">Play something and the trophies start appearing.</div>';
+  }
+  listen('awards', 'click', renderAwards);
 
   // ---- Cabin tab ----
   var CABIN_PHOTOS = [    // published alongside the page
@@ -4403,6 +4447,8 @@
       var sc = scores || {}, h = sc.humans || 0, c = sc.cpu || 0, by = sc.by || {};
       var recs = Object.keys(by).map(function (n) { return n + ' ' + (by[n].w || 0) + '-' + (by[n].l || 0); });
       lines.push('Air hockey right now: humans ' + h + ', Claude ' + c + (recs.length ? '. Records (wins-losses vs Claude): ' + recs.join(', ') : '') + '. You lose a lot at air hockey and own it.');
+      var casRows = NAMES.filter(function (n) { return casino[n] || (n === HOUSE && houseTake()); }).map(function (n) { return { n: n, bal: effBal(n), d: casino[n] || {} }; }).sort(function (x, y) { return y.bal - x.bal; });
+      if (casRows.length) lines.push('Terry’s Casino (Terry is the house: table winnings go into his bank), Terry coin banks right now: ' + casRows.map(function (r) { return r.n + ' ' + Math.round(r.bal) + (r.d.hands ? ' (' + r.d.hands + ' hands, net ' + (r.d.net > 0 ? '+' : '') + Math.round(r.d.net || 0) + ')' : '') + (r.d.loans ? ', ' + r.d.loans + ' loan' + (r.d.loans === 1 ? '' : 's') + ' from Terry' : ''); }).join('; ') + '. The house is ' + (houseTake() > 0 ? 'up ' + Math.round(houseTake()) : houseTake() < 0 ? 'down ' + Math.abs(Math.round(houseTake())) : 'even') + '.' + (casClosed ? ' The floor is closed for the weekend; these are the final standings.' : '') + ' Fair game: whoever is deepest in Terry’s debt, and anyone up big.');
       var mc = smashCounts(SMASH_MAIN), allWins = {}; smashLog().forEach(function (e) { allWins[e.w] = (allWins[e.w] || 0) + 1; });
       lines.push('Mitch vs Luke Smash tally: Mitch ' + mc.Mitch + ', Luke ' + mc.Luke + (Object.keys(allWins).length ? '. All Smash wins: ' + Object.keys(allWins).map(function (n) { return n + ' ' + allWins[n]; }).join(', ') : '') + '.');
       // Time on the courses: what the clock recorded, plus an estimate for the rounds played before the clock went in.
@@ -4677,7 +4723,7 @@
     photoSub = true;
     store.photos(function (rows) {
       photos = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? 1 : -1; });
-      photosLoaded = true; renderPhotos();
+      photosLoaded = true; renderPhotos(); renderAwards();
     }, function () { /* a failed read is unknown, not empty */ });
     setTimeout(function () { if (!photosLoaded) { photosSlow = true; renderPhotos(); } }, 8000);   // nothing after a while: say so instead of spinning
   }
@@ -4686,6 +4732,7 @@
     var by = {};
     photos.forEach(function (ph) { by[ph.uploader] = (by[ph.uploader] || 0) + 1; });
     var names = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; });
+    var sv = $('save-photos'); if (sv && !zipping) sv.hidden = !photos.length;
     $('photo-summary').textContent = photos.length ? plural(photos.length, 'photo', 'photos') + ' · ' + names.map(function (n) { return (n === me ? 'you' : n) + ' ' + by[n]; }).join(', ') : (photosLoaded ? 'No photos yet. You go first.' : '');
     var html = '';
     for (var u = 0; u < uploadingCount; u++) html += '<div class="tile uploading">Uploading…</div>';
@@ -4716,6 +4763,41 @@
     });
   }
   listen('add-photos', 'click', function () { $('photo-input').click(); });
+  // Save every photo on the wall as one zip (stored, no compression: phones do that fine). Each file is fetched from
+  // the bucket, so a big wall takes a moment; the button shows progress.
+  function crc32(u8) { var t = crc32.t; if (!t) { t = crc32.t = new Int32Array(256); for (var i = 0; i < 256; i++) { var c = i; for (var k = 0; k < 8; k++) c = c & 1 ? (c >>> 1) ^ 0xEDB88320 : c >>> 1; t[i] = c; } } var crc = -1; for (var j = 0; j < u8.length; j++) crc = (crc >>> 8) ^ t[(crc ^ u8[j]) & 255]; return (crc ^ -1) >>> 0; }
+  function makeZip(files) {
+    var parts = [], central = [], offset = 0, enc = new TextEncoder();
+    function u16(n) { return [n & 255, (n >>> 8) & 255]; } function u32(n) { return [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255]; }
+    files.forEach(function (f) {
+      var name = enc.encode(f.name), crc = crc32(f.data), head = new Uint8Array([].concat([0x50, 0x4b, 3, 4], u16(20), u16(0x800), u16(0), u16(0), u16(0), u32(crc), u32(f.data.length), u32(f.data.length), u16(name.length), u16(0)));
+      parts.push(head, name, f.data);
+      central.push(new Uint8Array([].concat([0x50, 0x4b, 1, 2], u16(20), u16(20), u16(0x800), u16(0), u16(0), u16(0), u32(crc), u32(f.data.length), u32(f.data.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset))), name);
+      offset += head.length + name.length + f.data.length;
+    });
+    var cdSize = central.reduce(function (a, c) { return a + c.length; }, 0);
+    var end = new Uint8Array([].concat([0x50, 0x4b, 5, 6], u16(0), u16(0), u16(files.length), u16(files.length), u32(cdSize), u32(offset), u16(0)));
+    return new Blob(parts.concat(central, [end]), { type: 'application/zip' });
+  }
+  var zipping = false;
+  listen('save-photos', 'click', function () {
+    if (zipping || !photos.length) return;
+    var btn = $('save-photos'), list = photos.slice().reverse(), files = [], done = 0; zipping = true; btn.disabled = true;
+    list.reduce(function (chain, ph, i) {
+      return chain.then(function () {
+        return fetch(store.photoUrl(ph)).then(function (r) { if (!r.ok) throw new Error('photo ' + (i + 1)); return r.arrayBuffer(); }).then(function (buf) {
+          files.push({ name: 'cabin-' + ('00' + (i + 1)).slice(-3) + '-' + ph.uploader.replace(/[^A-Za-z0-9]+/g, '') + '.jpg', data: new Uint8Array(buf) });
+          done++; btn.textContent = 'Packing ' + done + ' of ' + list.length + '\u2026';
+        });
+      });
+    }, Promise.resolve()).then(function () {
+      var blob = makeZip(files), url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = 'cabin-haul-photos.zip'; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      toast(files.length + ' photos packed. Check Files, or the share sheet.'); buzz(8);
+    }).catch(function (e) { toast('Couldn\u2019t pack the photos: ' + ((e && e.message) || e)); })
+      .then(function () { zipping = false; btn.disabled = false; btn.textContent = '\u2B07 Save all'; });
+  });
   listen('photo-input', 'change', function () {
     var files = Array.prototype.slice.call($('photo-input').files || []);
     $('photo-input').value = '';
