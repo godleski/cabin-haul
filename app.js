@@ -3212,6 +3212,140 @@
     e.preventDefault(); var all = document.querySelectorAll('#ot-form .ot-in'), i = +e.target.getAttribute('data-ot-i'); if (all[i + 1]) all[i + 1].focus(); else e.target.blur();
   });
 
+  // ---- Terry’s Casino ----
+  // Blackjack and craps, played against the house on your own phone, banked in Terry coin. Everyone starts with 1,000.
+  // One document per person (game-casino-<name>): balance, hands, biggest win, loans taken when broke. The hand itself
+  // lives on the phone; the bet leaves the bank when the hand starts and the payout lands when it ends.
+  var TC_START = 1000, TC_LOAN = 500, TC_CHIPS = [10, 25, 50, 100, 250, 500];
+  var casino = {}, casinoLoaded = false, casinoSub = false, casGame = 'blackjack', casBet = 25, bj = null, craps = null, casAnim = null;
+  function subscribeCasino() {
+    if (casinoSub || !store || !store.games) { casinoLoaded = true; return; }
+    casinoSub = true;
+    store.games('casino-', function (rows) {
+      var next = {}; rows.forEach(function (r) { if (r.doc && r.doc.by) next[r.doc.by] = r.doc; });
+      var same = casinoLoaded && sameDoc(next, casino); casino = next; casinoLoaded = true; if (!same) renderCasino();
+    });
+  }
+  function tc(n) { return '\uD83E\uDE99 ' + Math.round(n).toLocaleString(); }
+  function myBank() { return casino[me] || { by: me, bal: TC_START, hands: 0, net: 0, best: 0, loans: 0 }; }
+  function bankWrite(patch) {
+    var doc = Object.assign({}, myBank(), patch, { by: me, at: new Date().toISOString() });
+    casino = Object.assign({}, casino); casino[me] = doc;
+    store.setGame('casino-' + me, doc).catch(function (e) { toast('The bank didn’t take that: ' + ((e && e.message) || e)); });
+    return doc;
+  }
+  function settle(bet, win) {   // win: coins back including the stake (0 = lost it all)
+    var b = myBank(), delta = win - bet;
+    bankWrite({ bal: b.bal + win, hands: (b.hands || 0) + 1, net: (b.net || 0) + delta, best: Math.max(b.best || 0, delta) });
+  }
+  function stake(bet) { var b = myBank(); if (bet > b.bal) { toast('You don’t have ' + tc(bet) + '.'); return false; } bankWrite({ bal: b.bal - bet }); return true; }
+  // blackjack: six decks, dealer stands on 17, blackjack pays 3 to 2, double on any two cards
+  var SUITS = ['\u2660', '\u2665', '\u2666', '\u2663'], RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  function newShoe() { var d = []; for (var n = 0; n < 6; n++) SUITS.forEach(function (su) { RANKS.forEach(function (r) { d.push({ r: r, s: su }); }); }); return shuffled(d); }
+  var shoe = [];
+  function draw() { if (shoe.length < 20) shoe = newShoe(); return shoe.pop(); }
+  function handVal(h) { var t = 0, aces = 0; h.forEach(function (c) { if (c.r === 'A') { aces++; t += 11; } else t += /^[JQK]$/.test(c.r) ? 10 : +c.r; }); while (t > 21 && aces) { t -= 10; aces--; } return t; }
+  function isBJ(h) { return h.length === 2 && handVal(h) === 21; }
+  function bjDeal() {
+    if (!stake(casBet)) return;
+    bj = { bet: casBet, you: [draw(), draw()], dealer: [draw(), draw()], done: false, result: null, doubled: false };
+    if (isBJ(bj.you) || isBJ(bj.dealer)) bjFinish();
+    casAnim = 'deal'; buzz([10, 30, 10]); renderCasino();
+  }
+  function bjFinish() {
+    var y = handVal(bj.you), d = handVal(bj.dealer), bet = bj.bet, win = 0, r;
+    if (y > 21) r = 'Bust. The house thanks you.';
+    else {
+      while (!isBJ(bj.you) && handVal(bj.dealer) < 17) bj.dealer.push(draw());
+      d = handVal(bj.dealer);
+      if (isBJ(bj.you) && !isBJ(bj.dealer)) { win = bet * 2.5; r = 'Blackjack! Pays 3 to 2.'; }
+      else if (isBJ(bj.dealer) && !isBJ(bj.you)) { r = 'Dealer blackjack. Brutal.'; }
+      else if (d > 21) { win = bet * 2; r = 'Dealer busts on ' + d + '. You win.'; }
+      else if (y > d) { win = bet * 2; r = y + ' beats ' + d + '. You win.'; }
+      else if (y < d) { r = d + ' beats ' + y + '. House wins.'; }
+      else { win = bet; r = 'Push at ' + y + '. Bet back.'; }
+    }
+    bj.done = true; bj.result = r; bj.win = win; settle(bet, win);
+    buzz(win > bet ? [20, 40, 20, 40, 60] : win ? 15 : 60);
+  }
+  function bjHit() { if (!bj || bj.done) return; bj.you.push(draw()); if (handVal(bj.you) >= 21) bjFinish(); casAnim = 'hit'; renderCasino(); }
+  function bjStand() { if (!bj || bj.done) return; bjFinish(); renderCasino(); }
+  function bjDouble() { if (!bj || bj.done || bj.you.length !== 2) return; if (!stake(bj.bet)) return; bj.bet *= 2; bj.doubled = true; bj.you.push(draw()); bjFinish(); renderCasino(); }
+  // craps: pass line only, the way the table teaches it. Come-out: 7 or 11 wins, 2, 3 or 12 craps out, anything else
+  // sets the point; then roll until the point (win) or a 7 (seven out). Pays even money.
+  function crapsStart() {
+    if (!stake(casBet)) return;
+    craps = { bet: casBet, point: null, rolls: [], done: false, result: null };
+    buzz(10); renderCasino();
+  }
+  function crapsRoll() {
+    if (!craps || craps.done) return;
+    var a = 1 + Math.floor(Math.random() * 6), b = 1 + Math.floor(Math.random() * 6), t = a + b;
+    craps.rolls.push([a, b]); casAnim = 'roll';
+    var r = null, win = 0;
+    if (craps.point === null) {
+      if (t === 7 || t === 11) { r = t + ' on the come-out. Winner!'; win = craps.bet * 2; }
+      else if (t === 2 || t === 3 || t === 12) { r = t + '. Craps. Line away.'; }
+      else { craps.point = t; }
+    } else if (t === craps.point) { r = 'Hit the ' + t + '! Pass line pays.'; win = craps.bet * 2; }
+    else if (t === 7) { r = 'Seven out. Line away.'; }
+    if (r) { craps.done = true; craps.result = r; craps.win = win; settle(craps.bet, win); buzz(win ? [20, 40, 20, 40, 60] : 60); }
+    else buzz(8);
+    renderCasino();
+  }
+  function cardHtml(c, hidden) { return hidden ? '<span class="card back"></span>' : '<span class="card' + (c.s === '\u2665' || c.s === '\u2666' ? ' red' : '') + '"><b>' + c.r + '</b><i>' + c.s + '</i></span>'; }
+  function dieHtml(n) { return '<span class="die d' + n + '" aria-label="' + n + '">' + '<i></i>'.repeat(n) + '</span>'; }
+  function renderCasino() {
+    var body = $('casino-body'), status = $('casino-status'); if (!body) return;
+    if (!casinoLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
+    var b = myBank(), html = '', an = casAnim || ''; casAnim = null;
+    status.textContent = tc(b.bal);
+    html += '<p class="info-sub">Terry’s house, Terry’s rules, Terry coin. Everyone starts with ' + tc(TC_START) + '. Blackjack pays 3 to 2 and the dealer stands on 17; craps is pass line, even money. Go broke and Terry lends you ' + tc(TC_LOAN) + ', and everyone sees the loan.</p>';
+    html += '<div class="cas-bank"><div><span class="lbl">Your bank</span><b>' + tc(b.bal) + '</b></div><div><span class="lbl">Net</span><b class="' + (b.net > 0 ? 'up' : b.net < 0 ? 'down' : '') + '">' + (b.net > 0 ? '+' : '') + Math.round(b.net || 0).toLocaleString() + '</b></div><div><span class="lbl">Hands</span><b>' + (b.hands || 0) + '</b></div>' + (b.loans ? '<div><span class="lbl">Loans</span><b class="down">' + b.loans + '</b></div>' : '') + '</div>';
+    var inHand = (casGame === 'blackjack' && bj && !bj.done) || (casGame === 'craps' && craps && !craps.done);
+    html += '<div class="cas-tabs" role="tablist">' + [['blackjack', '\uD83C\uDCCF Blackjack'], ['craps', '\uD83C\uDFB2 Craps']].map(function (g) { return '<button type="button" data-cas-game="' + g[0] + '" aria-pressed="' + (casGame === g[0]) + '"' + (inHand ? ' disabled' : '') + '>' + g[1] + '</button>'; }).join('') + '</div>';
+    if (!inHand) {
+      html += '<div class="cas-chips">' + TC_CHIPS.map(function (c) { return '<button type="button" class="chip' + (c === casBet ? ' on' : '') + (c > b.bal ? ' off' : '') + '" data-cas-bet="' + c + '">' + c + '</button>'; }).join('') + '</div>';
+      if (b.bal < TC_CHIPS[0]) html += '<div class="mafia-actions"><button type="button" class="big-btn" id="cas-loan">\uD83C\uDFE6 Take Terry’s ' + tc(TC_LOAN) + ' loan</button></div><div class="deal-sum">You’re broke. The loan goes on your record.</div>';
+    }
+    if (casGame === 'blackjack') {
+      if (bj) {
+        var yv = handVal(bj.you), dv = handVal(bj.dealer);
+        html += '<div class="bj-table' + (an ? ' ' + an : '') + '"><div class="bj-hand"><span class="who">Dealer' + (bj.done ? ' · ' + dv : '') + '</span><div class="cards">' + bj.dealer.map(function (c, i) { return cardHtml(c, i === 1 && !bj.done); }).join('') + '</div></div>' +
+          '<div class="bj-hand you"><span class="who">You · ' + yv + (bj.doubled ? ' · doubled' : '') + '</span><div class="cards">' + bj.you.map(function (c) { return cardHtml(c); }).join('') + '</div></div>' +
+          (bj.done ? '<div class="cas-result' + (bj.win > bj.bet ? ' win' : bj.win ? '' : ' lose') + '">' + esc(bj.result) + (bj.win ? ' <b>+' + Math.round(bj.win).toLocaleString() + '</b>' : '') + '</div>' : '') + '</div>';
+        html += bj.done
+          ? '<div class="mafia-actions"><button type="button" class="big-btn" id="bj-deal">Deal again · ' + tc(casBet) + '</button></div>'
+          : '<div class="cas-btns"><button type="button" class="big-btn" id="bj-hit">Hit</button><button type="button" class="big-btn stand" id="bj-stand">Stand</button>' + (bj.you.length === 2 && b.bal >= bj.bet ? '<button type="button" class="btn" id="bj-double">Double</button>' : '') + '</div>';
+      } else html += '<div class="mafia-actions"><button type="button" class="big-btn" id="bj-deal"' + (b.bal < casBet ? ' disabled' : '') + '>Deal · ' + tc(casBet) + '</button></div>';
+    } else {
+      if (craps) {
+        var last = craps.rolls[craps.rolls.length - 1];
+        html += '<div class="craps-table' + (an === 'roll' ? ' roll' : '') + '"><div class="point">' + (craps.point ? 'Point is <b>' + craps.point + '</b>' : 'Come-out roll') + ' · pass line ' + tc(craps.bet) + '</div>' +
+          '<div class="dice">' + (last ? dieHtml(last[0]) + dieHtml(last[1]) + '<span class="total">' + (last[0] + last[1]) + '</span>' : '<span class="total">—</span>') + '</div>' +
+          (craps.rolls.length > 1 ? '<div class="rolls">' + craps.rolls.map(function (r) { return r[0] + r[1]; }).join(' · ') + '</div>' : '') +
+          (craps.done ? '<div class="cas-result' + (craps.win ? ' win' : ' lose') + '">' + esc(craps.result) + (craps.win ? ' <b>+' + Math.round(craps.win).toLocaleString() + '</b>' : '') + '</div>' : '') + '</div>';
+        html += craps.done
+          ? '<div class="mafia-actions"><button type="button" class="big-btn" id="craps-start">Pass line again · ' + tc(casBet) + '</button></div>'
+          : '<div class="mafia-actions"><button type="button" class="big-btn" id="craps-roll">\uD83C\uDFB2 Roll</button></div>';
+      } else html += '<div class="mafia-actions"><button type="button" class="big-btn" id="craps-start"' + (b.bal < casBet ? ' disabled' : '') + '>Pass line · ' + tc(casBet) + '</button></div>';
+    }
+    var board = NAMES.map(function (n) { return casino[n] || null; }).filter(Boolean).sort(function (x, y) { return y.bal - x.bal; });
+    html += '<div class="cas-board"><div class="rl-head">The floor</div>' + (board.length ? board.map(function (r, i) { return '<div class="row' + (r.by === me ? ' me' : '') + '"><span class="pos">' + (i + 1) + '</span><span class="nm">' + esc(r.by === me ? 'You' : r.by) + (r.loans ? ' <small>' + r.loans + ' loan' + (r.loans === 1 ? '' : 's') + '</small>' : '') + '</span><span class="bal">' + tc(r.bal) + '</span></div>'; }).join('') : '<div class="info-sub">Nobody has sat down yet.</div>') + '</div>';
+    body.innerHTML = html;
+  }
+  listen('casino-body', 'click', function (e) {
+    var g = e.target.closest('[data-cas-game]'); if (g && !g.disabled) { casGame = g.getAttribute('data-cas-game'); buzz(6); renderCasino(); return; }
+    var c = e.target.closest('[data-cas-bet]'); if (c) { casBet = +c.getAttribute('data-cas-bet'); buzz(6); renderCasino(); return; }
+    if (e.target.closest('#cas-loan')) { var bk = myBank(); bankWrite({ bal: bk.bal + TC_LOAN, loans: (bk.loans || 0) + 1 }); toast('Terry fronts you ' + tc(TC_LOAN) + '. He remembers.'); buzz([30, 40, 30]); renderCasino(); return; }
+    if (e.target.closest('#bj-deal')) { bjDeal(); return; }
+    if (e.target.closest('#bj-hit')) { bjHit(); return; }
+    if (e.target.closest('#bj-stand')) { bjStand(); return; }
+    if (e.target.closest('#bj-double')) { bjDouble(); return; }
+    if (e.target.closest('#craps-start')) { crapsStart(); return; }
+    if (e.target.closest('#craps-roll')) { crapsRoll(); return; }
+  });
+
   // ---- Cabin tab ----
   var CABIN_PHOTOS = [    // published alongside the page
     { src: 'photos/cabin-01.jpg', cap: 'The house at dusk' },
@@ -4165,6 +4299,7 @@
     subscribeSpyfall();
     subscribeFishbowl();
     subscribeOffTopic();
+    subscribeCasino();
     subscribeClaude();
     subscribePhotos();
     subscribeTeams();
