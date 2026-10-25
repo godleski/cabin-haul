@@ -3389,7 +3389,8 @@
     if (!casinoLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
     var b = myBank(), html = '', an = casAnim || ''; casAnim = null;
     status.textContent = tc(b.bal);
-    html += '<p class="info-sub">Terry’s house, Terry’s rules, Terry coin. Everyone starts with ' + tc(TC_START) + '. Go broke and Terry lends you ' + tc(TC_LOAN) + ', and everyone sees the loan.</p>';
+    html += '<div class="cas-welcome"><div class="lights" aria-hidden="true"></div><div class="wtitle">Welcome to Terry’s Casino</div><div class="wsub">Terry’s house, Terry’s rules, Terry coin. Everyone starts with ' + tc(TC_START) + '. Go broke and Terry lends you ' + tc(TC_LOAN) + ', and everyone sees the loan.</div></div>';
+    html += '<div class="cas-warn"><b>Please gamble responsibly.</b> Terry coin is worth nothing and the house always wins. If gambling is a problem for you or someone you know, call or text the National Problem Gambling Helpline, <a href="tel:18004262537">1-800-GAMBLER</a>, 24 hours a day, free and confidential.</div>';
     html += '<div class="cas-bank"><div><span class="lbl">Your bank</span><b>' + tc(b.bal) + '</b></div><div><span class="lbl">Net</span><b class="' + (b.net > 0 ? 'up' : b.net < 0 ? 'down' : '') + '">' + (b.net > 0 ? '+' : '') + Math.round(b.net || 0).toLocaleString() + '</b></div><div><span class="lbl">Hands</span><b>' + (b.hands || 0) + '</b></div>' + (b.loans ? '<div><span class="lbl">Loans</span><b class="down">' + b.loans + '</b></div>' : '') + '</div>';
     var inHand = casInHand();
     html += '<div class="cas-tabs" role="tablist">' + CAS_GAMES.map(function (g) { return '<button type="button" data-cas-game="' + g[0] + '" aria-pressed="' + (casGame === g[0]) + '"' + (inHand ? ' disabled' : '') + '>' + g[1] + '</button>'; }).join('') + '</div>';
