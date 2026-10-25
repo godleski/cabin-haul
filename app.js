@@ -3244,7 +3244,9 @@
       var same = casinoLoaded && sameDoc(next, casino); casino = next; casinoLoaded = true; if (!same) { renderCasino(); renderAwards(); }
     });
   }
-  function tc(n) { return '🪙 ' + Math.round(n).toLocaleString(); }
+  // Terry coin: Terry's face on a gold rim wherever it shows in markup; plain text (a coin emoji) for toasts and the like
+  function tc(n) { return '<i class="tcoin" role="img" aria-label="Terry coin"></i>' + Math.round(n).toLocaleString(); }
+  function tcText(n) { return '\uD83E\uDE99 ' + Math.round(n).toLocaleString(); }
   function myBank() { return casino[me] || { by: me, bal: TC_START, hands: 0, net: 0, best: 0, loans: 0, house: 0 }; }
   function myBal() { return effBal(me); }
   function bankWrite(patch) {
@@ -3258,7 +3260,7 @@
     bankWrite({ bal: b.bal + win, hands: (b.hands || 0) + 1, net: (b.net || 0) + delta, best: Math.max(b.best || 0, delta), house: (b.house || 0) + (me === HOUSE ? 0 : bet - win) });
     buzz(win > bet ? [20, 40, 20, 40, 60] : win ? 15 : 60);
   }
-  function stake(bet) { var b = myBank(); if (bet > myBal()) { toast('You don’t have ' + tc(bet) + '.'); return false; } bankWrite({ bal: b.bal - bet }); return true; }
+  function stake(bet) { var b = myBank(); if (bet > myBal()) { toast('You don’t have ' + tcText(bet) + '.'); return false; } bankWrite({ bal: b.bal - bet }); return true; }
   function casInHand() { return (casGame === 'blackjack' && bj && !bj.done) || (casGame === 'craps' && craps && !craps.done) || (casGame === 'holdem' && holdem && !holdem.done) || (casGame === 'slots' && slots && !slots.done) || (casGame === 'wheel' && wheel && !wheel.done) || (casGame === 'horses' && race && !race.done); }
   // Churchill Downs: six horses, a fun coat and mane each, fixed odds. Win pays the odds, place (top two) half the odds,
   // show (top three) a third. The race itself is run on this phone, fair and random, the favourites a touch quicker.
@@ -3375,7 +3377,7 @@
     var k = mktTranche, qty = Math.max(1, Math.min(99, Math.round(mktQty))), b = myBank(), pos = Object.assign({}, b.pos || {}), p = pos[k] ? Object.assign({}, pos[k]) : { qty: 0, avg: 0 }, now = Date.now();
     var book = bookFor(k, now), px = side === 'buy' ? book.asks[0].px : book.bids[0].px, cost = Math.round(px * qty * 100) / 100;   // you lift the best ask, or hit the best bid: the bots are always there
     if (side === 'buy') {
-      if (cost > b.bal + stimIssued() + (me === HOUSE ? houseTake() : 0)) { toast('You don’t have ' + tc(cost) + ' in cash. Sell something, or lose less.'); return; }
+      if (cost > b.bal + stimIssued() + (me === HOUSE ? houseTake() : 0)) { toast('You don’t have ' + tcText(cost) + ' in cash. Sell something, or lose less.'); return; }
       p.avg = p.qty + qty ? (p.avg * p.qty + px * qty) / (p.qty + qty) : px; p.qty += qty; pos[k] = p;
       bankWrite({ bal: b.bal - cost, pos: pos, trades: (b.trades || 0) + 1 });
     } else {
@@ -3403,9 +3405,9 @@
     var book = bookFor(mktTranche, now), bk = $('mkt-book');
     if (bk) bk.innerHTML = book.asks.slice().reverse().map(function (o) { return '<div class="ask"><span>' + esc(o.who) + '</span><b>' + o.qty + '</b><i>' + o.px.toFixed(2) + '</i></div>'; }).join('') + '<div class="mid">' + tranchePrice(mktTranche, now).toFixed(2) + '</div>' + book.bids.map(function (o) { return '<div class="bid"><span>' + esc(o.who) + '</span><b>' + o.qty + '</b><i>' + o.px.toFixed(2) + '</i></div>'; }).join('');
     var tp = $('mkt-tape'); if (tp) tp.innerHTML = tapeFor(mktTranche, now).map(function (x) { return '<div class="' + x.side + (x.bot ? '' : ' human') + '"><span>' + esc(x.who) + '</span><b>' + (x.side === 'buy' ? 'bought' : 'sold') + ' ' + x.qty + '</b><i>' + x.px.toFixed(2) + '</i></div>'; }).join('');
-    var pv = $('mkt-pv'); if (pv) { var mb = myBank(); pv.textContent = tc(markPositions(mb.pos)); }
+    var pv = $('mkt-pv'); if (pv) { var mb = myBank(); pv.innerHTML = tc(markPositions(mb.pos)); }
     var sp = $('mkt-spark'); if (sp && now % 60000 < 1100) sp.innerHTML = sparkline(mktTranche, now);
-    var bb = $('mkt-buy'), sb = $('mkt-sell'); if (bb) bb.textContent = 'Buy ' + mktQty + ' · ' + tc(book.asks[0].px * mktQty); if (sb) sb.textContent = 'Sell ' + mktQty + ' · ' + tc(book.bids[0].px * mktQty);
+    var bb = $('mkt-buy'), sb = $('mkt-sell'); if (bb) bb.innerHTML = 'Buy ' + mktQty + ' · ' + tc(book.asks[0].px * mktQty); if (sb) sb.innerHTML = 'Sell ' + mktQty + ' · ' + tc(book.bids[0].px * mktQty);
   }
   function horseSvg(h) {
     return '<svg class="hs" viewBox="0 0 64 40" aria-hidden="true"><path class="tail" d="M8 16 q-8 4 -5 14" stroke="' + h.mane + '" stroke-width="4" fill="none" stroke-linecap="round"/>' +
@@ -3559,7 +3561,7 @@
     var body = $('casino-body'), status = $('casino-status'); if (!body) return;
     if (!casinoLoaded) { body.innerHTML = '<p class="skeleton">Loading…</p>'; return; }
     var b = Object.assign({}, myBank(), { bal: myBal() }), html = '', an = casAnim || '', take = houseTake(); casAnim = null;
-    status.textContent = tc(b.bal);
+    status.innerHTML = tc(b.bal);
     html += '<div class="cas-welcome"><div class="lights" aria-hidden="true"></div><div class="wtitle">Welcome to Terry’s Casino</div><div class="wsub">Terry’s house, Terry’s rules, Terry coin. Everyone starts with ' + tc(TC_START) + '. Go broke and Terry lends you ' + tc(TC_LOAN) + ', and everyone sees the loan. The house is Terry: whatever the tables win goes straight into his bank, and whatever they pay out comes out of it.</div></div>';
     html += '<div class="cas-warn"><b>Please gamble responsibly.</b> Terry coin is worth nothing and the house always wins. If gambling is a problem for you or someone you know, call or text the National Problem Gambling Helpline, <a href="tel:18004262537">1-800-GAMBLER</a>, 24 hours a day, free and confidential.</div>';
     var supply = moneySupply(), rv = reserveValue(), ratio = supply ? rv / supply : 0;
@@ -3670,7 +3672,7 @@
     body.innerHTML = html;
   }
   listen('casino-body', 'click', function (e) {
-    if (e.target.closest('#res-print') && CAS_BOSSES.indexOf(me) >= 0) { if (!window.confirm('Print ' + TC_STIM + ' Terry coin for every citizen?')) return; var rs = { issued: stimIssued() + TC_STIM, log: ((reserve && reserve.log) || []).slice(-19).concat([{ n: TC_STIM, by: me, at: new Date().toISOString() }]) }; reserve = rs; renderCasino(); toast('The presses are running. Everyone just got ' + tc(TC_STIM) + '.'); buzz([20, 40, 20]); store.setGame('casinoreserve', rs).catch(function (err) { toast('The press jammed: ' + ((err && err.message) || err)); }); return; }
+    if (e.target.closest('#res-print') && CAS_BOSSES.indexOf(me) >= 0) { if (!window.confirm('Print ' + TC_STIM + ' Terry coin for every citizen?')) return; var rs = { issued: stimIssued() + TC_STIM, log: ((reserve && reserve.log) || []).slice(-19).concat([{ n: TC_STIM, by: me, at: new Date().toISOString() }]) }; reserve = rs; renderCasino(); toast('The presses are running. Everyone just got ' + tcText(TC_STIM) + '.'); buzz([20, 40, 20]); store.setGame('casinoreserve', rs).catch(function (err) { toast('The press jammed: ' + ((err && err.message) || err)); }); return; }
     if (e.target.closest('#cas-close') && CAS_BOSSES.indexOf(me) >= 0) { if (!window.confirm('Close the floor for everyone and post final standings?')) return; var cl = { closed: true, by: me, at: new Date().toISOString() }; casClosed = cl; renderCasino(); store.setGame('casinoclose', cl).catch(function (err) { toast('Couldn’t close: ' + ((err && err.message) || err)); }); return; }
     if (e.target.closest('#cas-reopen') && CAS_BOSSES.indexOf(me) >= 0) { var op = { closed: false, by: me, at: new Date().toISOString() }; casClosed = null; renderCasino(); store.setGame('casinoclose', op).catch(function (err) { toast('Couldn’t reopen: ' + ((err && err.message) || err)); }); return; }
     if (casClosed) return;
@@ -3678,7 +3680,7 @@
     var c = e.target.closest('[data-cas-bet]'); if (c) { casBet = +c.getAttribute('data-cas-bet'); buzz(6); renderCasino(); return; }
     var wb = e.target.closest('[data-wheel-bet]'); if (wb) { wheelBet.kind = wb.getAttribute('data-wheel-bet'); buzz(6); renderCasino(); return; }
     var wn = e.target.closest('[data-wheel-num]'); if (wn) { wheelBet.n = +wn.getAttribute('data-wheel-num'); buzz(6); renderCasino(); return; }
-    if (e.target.closest('#cas-loan')) { var bk = myBank(); bankWrite({ bal: bk.bal + TC_LOAN, loans: (bk.loans || 0) + 1 }); toast('Terry fronts you ' + tc(TC_LOAN) + '. He remembers.'); buzz([30, 40, 30]); renderCasino(); return; }
+    if (e.target.closest('#cas-loan')) { var bk = myBank(); bankWrite({ bal: bk.bal + TC_LOAN, loans: (bk.loans || 0) + 1 }); toast('Terry fronts you ' + tcText(TC_LOAN) + '. He remembers.'); buzz([30, 40, 30]); renderCasino(); return; }
     if (e.target.closest('#bj-deal')) { bjDeal(); return; }
     if (e.target.closest('#bj-hit')) { bjHit(); return; }
     if (e.target.closest('#bj-stand')) { bjStand(); return; }
