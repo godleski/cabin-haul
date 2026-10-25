@@ -744,6 +744,7 @@
   .wheel-wrap.wof { background: radial-gradient(circle at 50% 30%, #1d3b6e, #0b1a33 70%); border-color: #e8c547; }
   .wheel.wof { border-color: #fff; box-shadow: 0 0 0 3px #e8c547, 0 10px 24px rgba(0, 0, 0, 0.5); } .wheel.wof .pocket { width: 30px; margin-left: -15px; margin-top: -124px; transform-origin: 50% 124px; } .wheel.wof .pocket b { display: block; font: 900 0.72rem var(--display); letter-spacing: -0.01em; } .wheel.wof .pocket b.bk { font-size: 0.34rem; letter-spacing: 0.04em; writing-mode: vertical-rl; margin: 0 auto; height: 44px; }
   .wheel.wof .hub { background: radial-gradient(circle at 40% 35%, #ffffff, #c9c9c9); font-size: 1.8rem; }
+  .cas-board .nm small.paid { color: var(--muted); font-weight: 600; } .res-panel.joe { border-color: #1a8fd6; }
   .horse-list { display: grid; gap: 6px; margin-top: 12px; } .horse-list button { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); color: var(--fg); font: 600 0.9rem var(--body); cursor: pointer; text-align: left; }
   .horse-list button .num { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 800 0.7rem var(--mono); color: #111; flex: none; } .horse-list button .nm { flex: 1; } .horse-list button .odds { font: 700 0.8rem var(--mono); color: var(--muted); } .horse-list button[aria-pressed="true"] { border-color: #e8c547; background: var(--ac-soft); } .horse-list button[aria-pressed="true"] .odds { color: #e8c547; }
   .cas-tabs.small button { flex: 1; }
