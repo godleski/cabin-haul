@@ -3234,7 +3234,8 @@
   function stimIssued() { return (reserve && reserve.issued) || 0; }
   function grantsFor(n) { return (RESERVE_GRANTS[n] || 0) + ((reserve && reserve.grants && reserve.grants[n]) || 0); }
   // The escrow account: coin the bank holds back, out of circulation. Opened with 5,000; every movement is in the log.
-  var ESCROW_START = 5000;
+  var ESCROW_START = 5000, RATE_DEFAULT = 4.25;
+  function fedRate() { return reserve && typeof reserve.rate === 'number' ? reserve.rate : RATE_DEFAULT; }   // the Terry Federal Funds Rate, % per day, charged on short positions
   function escrowBal() { return ESCROW_START + ((reserve && reserve.escrow) || 0); }
   function reserveWrite(patch, logEntry, note) {   // one shared document; the bosses are the only writers
     var rs = Object.assign({ issued: stimIssued(), grants: Object.assign({}, (reserve && reserve.grants) || {}), escrow: (reserve && reserve.escrow) || 0 }, patch);
@@ -3368,7 +3369,38 @@
     var idx = indexAt(ms || Date.now()), t = TRANCHES.filter(function (x) { return x.k === k; })[0];
     return Math.max(0.05, Math.round((100 + (idx - 100) * t.beta) * 10) / 100);
   }
-  function markPositions(pos) { if (!pos) return 0; var t = 0, now = Date.now(); Object.keys(pos).forEach(function (k) { var p = pos[k]; if (p && p.qty) t += p.qty * tranchePrice(k, now); }); return Math.round(t * 100) / 100; }
+  // A player contract starts at par (10) and moves a coin for every ten the player is up or down at the tables and the
+  // desk, less 2.5 a loan. Long it and you win when they win; short it and you win when they lose. Shorts pay the Terry
+  // Federal Funds Rate per day while open, and need cash on hand to cover the notional when opened.
+  function playerPrice(n) { var d = casino[n] || {}; return Math.max(0.5, Math.round((10 + ((d.net || 0) + (d.realized || 0)) / 10 - (d.loans || 0) * 2.5) * 100) / 100); }
+  function priceFor(k, ms) { return k.indexOf('p:') === 0 ? playerPrice(k.slice(2)) : tranchePrice(k, ms); }
+  function markPositions(pos) { if (!pos) return 0; var t = 0, now = Date.now(); Object.keys(pos).forEach(function (k) { var p = pos[k]; if (p && p.qty) t += p.qty * priceFor(k, now); }); return Math.round(t * 100) / 100; }
+  var pbPick = null;
+  function playerTrade(n, side) {   // side: 'long' buys, 'short' sells; a signed quantity on the position
+    var k = 'p:' + n, qty = Math.max(1, Math.min(99, Math.round(mktQty))), b = myBank(), pos = Object.assign({}, b.pos || {}), p = pos[k] ? Object.assign({}, pos[k]) : { qty: 0, avg: 0 }, px = playerPrice(n), d = side === 'long' ? qty : -qty, cash = b.bal + stimIssued() + grantsFor(me) + (me === HOUSE ? houseTake() : 0);
+    var notional = Math.round(px * qty * 100) / 100, realized = 0, funding = 0, now = Date.now();
+    if (side === 'long' && p.qty >= 0 && notional > cash) { toast('You don’t have ' + tcText(notional) + ' in cash.'); return; }
+    if (side === 'short' && p.qty <= 0 && notional > cash) { toast('A short needs ' + tcText(notional) + ' of cash as collateral. You have ' + tcText(cash) + '.'); return; }
+    var closing = (p.qty > 0 && d < 0) || (p.qty < 0 && d > 0) ? Math.min(Math.abs(p.qty), qty) : 0;
+    if (closing) {
+      realized = Math.round((p.qty > 0 ? (px - p.avg) : (p.avg - px)) * closing * 100) / 100;
+      if (p.qty < 0) funding = Math.round(p.avg * closing * (fedRate() / 100) * Math.max(0, (now - (p.openAt || now)) / 86400000) * 100) / 100;
+    }
+    var newQty = p.qty + d, opening = qty - closing;
+    if (opening) { var oldAbs = Math.abs(p.qty) - closing; p.avg = oldAbs + opening ? (p.avg * oldAbs + px * opening) / (oldAbs + opening) : px; if (!oldAbs) p.openAt = now; }
+    p.qty = newQty; if (!p.qty) { p.avg = 0; delete p.openAt; } pos[k] = p;
+    bankWrite({ bal: Math.round((b.bal - d * px - funding) * 100) / 100, pos: pos, trades: (b.trades || 0) + 1, realized: Math.round(((b.realized || 0) + realized - funding) * 100) / 100 });
+    buzz(side === 'long' ? [10, 30, 10] : 12); renderCasino();
+    toast((side === 'long' ? 'Long ' : 'Short ') + qty + ' ' + n + ' at ' + px.toFixed(2) + (closing ? '. Closed ' + closing + (realized >= 0 ? ', made ' : ', lost ') + tcText(Math.abs(realized)) + (funding ? ' after ' + tcText(funding) + ' funding' : '') : '') + '.');
+  }
+  function playerBookHtml(mb) {
+    var pos = mb.pos || {}, rows = NAMES.map(function (n) { var px = playerPrice(n), q = (pos['p:' + n] && pos['p:' + n].qty) || 0, d = casino[n] || {}; return { n: n, px: px, q: q, d: d }; });
+    var held = rows.filter(function (r) { return r.q; });
+    return '<div class="pb"><div class="mkt-title">Player book · par 10 · a coin a move for every 10 they win or lose · shorts pay ' + fedRate().toFixed(2) + '% a day</div>' +
+      (held.length ? '<div class="pb-held">' + held.map(function (r) { var p = pos['p:' + r.n], pl = Math.round((r.q > 0 ? (r.px - p.avg) : (p.avg - r.px)) * Math.abs(r.q) * 100) / 100; return '<span class="' + (pl >= 0 ? 'up' : 'down') + '">' + (r.q > 0 ? 'Long ' : 'Short ') + Math.abs(r.q) + ' ' + esc(r.n) + ' @ ' + p.avg.toFixed(2) + ' <b>' + (pl >= 0 ? '+' : '') + pl.toFixed(2) + '</b></span>'; }).join('') + '</div>' : '') +
+      '<div class="pb-list">' + rows.map(function (r) { return '<button type="button" data-pb="' + esc(r.n) + '" aria-pressed="' + (pbPick === r.n) + '"><span class="nm">' + esc(r.n === me ? 'You' : r.n) + (r.q ? '<small>' + (r.q > 0 ? 'long ' : 'short ') + Math.abs(r.q) + '</small>' : '') + '</span><span class="px ' + (r.px > 10 ? 'up' : r.px < 10 ? 'down' : '') + '">' + r.px.toFixed(2) + '</span><span class="net">' + (r.d.hands || r.d.trades ? ((r.d.net || 0) + (r.d.realized || 0) >= 0 ? '+' : '') + Math.round((r.d.net || 0) + (r.d.realized || 0)) + (r.d.loans ? ' · ' + r.d.loans + ' loan' + (r.d.loans === 1 ? '' : 's') : '') : 'no action yet') + '</span></button>'; }).join('') + '</div>' +
+      (pbPick ? '<div class="cas-btns two"><button type="button" class="big-btn" id="pb-long"' + (casClosed ? ' disabled' : '') + '>Long ' + mktQty + ' ' + esc(pbPick) + ' · ' + tc(playerPrice(pbPick) * mktQty) + '</button><button type="button" class="big-btn stand" id="pb-short"' + (casClosed ? ' disabled' : '') + '>Short ' + mktQty + '</button></div>' : '<div class="slot-hint">Tap a player, then go long or short with the notes count above.</div>') + '</div>';
+  }
   function subscribeMarket() { if (marketSub || !store || !store.game) return; marketSub = true; store.game('casinomarket', function (doc) { var same = sameDoc(doc, market); market = doc; if (!same && casGame === 'market') renderCasino(); }); }
   function bookFor(k, ms) {   // eight bids and eight asks from the bots, re-quoted every ten seconds
     var p = tranchePrice(k, ms), slot = Math.floor(ms / 10000), bids = [], asks = [];
@@ -3420,6 +3452,7 @@
     var pv = $('mkt-pv'); if (pv) { var mb = myBank(); pv.innerHTML = tc(markPositions(mb.pos)); }
     var sp = $('mkt-spark'); if (sp && now % 60000 < 1100) sp.innerHTML = sparkline(mktTranche, now);
     var bb = $('mkt-buy'), sb = $('mkt-sell'); if (bb) bb.innerHTML = 'Buy ' + mktQty + ' · ' + tc(book.asks[0].px * mktQty); if (sb) sb.innerHTML = 'Sell ' + mktQty + ' · ' + tc(book.bids[0].px * mktQty);
+    var pl = $('pb-long'); if (pl && pbPick) pl.innerHTML = 'Long ' + mktQty + ' ' + esc(pbPick) + ' · ' + tc(playerPrice(pbPick) * mktQty); var ps = $('pb-short'); if (ps) ps.textContent = 'Short ' + mktQty;
   }
   function horseSvg(h) {
     return '<svg class="hs" viewBox="0 0 64 40" aria-hidden="true"><path class="tail" d="M8 16 q-8 4 -5 14" stroke="' + h.mane + '" stroke-width="4" fill="none" stroke-linecap="round"/>' +
@@ -3582,10 +3615,11 @@
       '<div class="res-assets">' + RESERVE_ASSETS.map(function (a) { return '<div><span>' + a[0] + ' ' + esc(a[1]) + '</span><b>' + tc(a[2]) + '</b></div>'; }).join('') + '</div>' +
       '<div class="res-row"><span>Backing</span><b>' + Math.round(ratio * 100) + '%' + (ratio >= 1 ? ' · fully backed' : ratio >= 0.5 ? ' · fractional' : ' · fiat, basically') + '</b></div>' +
       '<div class="res-row"><span>Escrow account</span><b>' + tc(escrowBal()) + '</b></div>' +
+      '<div class="res-row"><span>Terry Federal Funds Rate</span><b>' + fedRate().toFixed(2) + '%' + (CAS_BOSSES.indexOf(me) >= 0 && !casClosed ? ' <span class="stepper"><button type="button" data-rate="-0.25">−</button><button type="button" data-rate="0.25">+</button></span>' : '') + '</b></div>' +
       '<div class="res-row"><span>Peg</span><b>1 TC = 1 sip of Banquet</b></div><div class="res-row"><span>Chairman</span><b>Terry</b></div>' +
       (stimIssued() ? '<div class="res-row"><span>Stimulus to date</span><b>' + tc(stimIssued()) + ' per citizen</b></div>' : '') +
       (function () { var gs = NAMES.filter(function (n) { return grantsFor(n); }); return gs.length ? '<div class="res-row"><span>Grants by order of the chairman</span><b>' + gs.map(function (n) { return esc(n) + ' ' + tc(grantsFor(n)); }).join('<br>') + '</b></div>' : ''; })() +
-      ((reserve && reserve.log && reserve.log.length) ? '<div class="res-log">' + reserve.log.slice(-5).reverse().map(function (e) { return '<div>' + esc(e.by) + ' ' + (e.kind === 'pay' ? 'paid ' + tc(e.n) + ' from escrow to ' + esc(e.who) : e.kind === 'seize' ? 'seized ' + tc(e.n) + ' from ' + esc(e.who) + ' into escrow' : e.kind === 'mint' ? 'minted ' + tc(e.n) + ' into escrow' : e.kind === 'burn' ? 'burned ' + tc(e.n) + ' from escrow' : 'printed ' + tc(e.n) + ' ' + (e.who ? 'for ' + esc(e.who) : 'for everyone')) + ' ' + esc(agoText(e.at)) + '</div>'; }).join('') + '</div>' : '') +
+      ((reserve && reserve.log && reserve.log.length) ? '<div class="res-log">' + reserve.log.slice(-5).reverse().map(function (e) { return '<div>' + esc(e.by) + ' ' + (e.kind === 'pay' ? 'paid ' + tc(e.n) + ' from escrow to ' + esc(e.who) : e.kind === 'seize' ? 'seized ' + tc(e.n) + ' from ' + esc(e.who) + ' into escrow' : e.kind === 'mint' ? 'minted ' + tc(e.n) + ' into escrow' : e.kind === 'burn' ? 'burned ' + tc(e.n) + ' from escrow' : e.kind === 'rate' ? 'set the rate to ' + (+e.n).toFixed(2) + '%' : 'printed ' + tc(e.n) + ' ' + (e.who ? 'for ' + esc(e.who) : 'for everyone')) + ' ' + esc(agoText(e.at)) + '</div>'; }).join('') + '</div>' : '') +
       (CAS_BOSSES.indexOf(me) >= 0 && !casClosed ? '<div class="mafia-actions"><button type="button" class="btn" id="res-print">\uD83D\uDDA8\uFE0F Print ' + tc(TC_STIM) + ' for everyone</button></div><div class="deal-sum">Quantitative easing. Backing drops; everyone cheers anyway.</div>' +
         '<div class="res-panel"><div class="res-ptitle">Full control</div>' +
         '<div class="res-grant"><select id="res-who" aria-label="Who">' + NAMES.map(function (n) { return '<option value="' + esc(n) + '"' + (n === resWho ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select><select id="res-amt" aria-label="How much">' + ['25', '50', '100', '250', '500', '1000', '5000'].map(function (a) { return '<option' + (a === resAmt ? ' selected' : '') + '>' + a + '</option>'; }).join('') + '</select></div>' +
@@ -3671,7 +3705,8 @@
         '<div class="mkt-grid"><div><div class="mkt-title">Order book</div><div id="mkt-book" class="mkt-book"></div></div><div><div class="mkt-title">Tape</div><div id="mkt-tape" class="mkt-tape"></div></div></div>' +
         '<div class="mkt-qty"><span>Notes</span><span class="stepper"><button type="button" data-mkt-qty="-1">−</button><b>' + mktQty + '</b><button type="button" data-mkt-qty="1">+</button></span><span class="stepper"><button type="button" data-mkt-qty="-10">−10</button><button type="button" data-mkt-qty="10">+10</button></span></div>' +
         '<div class="cas-btns two"><button type="button" class="big-btn" id="mkt-buy"' + (casClosed ? ' disabled' : '') + '>Buy ' + mktQty + ' · ' + tc(book0.asks[0].px * mktQty) + '</button><button type="button" class="big-btn stand" id="mkt-sell"' + (casClosed || !held.qty ? ' disabled' : '') + '>Sell ' + mktQty + ' · ' + tc(book0.bids[0].px * mktQty) + '</button></div>' +
-        '<div class="res-fine">Not a security. Not collateralized by anything but vibes. The tranches are cut from one index and the bots are a formula; past performance is a sine wave.</div></div>';
+        playerBookHtml(mb) +
+        '<div class="res-fine">Not a security. Not collateralized by anything but vibes. The tranches are cut from one index and the bots are a formula; past performance is a sine wave. Player contracts settle against people you will see at breakfast.</div></div>';
       clearInterval(mktTimer); mktTimer = setInterval(marketTick, 1000); setTimeout(marketTick, 0);
     } else {
       html += '<div class="cas-rules">Kyrkat’s wheel · evens pay 1 to 1, a dozen 2 to 1, a number 35 to 1 · zero is Kyrkat</div>';
@@ -3692,6 +3727,8 @@
   listen('casino-body', 'change', function (e) { if (e.target.id === 'res-who') resWho = e.target.value; if (e.target.id === 'res-amt') resAmt = e.target.value; });
   listen('casino-body', 'toggle', function (e) { if (e.target.classList && e.target.classList.contains('reserve')) resOpen = e.target.open; }, true);
   listen('casino-body', 'click', function (e) {
+    var rb = e.target.closest('[data-rate]');
+    if (rb && CAS_BOSSES.indexOf(me) >= 0) { var nr = Math.max(0, Math.round((fedRate() + (+rb.getAttribute('data-rate'))) * 100) / 100); reserveWrite({ rate: nr }, { n: nr, kind: 'rate' }, 'The Terry Federal Funds Rate is now ' + nr.toFixed(2) + '%.'); return; }
     var act = e.target.closest('#res-grant, #res-pay, #res-seize, #res-mint, #res-burn');
     if (act && CAS_BOSSES.indexOf(me) >= 0) {
       var who = $('res-who').value, amt = +$('res-amt').value, g = Object.assign({}, (reserve && reserve.grants) || {}), esc0 = (reserve && reserve.escrow) || 0, id = act.id;
@@ -3729,6 +3766,9 @@
     var mq = e.target.closest('[data-mkt-qty]'); if (mq) { mktQty = Math.max(1, Math.min(99, mktQty + (+mq.getAttribute('data-mkt-qty')))); var qb = document.querySelector('.mkt-qty > .stepper > b'); if (qb) qb.textContent = mktQty; marketTick(); buzz(4); return; }
     if (e.target.closest('#mkt-buy')) { mktTrade('buy'); return; }
     if (e.target.closest('#mkt-sell')) { mktTrade('sell'); return; }
+    var pb = e.target.closest('[data-pb]'); if (pb) { pbPick = pb.getAttribute('data-pb'); buzz(6); renderCasino(); return; }
+    if (e.target.closest('#pb-long') && pbPick) { playerTrade(pbPick, 'long'); return; }
+    if (e.target.closest('#pb-short') && pbPick) { playerTrade(pbPick, 'short'); return; }
     if (e.target.closest('#race-field')) { field = null; race = null; racePick = 0; buzz(6); renderCasino(); return; }
   });
 
@@ -4595,7 +4635,7 @@
       var recs = Object.keys(by).map(function (n) { return n + ' ' + (by[n].w || 0) + '-' + (by[n].l || 0); });
       lines.push('Air hockey right now: humans ' + h + ', Claude ' + c + (recs.length ? '. Records (wins-losses vs Claude): ' + recs.join(', ') : '') + '. You lose a lot at air hockey and own it.');
       var casRows = NAMES.filter(function (n) { return casino[n] || (n === HOUSE && houseTake()); }).map(function (n) { return { n: n, bal: effBal(n), d: casino[n] || {} }; }).sort(function (x, y) { return y.bal - x.bal; });
-      if (casRows.length) lines.push('Terry’s Casino (Terry is the house: table winnings go into his bank), Terry coin banks right now: ' + casRows.map(function (r) { return r.n + ' ' + Math.round(r.bal) + (r.d.hands ? ' (' + r.d.hands + ' hands, net ' + (r.d.net > 0 ? '+' : '') + Math.round(r.d.net || 0) + ')' : '') + (r.d.loans ? ', ' + r.d.loans + ' loan' + (r.d.loans === 1 ? '' : 's') + ' from Terry' : ''); }).join('; ') + '. The house is ' + (houseTake() > 0 ? 'up ' + Math.round(houseTake()) : houseTake() < 0 ? 'down ' + Math.abs(Math.round(houseTake())) : 'even') + '.' + (casClosed ? ' The floor is closed for the weekend; these are the final standings.' : '') + ' Fair game: whoever is deepest in Terry’s debt, and anyone up big. The derivatives desk sells Synthetic Collateralized Terry Coin Obligations in three tranches off a Terry Coin Index (now ' + indexAt(Date.now()).toFixed(2) + '); positions are marked to market in the banks above. The Reserve holds an escrow account of ' + Math.round(escrowBal()).toLocaleString() + ' coin out of circulation, which Terry and Mitch can pay out, seize into, mint or burn. Terry coin is backed by the Terry Reserve (a case of Banquet, the hot tub, Mitch’s plate, one Kyrkat, the door code), currently ' + Math.round((moneySupply() ? reserveValue() / moneySupply() : 0) * 100) + '% backed' + (stimIssued() ? ', after ' + stimIssued() + ' coin of stimulus printed per person' : '') + '.');
+      if (casRows.length) lines.push('Terry’s Casino (Terry is the house: table winnings go into his bank), Terry coin banks right now: ' + casRows.map(function (r) { return r.n + ' ' + Math.round(r.bal) + (r.d.hands ? ' (' + r.d.hands + ' hands, net ' + (r.d.net > 0 ? '+' : '') + Math.round(r.d.net || 0) + ')' : '') + (r.d.loans ? ', ' + r.d.loans + ' loan' + (r.d.loans === 1 ? '' : 's') + ' from Terry' : ''); }).join('; ') + '. The house is ' + (houseTake() > 0 ? 'up ' + Math.round(houseTake()) : houseTake() < 0 ? 'down ' + Math.abs(Math.round(houseTake())) : 'even') + '.' + (casClosed ? ' The floor is closed for the weekend; these are the final standings.' : '') + ' Fair game: whoever is deepest in Terry’s debt, and anyone up big. The derivatives desk sells Synthetic Collateralized Terry Coin Obligations in three tranches off a Terry Coin Index (now ' + indexAt(Date.now()).toFixed(2) + '); positions are marked to market in the banks above. The Reserve holds an escrow account of ' + Math.round(escrowBal()).toLocaleString() + ' coin out of circulation, which Terry and Mitch can pay out, seize into, mint or burn. The Terry Federal Funds Rate is ' + fedRate().toFixed(2) + '% a day, charged on short positions. The desk also runs a player book: a contract on every person, par 10, that moves a coin for every ten they win or lose, so people can go long or short each other. Terry coin is backed by the Terry Reserve (a case of Banquet, the hot tub, Mitch’s plate, one Kyrkat, the door code), currently ' + Math.round((moneySupply() ? reserveValue() / moneySupply() : 0) * 100) + '% backed' + (stimIssued() ? ', after ' + stimIssued() + ' coin of stimulus printed per person' : '') + '.');
       var mc = smashCounts(SMASH_MAIN), allWins = {}; smashLog().forEach(function (e) { allWins[e.w] = (allWins[e.w] || 0) + 1; });
       lines.push('Mitch vs Luke Smash tally: Mitch ' + mc.Mitch + ', Luke ' + mc.Luke + (Object.keys(allWins).length ? '. All Smash wins: ' + Object.keys(allWins).map(function (n) { return n + ' ' + allWins[n]; }).join(', ') : '') + '.');
       // Time on the courses: what the clock recorded, plus an estimate for the rounds played before the clock went in.
