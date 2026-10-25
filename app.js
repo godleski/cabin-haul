@@ -3830,10 +3830,11 @@
     { id: 'ruined', kind: 'title', name: 'Terry Coin Ruined My Life', price: 20, blurb: 'Wear it with whatever you have left.' },
     { id: 'repay', kind: 'repay', name: 'Repay a loan', price: 55, blurb: 'Clears one loan off your record. Terry keeps the five.' },
     { id: 'round', kind: 'round', name: 'A round for the wall', price: 40, blurb: 'Posts a round of Banquets on the wall in your name.' },
+    { id: 'mystery', kind: 'mystery', name: 'Mystery box', emoji: '\uD83C\uDF81', price: 60, blurb: 'Could be a crown. Could be coin. Could be a note from Terry.' },
     { id: 'tee', kind: 'merch', name: 'Terry’s Casino tee', price: 1500, soon: true, blurb: 'Real cotton. Coming soon.' },
     { id: 'hat', kind: 'merch', name: 'Terry coin snapback', price: 1200, soon: true, blurb: 'Real hat. Coming soon.' }
   ];
-  var SHOP_KINDS = [['flair', 'Flair', 'Next to your name on the floor. One at a time.'], ['title', 'Titles', 'Under your name. One at a time.'], ['repay', 'Terry’s services', ''], ['round', '', ''], ['merch', 'Merch', 'The real stuff. Not yet.']];
+  var SHOP_KINDS = [[['flair'], 'Flair', 'Next to your name on the floor. One at a time.'], [['title'], 'Titles', 'Under your name. One at a time.'], [['repay', 'round', 'mystery'], 'Terry’s services', ''], [['merch'], 'Merch', 'The real stuff. Not yet.']];
   function shopPrice(it) { return it.only && it.only.indexOf(me) < 0 ? it.othersPrice : it.price; }
   function shopLook(n) { var d = casino[n] || {}; return (d.flair ? ' <span class="flair">' + d.flair + '</span>' : '') + (d.title ? ' <em class="ttl">' + esc(d.title) + '</em>' : ''); }
   function shopBuy(id) {
@@ -3844,17 +3845,31 @@
     if (!window.confirm((it.kind === 'repay' ? 'Repay one loan' : 'Buy ' + it.name) + ' for ' + price + ' Terry coin? It goes straight to Terry.')) return;
     var patch = { bal: b.bal - price, house: (b.house || 0) + price, buys: ((b.buys || []).concat([{ id: id, n: price, at: new Date().toISOString() }])).slice(-100) };
     if (it.kind === 'flair') patch.flair = it.emoji; if (it.kind === 'title') patch.title = it.name; if (it.kind === 'repay') patch.loans = b.loans - 1;
+    var gift = null;
+    if (it.kind === 'mystery') {
+      var roll = Math.random(), pick = function (kind) { var pool = SHOP.filter(function (x) { return x.kind === kind && !x.only; }); return pool[Math.floor(Math.random() * pool.length)]; }, coin = 0;
+      if (roll < 0.25) { var fl = pick('flair'); patch.flair = fl.emoji; gift = fl.emoji + ' ' + fl.name + ' flair'; }
+      else if (roll < 0.5) { var tt = pick('title'); patch.title = tt.name; gift = 'the title \u201C' + tt.name + '\u201D'; }
+      else if (roll < 0.65) { coin = 10 + 10 * Math.floor(Math.random() * 15); gift = tcText(coin) + ' in loose coin'; }
+      else if (roll < 0.75) { if (b.loans > 0) { patch.loans = b.loans - 1; gift = 'Terry forgiving one loan'; } else { coin = 25; gift = tcText(25) + ' and Terry’s thanks'; } }
+      else if (roll < 0.85) { gift = 'a round for the wall'; }
+      else if (roll < 0.95) { gift = 'nothing but a note: \u201CThanks for the 60. \u2014 Terry\u201D'; }
+      else { coin = 500; gift = tcText(500) + '. THE JACKPOT BOX.'; }
+      if (coin) { patch.bal += coin; patch.house -= coin; }
+      patch.buys[patch.buys.length - 1].gift = gift; shopGift = gift;
+    }
     bankWrite(patch); buzz([20, 30, 20]); renderCasino();
-    if (it.kind === 'round') { var line = '🍻 ' + me + ' bought a round for the whole wall. Banquets on ' + (me === 'Terry' ? 'Terry, obviously' : me) + '.'; comments.push({ question_id: WALL, author: me, text: line, created_at: new Date().toISOString() }); renderWall(); store.comment(WALL, me, line).catch(function (e) { toast('The round didn’t post: ' + ((e && e.message) || e)); }); }
-    toast(it.kind === 'repay' ? 'One loan cleared. Terry nods.' : it.kind === 'round' ? 'Round’s on you. It’s on the wall.' : it.name + ': yours.');
+    if (it.kind === 'round' || gift === 'a round for the wall') { var line = '🍻 ' + me + ' bought a round for the whole wall. Banquets on ' + (me === 'Terry' ? 'Terry, obviously' : me) + '.'; comments.push({ question_id: WALL, author: me, text: line, created_at: new Date().toISOString() }); renderWall(); store.comment(WALL, me, line).catch(function (e) { toast('The round didn’t post: ' + ((e && e.message) || e)); }); }
+    toast(it.kind === 'mystery' ? 'Inside the box: ' + gift : it.kind === 'repay' ? 'One loan cleared. Terry nods.' : it.kind === 'round' ? 'Round’s on you. It’s on the wall.' : it.name + ': yours.');
   }
+  var shopGift = null;   // what the last box on this phone held, shown till the next render of another table
   function shopOff(kind) { var patch = {}; patch[kind] = ''; bankWrite(patch); renderCasino(); }
   function shopHtml(b) {
     var d = myBank(), bal = b.bal;
     var html = '<div class="cas-rules">The gift shop · spend Terry coin on flair, titles and Terry’s services · every purchase goes straight to Terry’s bank · real merch coming soon</div>';
     html += '<div class="shop-you"><span class="lbl">On the floor you’re</span><b>' + esc(me) + shopLook(me) + '</b>' + (d.flair ? '<button type="button" class="linkbtn" data-shop-off="flair">Drop the flair</button>' : '') + (d.title ? '<button type="button" class="linkbtn" data-shop-off="title">Drop the title</button>' : '') + '</div>';
     SHOP_KINDS.forEach(function (k) {
-      var items = SHOP.filter(function (it) { return it.kind === k[0]; }); if (!items.length) return;
+      var items = SHOP.filter(function (it) { return k[0].indexOf(it.kind) >= 0; }); if (!items.length) return;
       if (k[1]) html += '<div class="shop-head">' + k[1] + (k[2] ? '<small>' + k[2] + '</small>' : '') + '</div>';
       html += '<div class="shop-grid">' + items.map(function (it) {
         var price = shopPrice(it), wearing = (it.kind === 'flair' && d.flair === it.emoji) || (it.kind === 'title' && d.title === it.name), can = !it.soon && !wearing && price <= bal && !(it.kind === 'repay' && !(d.loans > 0));
@@ -3862,8 +3877,9 @@
           '<button type="button" class="btn" data-shop-buy="' + it.id + '"' + (can ? '' : ' disabled') + '>' + (it.soon ? 'Coming soon' : wearing ? 'Wearing it' : (it.kind === 'repay' ? 'Repay' : 'Buy') + ' · ' + tc(price)) + '</button></div>';
       }).join('') + '</div>';
     });
+    if (shopGift) html += '<div class="cas-result win shop-gift">\uD83C\uDF81 Inside the box: ' + esc(shopGift) + '</div>';
     var buys = (d.buys || []).slice(-5).reverse();
-    if (buys.length) html += '<div class="deal-sum">Your receipts: ' + buys.map(function (x) { var it = SHOP.filter(function (y) { return y.id === x.id; })[0]; return esc(it ? it.name : x.id) + ' ' + tcText(x.n); }).join(' · ') + '</div>';
+    if (buys.length) html += '<div class="deal-sum">Your receipts: ' + buys.map(function (x) { var it = SHOP.filter(function (y) { return y.id === x.id; })[0]; return esc(it ? it.name : x.id) + ' ' + tcText(x.n) + (x.gift ? ' (' + esc(x.gift) + ')' : ''); }).join(' · ') + '</div>';
     return html;
   }
   // ---- Deal or No Deal: twenty cases, Terry on the phone ----
