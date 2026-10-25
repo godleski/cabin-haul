@@ -3924,13 +3924,14 @@
     return html + '</div>';
   }
   // ---- Wheel of Fortune: spin it, win what it says ----
-  // Twenty-four wedges in wheel order. The number is what comes back for every coin bet (stake included), so 1 is a push,
+  // Twenty-four wedges in wheel order, painted ROYGBIV around the rim. The number is what comes back for every coin bet (stake included), so 1 is a push,
   // ½ gives half back, 8 is the jackpot and BANKRUPT is Terry's. The wedges average a shade under 1, the house's edge.
   var WOF = [[8, '8×', '#e8c547', '#111'], [0, 'BANKRUPT', '#111', '#fff'], [1, '1×', '#1fa37a', '#fff'], [0.5, '½', '#6f42c1', '#fff'], [0, 'BANKRUPT', '#111', '#fff'], [2, '2×', '#f26b1d', '#fff'],
     [0.5, '½', '#6f42c1', '#fff'], [0, 'BANKRUPT', '#111', '#fff'], [1, '1×', '#1fa37a', '#fff'], [0, 'BANKRUPT', '#111', '#fff'], [0.5, '½', '#6f42c1', '#fff'], [1, '1×', '#1fa37a', '#fff'],
     [0, 'BANKRUPT', '#111', '#fff'], [3, '3×', '#e5398d', '#fff'], [0.5, '½', '#6f42c1', '#fff'], [0, 'BANKRUPT', '#111', '#fff'], [1, '1×', '#1fa37a', '#fff'], [0, 'BANKRUPT', '#111', '#fff'],
     [0.5, '½', '#6f42c1', '#fff'], [2, '2×', '#f26b1d', '#fff'], [0, 'BANKRUPT', '#111', '#fff'], [1, '1×', '#1fa37a', '#fff'], [0.5, '½', '#6f42c1', '#fff'], [0, 'BANKRUPT', '#111', '#fff']];
   var WOF_LINES = { 0: 'BANKRUPT. Terry thanks you.', 0.5: 'Half back. Could be worse.', 1: 'Push. Spin it again.', 2: 'Double. Nice.', 3: 'Triple!', 8: 'JACKPOT! Eight times your money!' };
+  var WOF_RAINBOW = ['#e63946', '#f77f00', '#ffd60a', '#2a9d2a', '#1d6fe0', '#4338ca', '#8e44ad'];   // red, orange, yellow, green, blue, indigo, violet, round and round
   var wof = null;
   function wofSpin() {
     if (!stake(casBet)) return;
@@ -3942,8 +3943,8 @@
   function wofHtml(b, an) {
     var seg = 360 / WOF.length, finalDeg = wof ? -(wof.i * seg) - (wof.turns * 360) : 0;
     var html = '<div class="cas-rules">Spin it, win what it says · the wedge is what comes back per coin bet · ½ to 8 times · BANKRUPT is Terry’s</div>';
-    html += '<div class="wheel-wrap wof"><div class="wheel-pin">▼</div><div class="wheel wof' + (an === 'spin' ? ' spin' : '') + '" style="--deg:' + finalDeg.toFixed(1) + 'deg; background: conic-gradient(' + WOF.map(function (w, i) { return w[2] + ' ' + (i * seg - seg / 2).toFixed(2) + 'deg ' + ((i + 1) * seg - seg / 2).toFixed(2) + 'deg'; }).join(', ') + ')">' +
-      WOF.map(function (w, i) { return '<span class="pocket" style="--a:' + (i * seg).toFixed(2) + 'deg; color:' + w[3] + '"><b' + (w[0] === 0 ? ' class="bk"' : '') + '>' + w[1] + '</b></span>'; }).join('') + '<div class="hub">💰</div></div>' +
+    html += '<div class="wheel-wrap wof"><div class="wheel-pin">▼</div><div class="wheel wof' + (an === 'spin' ? ' spin' : '') + '" style="--deg:' + finalDeg.toFixed(1) + 'deg; background: conic-gradient(' + WOF.map(function (w, i) { return WOF_RAINBOW[i % 7] + ' ' + (i * seg - seg / 2).toFixed(2) + 'deg ' + ((i + 1) * seg - seg / 2).toFixed(2) + 'deg'; }).join(', ') + ')">' +
+      WOF.map(function (w, i) { return '<span class="pocket" style="--a:' + (i * seg).toFixed(2) + 'deg; color:' + (i % 7 === 2 ? '#111' : '#fff') + '"><b' + (w[0] === 0 ? ' class="bk"' : '') + '>' + w[1] + '</b></span>'; }).join('') + '<div class="hub">💰</div></div>' +
       (wof && wof.done ? resultHtml(wof.result, wof.win, wof.bet) : '<div class="slot-hint">' + (wof ? 'Round and round…' : 'Pick a chip and spin') + '</div>') + '</div>';
     if (!(wof && !wof.done)) html += '<div class="mafia-actions"><button type="button" class="big-btn" id="wof-spin"' + (b.bal < casBet ? ' disabled' : '') + '>🎡 Spin · ' + tc(casBet) + '</button></div>';
     return html;
