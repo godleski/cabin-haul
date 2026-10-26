@@ -1,6 +1,6 @@
-// Builds dist/artifact.html (the claude.ai prototype, everything inlined, using store-artifact.js instead of Supabase),
-// dist/casino-artifact.html (the same app in casino-only mode, its own artifact) and casino.html at the repo root (the
-// live site's casino-only page, generated from index.html). Run: node build-artifact.js
+// Builds dist/artifact.html (the claude.ai prototype, everything inlined, using store-artifact.js instead of Supabase)
+// and dist/casino-artifact.html (the same app in casino-only mode, the casino's own artifact; the live site has no such
+// page, by Mitch's call). Run: node build-artifact.js
 const fs = require('fs');
 const html = fs.readFileSync('index.html', 'utf8');
 const body = html.split('<!-- app:start -->')[1].split('<!-- app:end -->')[0];
@@ -23,13 +23,4 @@ fs.mkdirSync('dist', { recursive: true });
 const main = artifact('Cabin Haul', false), cas = artifact('Terry’s Casino', true);
 fs.writeFileSync('dist/artifact.html', main);
 fs.writeFileSync('dist/casino-artifact.html', cas);
-// casino.html: index.html with the casino-only flag and its own title; committed, since Pages serves the repo as is
-const page = '<!-- Generated from index.html by build-artifact.js. Edit index.html, not this file. -->\n' + html
-  .replace('<title>Cabin Haul</title>', '<title>Terry’s Casino</title>')
-  .replace('<meta name="apple-mobile-web-app-title" content="Cabin Haul">', '<meta name="apple-mobile-web-app-title" content="Terry’s Casino">')
-  .replace('<meta property="og:title" content="Cabin Haul">', '<meta property="og:title" content="Terry’s Casino">')
-  .replace('<meta property="og:description" content="The cabin weekend, all in one place.">', '<meta property="og:description" content="Terry’s house, Terry’s rules, Terry coin.">')
-  .replace('<script src="app.js"></script>', '<script>window.CASINO_ONLY = true;</script>\n<script src="app.js"></script>');
-if (!/CASINO_ONLY = true/.test(page) || !/<title>Terry’s Casino<\/title>/.test(page)) throw new Error('casino.html: index.html changed shape');
-fs.writeFileSync('casino.html', page);
-console.log('dist/artifact.html', main.length, 'bytes;', 'dist/casino-artifact.html', cas.length, 'bytes;', 'casino.html', page.length, 'bytes');
+console.log('dist/artifact.html', main.length, 'bytes;', 'dist/casino-artifact.html', cas.length, 'bytes');

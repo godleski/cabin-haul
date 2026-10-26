@@ -5,10 +5,9 @@
   right away without waiting for a separate "push it live".
 - Prototype lives in the claude.ai artifact https://claude.ai/artifact/JiW8YZTxixgH29K1zrYQvv
   (capabilities db/user/assets). Publish `dist/artifact.html` after each change.
-- Terry’s Casino also stands on its own: `casino.html` on the live site (generated from `index.html` by
-  `node build-artifact.js`, committed) and its own artifact https://claude.ai/artifact/61QHukFsikeAGRZkZgDx2B
+- Terry’s Casino also has its own artifact, for sending to Terry: https://claude.ai/artifact/61QHukFsikeAGRZkZgDx2B
   (built to `dist/casino-artifact.html`, same capabilities, its own database). Publish both artifacts after each change.
-  Both pages run the same app.js with `window.CASINO_ONLY` set, so casino changes are made once.
+  It is the same app.js with `window.CASINO_ONLY` set. The live site gets no casino-only page (Mitch, 2026-10-26).
 - Don't touch Supabase SQL while prototyping. Go-live should need one SQL run.
 - Door codes live encrypted in `secrets.js` (sealed from the gitignored `secrets.json` by
   `node tools/seal-secrets.js "<trip password>"`). The link sent to the group carries the password
