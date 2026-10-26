@@ -1793,13 +1793,13 @@
   function showScreen() {
     var picking = !me;
     $('predict').hidden = true;
-    $('pick').hidden = !picking; $('main').hidden = picking; $('nav').hidden = picking; $('chat-fab').hidden = picking;
+    $('pick').hidden = !picking; $('main').hidden = picking; $('nav').hidden = picking || CASINO_ONLY; $('chat-fab').hidden = picking;
     if (picking) closeChat();
     document.body.classList.toggle('picking', picking);
     if (picking) { renderRoster(); window.scrollTo(0, 0); return; }
     if (!booted) boot();
     if (me !== renderedFor) refreshForUser();
-    if (shouldAsk()) { askedThisVisit = true; qAuto = true; openQuestionnaire(firstUnanswered()); return; }   // the predictions, once
+    if (!CASINO_ONLY && shouldAsk()) { askedThisVisit = true; qAuto = true; openQuestionnaire(firstUnanswered()); return; }   // the predictions, once
     $('me').innerHTML = 'Hey <b>' + esc(me) + '</b>';
     showTab(tab);
     render();
@@ -1821,8 +1821,12 @@
 
   // ---- Bottom dock ----
   var TABS = ['home', 'photos', 'cabin', 'games', 'hibachi'];
-  var tab = 'cabin', indPlaced = false;
+  // casino.html (and the casino artifact) load the same app with window.CASINO_ONLY set: the Games page only, the dock
+  // hidden, and every card but Terry's Casino and the awards gone, so the casino stands on its own page.
+  var CASINO_ONLY = !!window.CASINO_ONLY; if (CASINO_ONLY) document.body.classList.add('casino-only');
+  var tab = CASINO_ONLY ? 'games' : 'cabin', indPlaced = false;
   function showTab(name) {
+    if (CASINO_ONLY) name = 'games';
     var changed = name !== tab;
     tab = name;
     TABS.forEach(function (t) { var pg = $('page-' + t); if (pg) pg.hidden = t !== tab; });
@@ -1874,7 +1878,7 @@
     lsSet('cabin-haul-card-' + head.getAttribute('aria-controls'), open ? '1' : '0');
   }
   Array.prototype.forEach.call(document.querySelectorAll('.game-head'), function (head) {
-    setCardOpen(head, lsGet('cabin-haul-card-' + head.getAttribute('aria-controls')) === '1');
+    setCardOpen(head, CASINO_ONLY ? head.getAttribute('aria-controls') === 'casino-body' : lsGet('cabin-haul-card-' + head.getAttribute('aria-controls')) === '1');
     head.addEventListener('click', function () { setCardOpen(head, head.getAttribute('aria-expanded') !== 'true'); });
     head.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); head.click(); } });
   });
@@ -4432,7 +4436,7 @@
       votes = rows.slice();
       var first = !predLoaded; predLoaded = true;
       renderPredictions(); renderHibachi();
-      if (first && !$('main').hidden && shouldAsk()) { askedThisVisit = true; qAuto = true; openQuestionnaire(0); }
+      if (first && !CASINO_ONLY && !$('main').hidden && shouldAsk()) { askedThisVisit = true; qAuto = true; openQuestionnaire(0); }
     });
     if (store.comments) store.comments(function (rows) {
       comments = rows.slice().sort(function (a, b) { return (a.created_at || '') < (b.created_at || '') ? -1 : 1; });
